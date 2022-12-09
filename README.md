@@ -1,4 +1,7 @@
 # ters
+
+[![Test](https://github.com/veoco/ters/actions/workflows/test.yml/badge.svg)](https://github.com/veoco/ters/actions/workflows/test.yml)
+
 **T**yp**e**cho **R**u**s**t 版本
 
 ## 目标
