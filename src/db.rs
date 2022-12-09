@@ -1,6 +1,9 @@
-use super::AppState;
+use std::time::SystemTime;
 
-pub async fn init_db(state: AppState) {
+use super::AppState;
+use super::users::{UserRegister, hash};
+
+pub async fn init_db(state: &AppState) {
     sqlx::query(
         r#"CREATE TABLE typecho_comments ( "coid" INTEGER NOT NULL PRIMARY KEY,
         "cid" int(10) default '0' ,
@@ -94,4 +97,21 @@ pub async fn init_db(state: AppState) {
     .execute(&state.pool)
     .await
     .expect("database already exists");
+}
+
+pub async fn init_admin(state: &AppState, user_register: UserRegister) {
+  let now = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as u32;
+  let hashed_password = hash(&user_register.password);
+
+  sqlx::query(
+    r#"
+      INSERT INTO typecho_users (name, mail, url, screenName, password, created, "group") VALUES (?1, ?2, ?3, ?1, ?4, ?5, ?6)
+      "#,
+  ).bind(user_register.name).bind(user_register.mail).bind(user_register.url).bind(hashed_password).bind(now).bind("administrator")
+  .execute(&state.pool)
+  .await
+  .expect("user already exists");
 }

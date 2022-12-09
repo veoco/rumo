@@ -6,7 +6,7 @@ use tracing_subscriber::FmtSubscriber;
 use ters::{app, init};
 
 fn print_usage(program: &str, opts: Options) {
-    let brief = format!("Usage: {} run|init", program);
+    let brief = format!("Usage: {} run|init [options]", program);
     print!("{}", opts.usage(&brief));
 }
 
@@ -16,6 +16,9 @@ async fn main() {
     let program = args[0].clone();
 
     let mut opts = Options::new();
+    opts.optopt("n", "name", "set admin name", "NAME");
+    opts.optopt("m", "mail", "set admin mail", "MAIL");
+    opts.optopt("p", "password", "set admin password", "PASSWORD");
     opts.optflag("h", "help", "print this help menu");
     let matches = match opts.parse(&args[1..]) {
         Ok(m) => m,
@@ -55,7 +58,11 @@ async fn main() {
             tracing::subscriber::set_global_default(subscriber)
                 .expect("start log failed");
 
-            init().await;
+            let name = matches.opt_str("n").unwrap_or("admin".to_owned());
+            let mail = matches.opt_str("m").unwrap_or("admin@local.host".to_owned());
+            let password = matches.opt_str("p").unwrap_or("admin".to_owned());
+
+            init(name, mail, password).await;
             info!("database created")
         }
         _ => {

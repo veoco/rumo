@@ -3,10 +3,11 @@ use sqlx::sqlite::SqlitePool;
 use std::env;
 use std::sync::Arc;
 use tower_http::trace::TraceLayer;
+use tracing::info;
 
-mod users;
 mod db;
-use users::auth_routers;
+mod users;
+use users::{auth_routers, UserRegister};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -15,7 +16,7 @@ pub struct AppState {
     pub access_token_expire_secondes: u64,
 }
 
-async fn get_state(app_state: Option<AppState>)-> AppState{
+async fn get_state(app_state: Option<AppState>) -> AppState {
     let state = match app_state {
         Some(s) => s,
         None => {
@@ -45,7 +46,17 @@ pub async fn app(app_state: Option<AppState>) -> Router {
     app
 }
 
-pub async fn init(){
+pub async fn init(name: String, mail: String, password: String) {
     let state = get_state(None).await;
-    db::init_db(state).await;
+    let user_register = UserRegister {
+        name,
+        mail,
+        password,
+        url: "http://127.0.0.1".to_owned(),
+    };
+
+    db::init_db(&state).await;
+    info!("schema created");
+    db::init_admin(&state, user_register).await;
+    info!("admin user created");
 }
