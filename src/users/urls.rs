@@ -4,13 +4,14 @@ use axum::{
 };
 use std::sync::Arc;
 
-use super::views::{list_users, login_for_access_token, register};
+use super::views;
 use crate::AppState;
 
 pub fn auth_routers() -> Router<Arc<AppState>> {
     let auth_route = Router::new()
-        .route("/api/users/", get(list_users))
-        .route("/api/users/token", post(login_for_access_token))
-        .route("/api/users", post(register));
+        .route("/api/users/", get(views::list_users))
+        .route("/api/users/:uid", get(views::get_user_by_id))
+        .route("/api/users/token", post(views::login_for_access_token))
+        .route("/api/users", post(views::register));
     auth_route
 }

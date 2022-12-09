@@ -1,4 +1,4 @@
-use axum::extract::{Query, State};
+use axum::extract::{Path, Query, State};
 use axum::response::Json;
 use hmac::{Hmac, Mac};
 use jwt::SignWithKey;
@@ -8,7 +8,7 @@ use std::sync::Arc;
 use std::time::SystemTime;
 
 use super::errors::{AuthError, FieldError};
-use super::extractors::{PMAdministrator, ValidatedJson};
+use super::extractors::{PMAdministrator, PMSubscriber, ValidatedJson};
 use super::models::{TokenData, User, UserLogin, UserRegister};
 use super::utils::{authenticate_user, hash};
 use crate::AppState;
@@ -97,4 +97,32 @@ pub async fn list_users(
         "count": 0,
         "results": 0
     }))
+}
+
+pub async fn get_user_by_id(
+    State(state): State<Arc<AppState>>,
+    PMSubscriber(user): PMSubscriber,
+    Path(uid): Path<u32>,
+) -> Result<Json<Value>, FieldError> {
+    if user.uid == uid {
+        return Ok(Json(json!(user)));
+    }
+
+    if user.group == "administrator" {
+        if let Ok(target_user) = sqlx::query_as::<_, User>(
+            r#"
+            SELECT *
+            FROM typecho_users
+            WHERE uid == ?1
+                "#,
+        )
+        .bind(uid)
+        .fetch_one(&state.pool)
+        .await
+        {
+            return Ok(Json(json!(target_user)));
+        }
+        return Err(FieldError::InvalidParams("uid".to_string()));
+    }
+    Err(FieldError::PermissionDeny)
 }
