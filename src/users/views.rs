@@ -29,6 +29,16 @@ pub async fn login_for_access_token(
         };
         let access_token = token_data.sign_with_key(&key).unwrap();
 
+        let _ = sqlx::query(
+            r#"
+            UPDATE typecho_users
+            SET activated = ?1, logged = ?1
+            WHERE uid = ?2
+            "#
+        ).bind(now as u32).bind(user.uid)
+        .execute(&state.pool)
+        .await;  
+
         return Ok(Json(
             json!({"access_token": access_token, "token_type": "Bearer"}),
         ));
