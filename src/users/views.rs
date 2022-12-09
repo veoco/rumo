@@ -1,4 +1,4 @@
-use axum::extract::State;
+use axum::extract::{Query, State};
 use axum::response::Json;
 use hmac::{Hmac, Mac};
 use jwt::SignWithKey;
@@ -59,18 +59,42 @@ pub async fn register(
 pub async fn list_users(
     State(state): State<Arc<AppState>>,
     PMAdministrator(_): PMAdministrator,
+    Query(page): Query<u32>,
+    Query(page_size): Query<u32>,
 ) -> Json<Value> {
+    let all_count = sqlx::query_scalar::<_, i32>(
+        r#"
+        SELECT COUNT(*)
+        FROM typecho_users;
+        "#,
+    )
+    .fetch_one(&state.pool)
+    .await
+    .unwrap_or(0);
+
     if let Ok(users) = sqlx::query_as::<_, User>(
         r#"
-    SELECT *
-    FROM typecho_users
-    ORDER BY uid
+        SELECT *
+        FROM typecho_users
+        ORDER BY uid
             "#,
     )
     .fetch_all(&state.pool)
     .await
     {
-        return Json(json!(users));
+        return Json(json!({
+            "page": page,
+            "page_size": page_size,
+            "all_count": all_count,
+            "count": users.len(),
+            "results": users
+        }));
     }
-    Json(json!([]))
+    Json(json!({
+        "page": page,
+        "page_size": page_size,
+        "all_count": all_count,
+        "count": 0,
+        "results": 0
+    }))
 }
