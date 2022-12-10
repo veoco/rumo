@@ -28,3 +28,11 @@ axum + sqlx + jwt + sqlite
 **v1.0 以后：**
 
 待定
+
+## API 列表
+
+- [x] GET  /api/users/ ，获取所有用户列表
+- [x] GET  /api/users/:uid ，获取指定 uid 用户信息
+- [x] PATH /api/users/:uid ，修改指定 uid 用户信息
+- [x] POST /api/users/token ，用户登录以获取 jwt 密钥
+- [x] POST /api/users ，用户注册
