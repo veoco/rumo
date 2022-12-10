@@ -42,3 +42,19 @@ pub struct UserRegister {
     #[validate(url)]
     pub url: String,
 }
+
+#[derive(Serialize, Deserialize, Validate)]
+pub struct UserModify {
+    #[validate(length(min = 1, max = 32, message = "name can not be longer than 32"))]
+    pub name: String,
+    #[validate(length(min = 1, max = 32, message = "screenName can not be longer than 32"))]
+    pub screenName: String,
+    #[validate(email)]
+    pub mail: String,
+    #[validate(length(min = 1, max = 150, message = "password can not be longer than 150"))]
+    pub password: Option<String>,
+    #[validate(url)]
+    pub url: String,
+    #[validate(length(min = 6, max = 13, message = "group name invalid"))]
+    pub group: String,
+}

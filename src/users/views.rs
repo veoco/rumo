@@ -9,7 +9,7 @@ use std::time::SystemTime;
 
 use super::errors::{AuthError, FieldError};
 use super::extractors::{PMAdministrator, PMSubscriber, ValidatedJson};
-use super::models::{TokenData, User, UserLogin, UserRegister};
+use super::models::{TokenData, User, UserLogin, UserModify, UserRegister};
 use super::utils::{authenticate_user, hash};
 use crate::AppState;
 
@@ -34,10 +34,12 @@ pub async fn login_for_access_token(
             UPDATE typecho_users
             SET activated = ?1, logged = ?1
             WHERE uid = ?2
-            "#
-        ).bind(now as u32).bind(user.uid)
+            "#,
+        )
+        .bind(now as u32)
+        .bind(user.uid)
         .execute(&state.pool)
-        .await;  
+        .await;
 
         return Ok(Json(
             json!({"access_token": access_token, "token_type": "Bearer"}),
@@ -132,6 +134,63 @@ pub async fn get_user_by_id(
         {
             return Ok(Json(json!(target_user)));
         }
+        return Err(FieldError::InvalidParams("uid".to_string()));
+    }
+    Err(FieldError::PermissionDeny)
+}
+
+pub async fn modify_user_by_id(
+    State(state): State<Arc<AppState>>,
+    PMSubscriber(user): PMSubscriber,
+    Path(uid): Path<u32>,
+    ValidatedJson(user_modify): ValidatedJson<UserModify>,
+) -> Result<Json<Value>, FieldError> {
+    if (user.uid == uid && user.group == user_modify.group) || user.group == "administrator" {
+        match user_modify.group.as_str() {
+            "subscriber" | "contributor" | "editor" | "administrator" => {}
+            _ => return Err(FieldError::InvalidParams("group".to_string())),
+        }
+
+        let exist = sqlx::query_scalar::<_, bool>(
+            r#"
+            SELECT EXISTS (SELECT 1 FROM typecho_users WHERE uid == ?1)
+            "#,
+        )
+        .bind(uid)
+        .fetch_one(&state.pool)
+        .await
+        .unwrap_or(false);
+
+        if exist {
+            if user_modify.password.is_none() {
+                if let Ok(r) = sqlx::query(
+                r#"
+                UPDATE typecho_users SET name = ?1, mail = ?2, url = ?3, screenName = ?4, "group" = ?5 WHERE uid = ?6
+                "#,
+                ).bind(user_modify.name).bind(user_modify.mail).bind(user_modify.url).bind(user_modify.screenName).bind(user_modify.group).bind(uid)
+                .execute(&state.pool).await {
+                    return Ok(Json(json!({"msg": format!("{} infomation changed",r.last_insert_rowid())})))
+                }
+            } else {
+                let password = user_modify.password.unwrap();
+                let hashed_password = hash(&password);
+                if let Ok(r) = sqlx::query(
+                    r#"
+                    UPDATE typecho_users SET password = ?1 WHERE uid = ?2
+                    "#,
+                )
+                .bind(hashed_password)
+                .bind(uid)
+                .execute(&state.pool)
+                .await
+                {
+                    return Ok(Json(json!({
+                        "msg": format!("{} password changed", r.last_insert_rowid())
+                    })));
+                }
+            }
+        }
+
         return Err(FieldError::InvalidParams("uid".to_string()));
     }
     Err(FieldError::PermissionDeny)
