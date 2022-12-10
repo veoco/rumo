@@ -139,3 +139,34 @@ async fn normal_user_change_success() {
     assert_eq!(name, "changed_test");
 }
 
+#[tokio::test]
+async fn list_users_success() {
+    let state = setup_state().await;
+    let app = setup_app(state.clone()).await;
+
+    // login as admin
+    let data = json!({"mail": "admin@local.host", "password": "admin"}).to_string();
+    let request = Request::builder()
+        .method(http::Method::POST)
+        .uri("/api/users/token")
+        .header(http::header::CONTENT_TYPE, "application/json")
+        .body(Body::from(data))
+        .unwrap();
+    let response = app.oneshot(request).await.unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let body = to_bytes(response.into_body()).await.unwrap();
+    let body: Value = serde_json::from_slice(&body).unwrap();
+    let token = body.get("access_token").unwrap().as_str().unwrap();
+
+    let app = setup_app(state.clone()).await;
+    let request = Request::builder()
+        .method(http::Method::GET)
+        .uri("/api/users/?page=1&page_size=10")
+        .header(http::header::CONTENT_TYPE, "application/json")
+        .header(http::header::AUTHORIZATION, format!("Bearer {}", token))
+        .body(Body::empty())
+        .unwrap();
+    let response = app.oneshot(request).await.unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+}
