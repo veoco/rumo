@@ -9,7 +9,7 @@ use std::time::SystemTime;
 
 use super::errors::{AuthError, FieldError};
 use super::extractors::{PMAdministrator, PMSubscriber, ValidatedJson};
-use super::models::{TokenData, User, UserLogin, UserModify, UserRegister};
+use super::models::{TokenData, User, UserLogin, UserModify, UserRegister, UsersQuery};
 use super::utils::{authenticate_user, hash};
 use crate::AppState;
 
@@ -71,8 +71,7 @@ pub async fn register(
 pub async fn list_users(
     State(state): State<Arc<AppState>>,
     PMAdministrator(_): PMAdministrator,
-    Query(page): Query<u32>,
-    Query(page_size): Query<u32>,
+    Query(q): Query<UsersQuery>,
 ) -> Json<Value> {
     let all_count = sqlx::query_scalar::<_, i32>(
         r#"
@@ -95,16 +94,16 @@ pub async fn list_users(
     .await
     {
         return Json(json!({
-            "page": page,
-            "page_size": page_size,
+            "page": q.page,
+            "page_size": q.page_size,
             "all_count": all_count,
             "count": users.len(),
             "results": users
         }));
     }
     Json(json!({
-        "page": page,
-        "page_size": page_size,
+        "page": q.page,
+        "page_size": q.page_size,
         "all_count": all_count,
         "count": 0,
         "results": 0

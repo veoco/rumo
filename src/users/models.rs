@@ -58,3 +58,9 @@ pub struct UserModify {
     #[validate(length(min = 6, max = 13, message = "group name invalid"))]
     pub group: String,
 }
+
+#[derive(Deserialize)]
+pub struct UsersQuery {
+    pub page: u32,
+    pub page_size: u32,
+}
