@@ -15,16 +15,16 @@ jobs:
     - uses: actions/checkout@v3
     - name: Build
       run: |
-      cargo build -r
-      mkdir -p ./build/release
-      cp ./target/release/ters ./build/release/ters
-      cd ./build/release
-      shasum -a 256 ters > ters.sha256
+        cargo build -r
+        mkdir -p ./build/release
+        cp ./target/release/ters ./build/release/ters
+        cd ./build/release
+        shasum -a 256 ters > ters.sha256
     
     - name: Upload Github Assets
-        uses: softprops/action-gh-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          files: build/release/*
-          prerelease: ${{ contains(github.ref, '-') }}
+      uses: softprops/action-gh-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        files: build/release/*
+        prerelease: ${{ contains(github.ref, '-') }}
