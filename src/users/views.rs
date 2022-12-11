@@ -83,13 +83,15 @@ pub async fn list_users(
     .await
     .unwrap_or(0);
 
+    let offset = (q.page -1) * q.page_size;
     if let Ok(users) = sqlx::query_as::<_, User>(
         r#"
         SELECT *
         FROM typecho_users
+        LIMIT ?1 OFFSET ?2
         ORDER BY uid
             "#,
-    )
+    ).bind(q.page_size).bind(offset)
     .fetch_all(&state.pool)
     .await
     {
