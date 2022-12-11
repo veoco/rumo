@@ -59,8 +59,10 @@ pub struct UserModify {
     pub group: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize, Validate)]
 pub struct UsersQuery {
+    #[validate(range(min = 1, message = "page must greater than 1"))]
     pub page: u32,
+    #[validate(range(min = 1, message = "page_size must greater than 1"))]
     pub page_size: u32,
 }

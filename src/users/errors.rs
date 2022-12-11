@@ -1,5 +1,5 @@
 use axum::{
-    extract::rejection::JsonRejection,
+    extract::rejection::{JsonRejection, QueryRejection},
     http::StatusCode,
     response::{IntoResponse, Response},
     Json,
@@ -11,9 +11,10 @@ use thiserror::Error;
 pub enum ValidateRequestError {
     #[error(transparent)]
     ValidationError(#[from] validator::ValidationErrors),
-
     #[error(transparent)]
     AxumFormRejection(#[from] JsonRejection),
+    #[error(transparent)]
+    AxumQueryRejection(#[from] QueryRejection),
 }
 
 impl IntoResponse for ValidateRequestError {
@@ -27,6 +28,10 @@ impl IntoResponse for ValidateRequestError {
             ValidateRequestError::AxumFormRejection(_) => (
                 StatusCode::BAD_REQUEST,
                 Json(json!({"msg": "Invalid json"})),
+            ),
+            ValidateRequestError::AxumQueryRejection(_) => (
+                StatusCode::BAD_REQUEST,
+                Json(json!({"msg": "Invalid query params"})),
             ),
         }
         .into_response()

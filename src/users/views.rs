@@ -1,4 +1,4 @@
-use axum::extract::{Path, Query, State};
+use axum::extract::{Path, State};
 use axum::response::Json;
 use hmac::{Hmac, Mac};
 use jwt::SignWithKey;
@@ -8,7 +8,7 @@ use std::sync::Arc;
 use std::time::SystemTime;
 
 use super::errors::{AuthError, FieldError};
-use super::extractors::{PMAdministrator, PMSubscriber, ValidatedJson};
+use super::extractors::{PMAdministrator, PMSubscriber, ValidatedJson, ValidatedQuery};
 use super::models::{TokenData, User, UserLogin, UserModify, UserRegister, UsersQuery};
 use super::utils::{authenticate_user, hash};
 use crate::AppState;
@@ -71,7 +71,7 @@ pub async fn register(
 pub async fn list_users(
     State(state): State<Arc<AppState>>,
     PMAdministrator(_): PMAdministrator,
-    Query(q): Query<UsersQuery>,
+    ValidatedQuery(q): ValidatedQuery<UsersQuery>,
 ) -> Json<Value> {
     let all_count = sqlx::query_scalar::<_, i32>(
         r#"

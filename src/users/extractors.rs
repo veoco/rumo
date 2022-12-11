@@ -1,6 +1,6 @@
 use axum::{
     async_trait,
-    extract::{rejection::JsonRejection, FromRef, FromRequest, FromRequestParts},
+    extract::{rejection::JsonRejection, FromRef, FromRequest, FromRequestParts, Query},
     http::{request::Parts, Request},
     Json,
 };
@@ -30,6 +30,27 @@ where
         let Json(value) = Json::<T>::from_request(req, state).await?;
         value.validate()?;
         Ok(ValidatedJson(value))
+    }
+}
+
+pub struct ValidatedQuery<T>(pub T);
+
+#[async_trait]
+impl<T, S> FromRequestParts<Arc<S>> for ValidatedQuery<T>
+where
+    T: DeserializeOwned + Validate,
+    AppState: FromRef<S>,
+    S: Send + Sync,
+{
+    type Rejection = ValidateRequestError;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &Arc<S>,
+    ) -> Result<Self, Self::Rejection> {
+        let Query(value) = Query::<T>::from_request_parts(parts, state).await?;
+        value.validate()?;
+        Ok(ValidatedQuery(value))
     }
 }
 
