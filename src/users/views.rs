@@ -118,7 +118,7 @@ pub async fn list_users(
         "page_size": q.page_size,
         "all_count": all_count,
         "count": 0,
-        "results": 0
+        "results": []
     }))
 }
 
