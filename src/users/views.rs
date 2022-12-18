@@ -90,13 +90,13 @@ pub async fn list_users(
         LIMIT ?1 OFFSET ?2
         ORDER BY "#
         .to_string();
-    let sql = match q.order_by.as_str() {
-        "-uid" => sql + "uid DESC",
-        "name" => sql + "name",
-        "-name" => sql + "name DESC",
-        "mail" => sql + "mail",
-        "-mail" => sql + "mail DESC",
-        _ => sql + "uid",
+    let sql = sql + match q.order_by.as_str() {
+        "-uid" => "uid DESC",
+        "name" => "name",
+        "-name" => "name DESC",
+        "mail" => "mail",
+        "-mail" => "mail DESC",
+        _ => "uid",
     };
 
     if let Ok(users) = sqlx::query_as::<_, User>(&sql)
