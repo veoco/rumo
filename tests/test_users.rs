@@ -162,7 +162,7 @@ async fn list_users_success() {
     let app = setup_app(state.clone()).await;
     let request = Request::builder()
         .method(http::Method::GET)
-        .uri("/api/users/?page=1&page_size=10")
+        .uri("/api/users/?page=1&page_size=10&order_by=-uid")
         .header(http::header::CONTENT_TYPE, "application/json")
         .header(http::header::AUTHORIZATION, format!("Bearer {}", token))
         .body(Body::empty())

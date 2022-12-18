@@ -83,17 +83,27 @@ pub async fn list_users(
     .await
     .unwrap_or(0);
 
-    let offset = (q.page -1) * q.page_size;
-    if let Ok(users) = sqlx::query_as::<_, User>(
-        r#"
+    let offset = (q.page - 1) * q.page_size;
+    let sql = r#"
         SELECT *
         FROM typecho_users
         LIMIT ?1 OFFSET ?2
-        ORDER BY uid
-            "#,
-    ).bind(q.page_size).bind(offset)
-    .fetch_all(&state.pool)
-    .await
+        ORDER BY "#
+        .to_string();
+    let sql = match q.order_by.as_str() {
+        "-uid" => sql + "uid DESC",
+        "name" => sql + "name",
+        "-name" => sql + "name DESC",
+        "mail" => sql + "mail",
+        "-mail" => sql + "mail DESC",
+        _ => sql + "uid",
+    };
+
+    if let Ok(users) = sqlx::query_as::<_, User>(&sql)
+        .bind(q.page_size)
+        .bind(offset)
+        .fetch_all(&state.pool)
+        .await
     {
         return Json(json!({
             "page": q.page,

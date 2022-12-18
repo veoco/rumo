@@ -65,4 +65,6 @@ pub struct UsersQuery {
     pub page: u32,
     #[validate(range(min = 1, message = "page_size must greater than 1"))]
     pub page_size: u32,
+    #[validate(length(min = 1, max = 13, message = "order_by lenght must greater than 1"))]
+    pub order_by: String,
 }
