@@ -7,7 +7,7 @@ use tracing::info;
 
 mod db;
 mod users;
-use users::{auth_routers, UserRegister};
+use users::{users_routers, UserRegister};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -40,7 +40,7 @@ async fn get_state(app_state: Option<AppState>) -> AppState {
 pub async fn app(app_state: Option<AppState>) -> Router {
     let state = Arc::new(get_state(app_state).await);
     let app = Router::new()
-        .merge(auth_routers())
+        .merge(users_routers())
         .layer(TraceLayer::new_for_http())
         .with_state(state);
     app

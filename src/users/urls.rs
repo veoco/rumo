@@ -7,8 +7,8 @@ use std::sync::Arc;
 use super::views;
 use crate::AppState;
 
-pub fn auth_routers() -> Router<Arc<AppState>> {
-    let auth_route = Router::new()
+pub fn users_routers() -> Router<Arc<AppState>> {
+    let users_route = Router::new()
         .route("/api/users/", get(views::list_users))
         .route(
             "/api/users/:uid",
@@ -16,5 +16,5 @@ pub fn auth_routers() -> Router<Arc<AppState>> {
         )
         .route("/api/users/token", post(views::login_for_access_token))
         .route("/api/users", post(views::register));
-    auth_route
+    users_route
 }
