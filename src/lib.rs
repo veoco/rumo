@@ -5,8 +5,10 @@ use std::sync::Arc;
 use tower_http::trace::TraceLayer;
 use tracing::info;
 
+mod categories;
 mod db;
 mod users;
+use categories::categories_routers;
 use users::{users_routers, UserRegister};
 
 #[derive(Clone)]
@@ -41,6 +43,7 @@ pub async fn app(app_state: Option<AppState>) -> Router {
     let state = Arc::new(get_state(app_state).await);
     let app = Router::new()
         .merge(users_routers())
+        .merge(categories_routers())
         .layer(TraceLayer::new_for_http())
         .with_state(state);
     app
