@@ -8,6 +8,9 @@ use super::views;
 use crate::AppState;
 
 pub fn categories_routers() -> Router<Arc<AppState>> {
-    let categories_route = Router::new().route("/api/categories/", get(views::list_categories));
+    let categories_route = Router::new().route(
+        "/api/categories/",
+        get(views::list_categories).post(views::create_category),
+    );
     categories_route
 }

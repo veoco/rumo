@@ -23,3 +23,15 @@ pub struct CategoriesQuery {
     #[validate(length(min = 1, max = 13, message = "order_by lenght must greater than 1"))]
     pub order_by: String,
 }
+
+#[derive(Serialize, Deserialize, Validate)]
+pub struct CategoryCreate {
+    #[validate(length(min = 1, max = 150, message = "name can not be longer than 150"))]
+    pub name: String,
+    #[validate(length(min = 1, max = 150, message = "slug can not be longer than 150"))]
+    pub slug: String,
+    #[validate(length(max = 150, message = "description can not be longer than 150"))]
+    pub description: Option<String>,
+    #[validate(range(min = 0, message = "parent must greater than 0"))]
+    pub parent: Option<u32>,
+}
