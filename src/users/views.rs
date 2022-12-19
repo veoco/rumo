@@ -84,13 +84,7 @@ pub async fn list_users(
     .unwrap_or(0);
 
     let offset = (q.page - 1) * q.page_size;
-    let sql = r#"
-        SELECT *
-        FROM typecho_users
-        LIMIT ?1 OFFSET ?2
-        ORDER BY "#
-        .to_string();
-    let sql = sql + match q.order_by.as_str() {
+    let order_by = match q.order_by.as_str() {
         "-uid" => "uid DESC",
         "name" => "name",
         "-name" => "name DESC",
@@ -98,6 +92,14 @@ pub async fn list_users(
         "-mail" => "mail DESC",
         _ => "uid",
     };
+    let sql = format!(
+        r#"
+        SELECT *
+        FROM typecho_users
+        ORDER BY {}
+        LIMIT ?1 OFFSET ?2"#,
+        order_by
+    );
 
     if let Ok(users) = sqlx::query_as::<_, User>(&sql)
         .bind(q.page_size)
