@@ -7,8 +7,10 @@ use tracing::info;
 
 mod categories;
 mod db;
+mod tags;
 mod users;
 use categories::categories_routers;
+use tags::tags_routers;
 use users::{users_routers, UserRegister};
 
 #[derive(Clone)]
@@ -44,6 +46,7 @@ pub async fn app(app_state: Option<AppState>) -> Router {
     let app = Router::new()
         .merge(users_routers())
         .merge(categories_routers())
+        .merge(tags_routers())
         .layer(TraceLayer::new_for_http())
         .with_state(state);
     app
