@@ -1,48 +1,17 @@
-use axum::{
-    body::Body,
-    http::{self, Request, StatusCode},
-};
-use hyper::body::to_bytes;
-use serde_json::{json, Value};
-use tower::ServiceExt;
+use axum::http::StatusCode;
+use serde_json::json;
 
 mod common;
-use common::{setup_app, setup_state};
+use common::{admin_post, get};
 
 #[tokio::test]
 async fn create_then_list_pages_success() {
-    let state = setup_state().await;
-    let app = setup_app(state.clone()).await;
+    let (status_code, body) = get("/api/pages/?page=1&page_size=10&order_by=-cid").await;
+    assert_eq!(status_code, StatusCode::OK);
 
-    // login as admin
-    let data = json!({"mail": "admin@local.host", "password": "admin"}).to_string();
-    let request = Request::builder()
-        .method(http::Method::POST)
-        .uri("/api/users/token")
-        .header(http::header::CONTENT_TYPE, "application/json")
-        .body(Body::from(data))
-        .unwrap();
-    let response = app.oneshot(request).await.unwrap();
-    assert_eq!(response.status(), StatusCode::OK);
-
-    let body = to_bytes(response.into_body()).await.unwrap();
-    let body: Value = serde_json::from_slice(&body).unwrap();
-    let token = body.get("access_token").unwrap().as_str().unwrap();
-
-    let app = setup_app(state.clone()).await;
-    let request = Request::builder()
-        .method(http::Method::GET)
-        .uri("/api/pages/?page=1&page_size=10&order_by=-cid")
-        .body(Body::empty())
-        .unwrap();
-    let response = app.oneshot(request).await.unwrap();
-    assert_eq!(response.status(), StatusCode::OK);
-
-    let body = to_bytes(response.into_body()).await.unwrap();
-    let body: Value = serde_json::from_slice(&body).unwrap();
+    let body = body.unwrap();
     let count = body.get("count").unwrap().as_u64().unwrap();
 
-    let app = setup_app(state.clone()).await;
     let data = json!({
         "title": "testPage",
         "slug": "test-page",
@@ -54,54 +23,19 @@ async fn create_then_list_pages_success() {
         "allowFeed": "1",
     })
     .to_string();
-    let request = Request::builder()
-        .method(http::Method::POST)
-        .uri("/api/pages/")
-        .header(http::header::CONTENT_TYPE, "application/json")
-        .header(http::header::AUTHORIZATION, format!("Bearer {}", token))
-        .body(Body::from(data))
-        .unwrap();
-    let response = app.oneshot(request).await.unwrap();
-    assert_eq!(response.status(), StatusCode::OK);
+    let (status_code, _) = admin_post("/api/pages/", data).await;
+    assert_eq!(status_code, StatusCode::OK);
 
-    let app = setup_app(state.clone()).await;
-    let request = Request::builder()
-        .method(http::Method::GET)
-        .uri("/api/pages/?page=1&page_size=10&order_by=-cid")
-        .header(http::header::CONTENT_TYPE, "application/json")
-        .header(http::header::AUTHORIZATION, format!("Bearer {}", token))
-        .body(Body::empty())
-        .unwrap();
-    let response = app.oneshot(request).await.unwrap();
-    assert_eq!(response.status(), StatusCode::OK);
+    let (status_code, body) = get("/api/pages/?page=1&page_size=10&order_by=-cid").await;
+    assert_eq!(status_code, StatusCode::OK);
 
-    let body = to_bytes(response.into_body()).await.unwrap();
-    let body: Value = serde_json::from_slice(&body).unwrap();
+    let body = body.unwrap();
     let new_count = body.get("count").unwrap().as_u64().unwrap();
     assert!(new_count > count);
 }
 
 #[tokio::test]
 async fn create_then_get_page_by_slug_success() {
-    let state = setup_state().await;
-    let app = setup_app(state.clone()).await;
-
-    // login as admin
-    let data = json!({"mail": "admin@local.host", "password": "admin"}).to_string();
-    let request = Request::builder()
-        .method(http::Method::POST)
-        .uri("/api/users/token")
-        .header(http::header::CONTENT_TYPE, "application/json")
-        .body(Body::from(data))
-        .unwrap();
-    let response = app.oneshot(request).await.unwrap();
-    assert_eq!(response.status(), StatusCode::OK);
-
-    let body = to_bytes(response.into_body()).await.unwrap();
-    let body: Value = serde_json::from_slice(&body).unwrap();
-    let token = body.get("access_token").unwrap().as_str().unwrap();
-
-    let app = setup_app(state.clone()).await;
     let data = json!({
         "title": "testPageCreate",
         "slug": "test-page-create",
@@ -113,24 +47,9 @@ async fn create_then_get_page_by_slug_success() {
         "allowFeed": "1",
     })
     .to_string();
-    let request = Request::builder()
-        .method(http::Method::POST)
-        .uri("/api/pages/")
-        .header(http::header::CONTENT_TYPE, "application/json")
-        .header(http::header::AUTHORIZATION, format!("Bearer {}", token))
-        .body(Body::from(data))
-        .unwrap();
-    let response = app.oneshot(request).await.unwrap();
-    assert_eq!(response.status(), StatusCode::OK);
+    let (status_code, _) = admin_post("/api/pages/", data).await;
+    assert_eq!(status_code, StatusCode::OK);
 
-    let app = setup_app(state.clone()).await;
-    let request = Request::builder()
-        .method(http::Method::GET)
-        .uri("/api/pages/test-page-create")
-        .header(http::header::CONTENT_TYPE, "application/json")
-        .header(http::header::AUTHORIZATION, format!("Bearer {}", token))
-        .body(Body::empty())
-        .unwrap();
-    let response = app.oneshot(request).await.unwrap();
-    assert_eq!(response.status(), StatusCode::OK);
+    let (status_code, _) = get("/api/pages/test-page-create").await;
+    assert_eq!(status_code, StatusCode::OK);
 }
