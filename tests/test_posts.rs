@@ -81,7 +81,7 @@ async fn create_then_list_posts_success() {
 }
 
 #[tokio::test]
-async fn create_then_get_tag_by_slug_success() {
+async fn create_then_get_post_by_slug_success() {
     let state = setup_state().await;
     let app = setup_app(state.clone()).await;
 
