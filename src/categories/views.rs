@@ -1,4 +1,4 @@
-use axum::extract::State;
+use axum::extract::{Path, State};
 use axum::response::Json;
 use serde_json::{json, Value};
 use std::sync::Arc;
@@ -100,4 +100,24 @@ pub async fn list_categories(
         "count": 0,
         "results": []
     }))
+}
+
+pub async fn get_category_by_slug(
+    State(state): State<Arc<AppState>>,
+    Path(slug): Path<String>,
+) -> Result<Json<Value>, FieldError> {
+    if let Ok(target_category) = sqlx::query_as::<_, Category>(
+        r#"
+            SELECT *
+            FROM typecho_metas
+            WHERE type == "category" AND slug == ?1"#,
+    )
+    .bind(slug)
+    .fetch_one(&state.pool)
+    .await
+    {
+        return Ok(Json(json!(target_category)));
+    }
+
+    Err(FieldError::PermissionDeny)
 }
