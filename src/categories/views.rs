@@ -3,7 +3,8 @@ use axum::response::Json;
 use serde_json::{json, Value};
 use std::sync::Arc;
 
-use super::models::{CategoriesQuery, Category, CategoryCreate};
+use super::models::{CategoriesQuery, Category, CategoryCreate, CategoryPostAdd};
+use crate::posts::models::{Post, PostsQuery};
 use crate::users::errors::FieldError;
 use crate::users::extractors::{PMEditor, ValidatedJson, ValidatedQuery};
 use crate::AppState;
@@ -120,4 +121,141 @@ pub async fn get_category_by_slug(
     }
 
     Err(FieldError::PermissionDeny)
+}
+
+pub async fn add_post_to_category(
+    State(state): State<Arc<AppState>>,
+    PMEditor(_): PMEditor,
+    Path(slug): Path<String>,
+    ValidatedJson(category_post_add): ValidatedJson<CategoryPostAdd>,
+) -> Result<Json<Value>, FieldError> {
+    let mid = match sqlx::query_scalar::<_, i32>(
+        r#"
+            SELECT mid
+            FROM typecho_metas
+            WHERE type == "category" AND slug == ?1
+            "#,
+    )
+    .bind(slug)
+    .fetch_one(&state.pool)
+    .await
+    {
+        Ok(m) => m,
+        Err(_) => return Err(FieldError::InvalidParams("slug".to_string())),
+    };
+
+    let cid = match sqlx::query_scalar::<_, i32>(
+        r#"
+            SELECT cid
+            FROM typecho_contents
+            WHERE type == "post" AND slug == ?1
+            "#,
+    )
+    .bind(category_post_add.slug)
+    .fetch_one(&state.pool)
+    .await
+    {
+        Ok(c) => c,
+        Err(_) => return Err(FieldError::InvalidParams("slug".to_string())),
+    };
+
+    let exist = match sqlx::query_scalar::<_, bool>(
+        r#"SELECT EXISTS (SELECT 1 FROM typecho_relationships WHERE cid == ?1 AND mid == ?2)"#,
+    )
+    .bind(cid)
+    .bind(mid)
+    .fetch_one(&state.pool)
+    .await {
+        Ok(b) => b,
+        Err(_) => return Err(FieldError::InvalidParams("slug".to_string())),
+    };
+
+    if !exist {
+        if let Ok(_) = sqlx::query(
+            r#"INSERT INTO typecho_relationships (cid, mid) VALUES (?1, ?2)"#,
+        )
+        .bind(cid)
+        .bind(mid)
+        .execute(&state.pool)
+        .await{
+            return Ok(Json(json!({"detail": "ok"})));
+        }
+    }
+
+    return Err(FieldError::InvalidParams("slug".to_string()));
+}
+
+pub async fn list_category_posts_by_slug(
+    State(state): State<Arc<AppState>>,
+    Path(slug): Path<String>,
+    ValidatedQuery(q): ValidatedQuery<PostsQuery>,
+) -> Result<Json<Value>, FieldError> {
+    let mid = match sqlx::query_scalar::<_, i32>(
+        r#"
+            SELECT mid
+            FROM typecho_metas
+            WHERE type == "category" AND slug == ?1
+            "#,
+    )
+    .bind(slug)
+    .fetch_one(&state.pool)
+    .await
+    {
+        Ok(m) => m,
+        Err(_) => return Err(FieldError::InvalidParams("slug".to_string())),
+    };
+
+    let all_count = sqlx::query_scalar::<_, i32>(
+        r#"
+        SELECT COUNT(*)
+        FROM typecho_contents
+        JOIN typecho_relationships ON typecho_contents.cid == typecho_relationships.cid
+        WHERE type == "post" AND mid == ?1
+        "#,
+    )
+    .bind(mid)
+    .fetch_one(&state.pool)
+    .await
+    .unwrap_or(0);
+
+    let offset = (q.page - 1) * q.page_size;
+    let order_by = match q.order_by.as_str() {
+        "-cid" => "cid DESC",
+        "slug" => "slug",
+        "-slug" => "slug DESC",
+        _ => "cid",
+    };
+    let sql = format!(
+        r#"
+        SELECT *
+        FROM typecho_contents
+        JOIN typecho_relationships ON typecho_contents.cid == typecho_relationships.cid
+        WHERE type == "post" AND mid == ?1
+        ORDER BY {}
+        LIMIT ?2 OFFSET ?3"#,
+        order_by
+    );
+
+    if let Ok(posts) = sqlx::query_as::<_, Post>(&sql)
+        .bind(mid)
+        .bind(q.page_size)
+        .bind(offset)
+        .fetch_all(&state.pool)
+        .await
+    {
+        return Ok(Json(json!({
+            "page": q.page,
+            "page_size": q.page_size,
+            "all_count": all_count,
+            "count": posts.len(),
+            "results": posts
+        })));
+    }
+    Ok(Json(json!({
+        "page": q.page,
+        "page_size": q.page_size,
+        "all_count": all_count,
+        "count": 0,
+        "results": []
+    })))
 }

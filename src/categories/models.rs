@@ -35,3 +35,9 @@ pub struct CategoryCreate {
     #[validate(range(min = 0, message = "parent must greater than 0"))]
     pub parent: Option<u32>,
 }
+
+#[derive(Serialize, Deserialize, Validate)]
+pub struct CategoryPostAdd {
+    #[validate(length(min = 1, max = 150, message = "slug can not be longer than 150"))]
+    pub slug: String,
+}
