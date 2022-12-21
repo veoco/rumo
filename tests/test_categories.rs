@@ -3,7 +3,6 @@ use serde_json::json;
 
 mod common;
 use common::{admin_post, get};
-use tracing_subscriber::fmt::format;
 
 #[tokio::test]
 async fn create_then_list_categories_success() {

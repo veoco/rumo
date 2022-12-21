@@ -3,7 +3,7 @@ use axum::response::Json;
 use serde_json::{json, Value};
 use std::sync::Arc;
 
-use super::models::{Tag, TagCreate, TagsQuery, TagPostAdd};
+use super::models::{Tag, TagCreate, TagPostAdd, TagsQuery};
 use crate::posts::models::{Post, PostsQuery};
 use crate::users::errors::FieldError;
 use crate::users::extractors::{PMEditor, ValidatedJson, ValidatedQuery};
@@ -165,19 +165,20 @@ pub async fn add_post_to_tag(
     .bind(cid)
     .bind(mid)
     .fetch_one(&state.pool)
-    .await {
+    .await
+    {
         Ok(b) => b,
         Err(_) => return Err(FieldError::InvalidParams("slug".to_string())),
     };
 
     if !exist {
-        if let Ok(_) = sqlx::query(
-            r#"INSERT INTO typecho_relationships (cid, mid) VALUES (?1, ?2)"#,
-        )
-        .bind(cid)
-        .bind(mid)
-        .execute(&state.pool)
-        .await{
+        if let Ok(_) =
+            sqlx::query(r#"INSERT INTO typecho_relationships (cid, mid) VALUES (?1, ?2)"#)
+                .bind(cid)
+                .bind(mid)
+                .execute(&state.pool)
+                .await
+        {
             return Ok(Json(json!({"detail": "ok"})));
         }
     }

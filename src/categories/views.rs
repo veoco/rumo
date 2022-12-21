@@ -165,19 +165,20 @@ pub async fn add_post_to_category(
     .bind(cid)
     .bind(mid)
     .fetch_one(&state.pool)
-    .await {
+    .await
+    {
         Ok(b) => b,
         Err(_) => return Err(FieldError::InvalidParams("slug".to_string())),
     };
 
     if !exist {
-        if let Ok(_) = sqlx::query(
-            r#"INSERT INTO typecho_relationships (cid, mid) VALUES (?1, ?2)"#,
-        )
-        .bind(cid)
-        .bind(mid)
-        .execute(&state.pool)
-        .await{
+        if let Ok(_) =
+            sqlx::query(r#"INSERT INTO typecho_relationships (cid, mid) VALUES (?1, ?2)"#)
+                .bind(cid)
+                .bind(mid)
+                .execute(&state.pool)
+                .await
+        {
             return Ok(Json(json!({"detail": "ok"})));
         }
     }
