@@ -57,7 +57,7 @@ pub async fn list_categories(
         r#"
         SELECT COUNT(*)
         FROM typecho_metas
-        WHERE type == category
+        WHERE type == "category"
         "#,
     )
     .fetch_one(&state.pool)

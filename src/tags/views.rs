@@ -57,7 +57,7 @@ pub async fn list_tags(
         r#"
         SELECT COUNT(*)
         FROM typecho_metas
-        WHERE type == tag
+        WHERE type == "tag"
         "#,
     )
     .fetch_one(&state.pool)

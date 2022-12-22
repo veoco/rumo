@@ -67,7 +67,7 @@ pub async fn list_posts(
         r#"
         SELECT COUNT(*)
         FROM typecho_contents
-        WHERE type == post
+        WHERE type == "post"
         "#,
     )
     .fetch_one(&state.pool)
