@@ -24,7 +24,7 @@ async fn create_then_list_posts_success() {
     })
     .to_string();
     let (status_code, _) = admin_post("/api/posts/", data).await;
-    assert_eq!(status_code, StatusCode::OK);
+    assert_eq!(status_code, StatusCode::CREATED);
 
     let (status_code, body) = get("/api/posts/?page=1&page_size=10&order_by=-cid").await;
     assert_eq!(status_code, StatusCode::OK);
@@ -49,7 +49,7 @@ async fn create_then_get_post_by_slug_success() {
     .to_string();
 
     let (status_code, _) = admin_post("/api/posts/", data).await;
-    assert_eq!(status_code, StatusCode::OK);
+    assert_eq!(status_code, StatusCode::CREATED);
 
     let (status_code, _) = get("/api/posts/test-post-create").await;
     assert_eq!(status_code, StatusCode::OK);

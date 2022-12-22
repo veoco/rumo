@@ -1,4 +1,5 @@
 use axum::extract::{Path, State};
+use axum::http::StatusCode;
 use axum::response::Json;
 use serde_json::{json, Value};
 use std::sync::Arc;
@@ -13,7 +14,7 @@ pub async fn create_post(
     State(state): State<Arc<AppState>>,
     PMContributor(user): PMContributor,
     ValidatedJson(post_create): ValidatedJson<PostCreate>,
-) -> Result<Json<Value>, FieldError> {
+) -> Result<(StatusCode, Json<Value>), FieldError> {
     let exist = sqlx::query_scalar::<_, bool>(
         r#"
         SELECT EXISTS (SELECT 1 FROM typecho_contents WHERE slug == ?1)
@@ -53,7 +54,7 @@ pub async fn create_post(
     .execute(&state.pool)
     .await
     {
-        return Ok(Json(json!({"id": r.last_insert_rowid()})));
+        return Ok((StatusCode::CREATED,Json(json!({"id": r.last_insert_rowid()}))));
     }
     Err(FieldError::AlreadyExist("slug".to_owned()))
 }
@@ -61,7 +62,7 @@ pub async fn create_post(
 pub async fn list_posts(
     State(state): State<Arc<AppState>>,
     ValidatedQuery(q): ValidatedQuery<PostsQuery>,
-) -> Json<Value> {
+) -> Result<Json<Value>, FieldError> {
     let all_count = sqlx::query_scalar::<_, i32>(
         r#"
         SELECT COUNT(*)
@@ -75,10 +76,11 @@ pub async fn list_posts(
 
     let offset = (q.page - 1) * q.page_size;
     let order_by = match q.order_by.as_str() {
+        "cid" => "cid",
         "-cid" => "cid DESC",
         "slug" => "slug",
         "-slug" => "slug DESC",
-        _ => "cid",
+        f => return Err(FieldError::InvalidParams(f.to_string())),
     };
 
     if q.with_meta.unwrap_or(false) {
@@ -133,19 +135,22 @@ pub async fn list_posts(
             order_by
         );
 
-        if let Ok(posts) = sqlx::query_as::<_, PostWithMeta>(&sql)
+        match sqlx::query_as::<_, PostWithMeta>(&sql)
             .bind(q.page_size)
             .bind(offset)
             .fetch_all(&state.pool)
             .await
         {
-            return Json(json!({
-                "page": q.page,
-                "page_size": q.page_size,
-                "all_count": all_count,
-                "count": posts.len(),
-                "results": posts
-            }));
+            Ok(posts) => {
+                return Ok(Json(json!({
+                    "page": q.page,
+                    "page_size": q.page_size,
+                    "all_count": all_count,
+                    "count": posts.len(),
+                    "results": posts
+                })))
+            }
+            Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
         }
     } else {
         let sql = format!(
@@ -157,28 +162,25 @@ pub async fn list_posts(
         LIMIT ?1 OFFSET ?2"#,
             order_by
         );
-        if let Ok(posts) = sqlx::query_as::<_, Post>(&sql)
+
+        match sqlx::query_as::<_, Post>(&sql)
             .bind(q.page_size)
             .bind(offset)
             .fetch_all(&state.pool)
             .await
         {
-            return Json(json!({
-                "page": q.page,
-                "page_size": q.page_size,
-                "all_count": all_count,
-                "count": posts.len(),
-                "results": posts
-            }));
+            Ok(posts) => {
+                return Ok(Json(json!({
+                    "page": q.page,
+                    "page_size": q.page_size,
+                    "all_count": all_count,
+                    "count": posts.len(),
+                    "results": posts
+                })))
+            }
+            Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
         }
     };
-    Json(json!({
-        "page": q.page,
-        "page_size": q.page_size,
-        "all_count": all_count,
-        "count": 0,
-        "results": []
-    }))
 }
 
 pub async fn get_post_by_slug(
@@ -254,5 +256,5 @@ pub async fn get_post_by_slug(
         }
     }
 
-    Err(FieldError::PermissionDeny)
+    Err(FieldError::InvalidParams("slug".to_string()))
 }
