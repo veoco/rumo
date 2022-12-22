@@ -31,8 +31,504 @@ axum + sqlx + jwt + sqlite
 
 ## API 列表
 
-- [x] GET  /api/users/ ，获取所有用户列表
-- [x] GET  /api/users/:uid ，获取指定 uid 用户信息
-- [x] PATH /api/users/:uid ，修改指定 uid 用户信息
-- [x] POST /api/users/token ，用户登录以获取 jwt 密钥
-- [x] POST /api/users ，用户注册
+权限参考 typecho 的[文档](http://docs.typecho.org/develop/acl)：
+ - PM0：PMAdministrator，对应 administrator（管理员）
+ - PM1：PMEditor，对应 editor（编辑）
+ - PM2：PMContributor，对应 contributor（贡献者）
+ - PM3：PMSubscriber，对应 subscriber（关注者）
+ - PM4：暂未实现，对应 visitor（访问者）
+
+### 用户相关 API：
+<details>
+<summary>GET /api/users/ ，获取所有用户列表</summary>
+  
+ 1. 权限要求：
+    - PM4：禁止
+    - PM3：禁止
+    - PM2：禁止
+    - PM1：禁止
+    - PM0：允许
+
+  2. 路径参数：
+     - 无
+
+  3. 必选查询：
+     - page：u32，>= 1
+     - page_size：u32，>= 1
+     - order_by：String，1 <= 长度 <= 13
+  
+  4. 可选查询：
+     - 无
+</details>
+
+<details>
+<summary>GET /api/users/:uid ，获取指定 uid 用户信息</summary>
+  
+ 1. 权限要求：
+    - PM4：禁止
+    - PM3：允许，仅当 uid 与登录用户相同
+    - PM2：允许，仅当 uid 与登录用户相同
+    - PM1：允许，仅当 uid 与登录用户相同
+    - PM0：允许
+
+  2. 路径参数：
+     - uid：u32
+
+  3. 必选查询：
+     - 无
+  
+  4. 可选查询：
+     - 无
+</details>
+
+<details>
+<summary>PATH /api/users/:uid ，修改指定 uid 用户信息</summary>
+  
+ 1. 权限要求：
+    - PM4：禁止
+    - PM3：允许，仅当 uid 与登录用户相同，禁止修改用户组
+    - PM2：允许，仅当 uid 与登录用户相同，禁止修改用户组
+    - PM1：允许，仅当 uid 与登录用户相同，禁止修改用户组
+    - PM0：允许
+
+  2. 路径参数：
+     - uid：u32
+
+  3. 必选查询：
+     - 无
+  
+  4. 可选查询：
+     - 无
+
+  5. 提交表单：
+     - name：String，1 <= 长度 <= 32
+     - screenName：String，1 <= 长度 <= 32
+     - mail：String，邮箱格式
+     - password：Option<String>，可选，1 <= 长度 <= 150，非空时仅更新 password
+     - url：String，url 格式
+     - group：String，6 <= 长度 <= 13
+</details>
+
+<details>
+<summary>POST /api/users/token ，用户登录以获取 jwt 密钥</summary>
+  
+ 1. 权限要求：
+    - PM4：允许
+    - PM3：允许
+    - PM2：允许
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - 无
+
+  3. 必选查询：
+     - 无
+  
+  4. 可选查询：
+     - 无
+  
+  5. 提交表单：
+     - mail：String，邮箱格式
+     - password：String，长度 <= 150
+</details>
+
+<details>
+<summary>POST /api/users ，用户注册</summary>
+  
+ 1. 权限要求：
+    - PM4：允许
+    - PM3：允许
+    - PM2：允许
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - 无
+
+  3. 必选查询：
+     - 无
+  
+  4. 可选查询：
+     - 无
+  
+  5. 提交表单：
+     - name：String，1 <= 长度 <= 32
+     - mail：String，邮箱格式
+     - password：String，1 <= 长度 <= 150
+     - url：String，url 格式
+</details>
+
+### 页面相关 API：
+<details>
+<summary>GET /api/pages/ ，获取所有页面列表</summary>
+  
+ 1. 权限要求：
+    - PM4：允许
+    - PM3：允许
+    - PM2：允许
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - 无
+
+  3. 必选查询：
+     - page：u32，>= 1
+     - page_size：u32，>= 1
+     - order_by：String，1 <= 长度 <= 13
+  
+  4. 可选查询：
+     - 无
+</details>
+
+<details>
+<summary>POST /api/pages/ ，新建页面</summary>
+  
+ 1. 权限要求：
+    - PM4：禁止
+    - PM3：禁止
+    - PM2：禁止
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - 无
+
+  3. 必选查询：
+     - 无
+  
+  4. 可选查询：
+     - 无
+
+  5. 提交表单：
+     - title：String，1 <= 长度 <= 150
+     - slug：String，1 <= 长度 <= 150
+     - created：u32，unix 时间戳，精确到秒
+     - text：String
+     - template：Option<String>，1 <= 长度 <= 16
+     - status：String，1 <= 长度 <= 32
+     - password：Option<String>，1 <= 长度 <= 32
+     - allowComment：String，长度 = 1
+     - allowPing：String，长度 = 1
+     - allowFeed：String，长度 = 1
+</details>
+
+<details>
+<summary>GET /api/pages/:slug ，获取指定 slug 页面详情</summary>
+  
+ 1. 权限要求：
+    - PM4：允许
+    - PM3：允许
+    - PM2：允许
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - slug：String
+
+  3. 必选查询：
+     - 无
+  
+  4. 可选查询：
+     - 无
+</details>
+
+### 文章相关 API：
+<details>
+<summary>GET /api/posts/ ，获取所有文章列表</summary>
+  
+ 1. 权限要求：
+    - PM4：允许
+    - PM3：允许
+    - PM2：允许
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - 无
+
+  3. 必选查询：
+     - page：u32，>= 1
+     - page_size：u32，>= 1
+     - order_by：String，1 <= 长度 <= 13
+  
+  4. 可选查询：
+     - with_meta：bool，启用后文章包含分类目录和标签信息
+</details>
+
+<details>
+<summary>POST /api/posts/ ，新建文章</summary>
+  
+ 1. 权限要求：
+    - PM4：禁止
+    - PM3：禁止
+    - PM2：允许
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - 无
+
+  3. 必选查询：
+     - 无
+  
+  4. 可选查询：
+     - 无
+
+  5. 提交表单：
+     - title：String，1 <= 长度 <= 150
+     - slug：String，1 <= 长度 <= 150
+     - created：u32，unix 时间戳，精确到秒
+     - text：String
+     - template：Option<String>，1 <= 长度 <= 16
+     - status：String，1 <= 长度 <= 32
+     - password：Option<String>，1 <= 长度 <= 32
+     - allowComment：String，长度 = 1
+     - allowPing：String，长度 = 1
+     - allowFeed：String，长度 = 1
+</details>
+
+<details>
+<summary>GET /api/posts/:slug ，获取指定 slug 文章详情</summary>
+  
+ 1. 权限要求：
+    - PM4：允许
+    - PM3：允许
+    - PM2：允许
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - slug：String
+
+  3. 必选查询：
+     - 无
+  
+  4. 可选查询：
+     - 无
+</details>
+
+### 分类目录相关 API：
+<details>
+<summary>GET /api/categories/ ，获取所有分类目录列表</summary>
+  
+ 1. 权限要求：
+    - PM4：允许
+    - PM3：允许
+    - PM2：允许
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - 无
+
+  3. 必选查询：
+     - page：u32，>= 1
+     - page_size：u32，>= 1
+     - order_by：String，1 <= 长度 <= 13
+  
+  4. 可选查询：
+     - 无
+</details>
+
+<details>
+<summary>POST /api/categories/ ，新建分类目录</summary>
+  
+ 1. 权限要求：
+    - PM4：禁止
+    - PM3：禁止
+    - PM2：禁止
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - 无
+
+  3. 必选查询：
+     - 无
+  
+  4. 可选查询：
+     - 无
+
+  5. 提交表单：
+     - name：String，1 <= 长度 <= 150
+     - slug：String，1 <= 长度 <= 150
+     - description：Option<String>，1 <= 长度 <= 150
+     - parent：Option<u32>，> 0
+</details>
+
+<details>
+<summary>GET /api/categories/:slug ，获取指定 slug 分类目录详情</summary>
+  
+ 1. 权限要求：
+    - PM4：允许
+    - PM3：允许
+    - PM2：允许
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - slug：String
+
+  3. 必选查询：
+     - 无
+  
+  4. 可选查询：
+     - 无
+</details>
+
+<details>
+<summary>POST /api/categories/:slug/posts/ ，关联指定 slug 文章到指定 slug 分类目录</summary>
+  
+ 1. 权限要求：
+    - PM4：禁止
+    - PM3：禁止
+    - PM2：禁止
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - slug：String
+
+  3. 必选查询：
+     - 无
+  
+  4. 可选查询：
+     - 无
+
+  5. 提交表单：
+     - slug：String，1 <= 长度 <= 150
+</details>
+
+<details>
+<summary>GET /api/categories/:slug/posts/ ，获取指定 slug 分类目录的所有文章列表</summary>
+  
+ 1. 权限要求：
+    - PM4：允许
+    - PM3：允许
+    - PM2：允许
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - slug：String
+
+  3. 必选查询：
+     - 无
+  
+  4. 可选查询：
+     - 无
+</details>
+
+### 标签相关 API：
+<details>
+<summary>GET  /api/tags/ ，获取所有标签列表</summary>
+  
+ 1. 权限要求：
+    - PM4：允许
+    - PM3：允许
+    - PM2：允许
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - 无
+
+  3. 必选查询：
+     - page：u32，>= 1
+     - page_size：u32，>= 1
+     - order_by：String，1 <= 长度 <= 13
+  
+  4. 可选查询：
+     - 无
+</details>
+
+<details>
+<summary>POST  /api/tags/ ，新建标签</summary>
+  
+ 1. 权限要求：
+    - PM4：禁止
+    - PM3：禁止
+    - PM2：禁止
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - 无
+
+  3. 必选查询：
+     - 无
+  
+  4. 可选查询：
+     - 无
+
+  5. 提交表单：
+     - name：String，1 <= 长度 <= 150
+     - slug：String，1 <= 长度 <= 150
+     - description：Option<String>，1 <= 长度 <= 150
+     - parent：Option<u32>，> 0
+</details>
+
+<details>
+<summary>GET  /api/tags/:slug ，获取指定 slug 标签详情</summary>
+  
+ 1. 权限要求：
+    - PM4：允许
+    - PM3：允许
+    - PM2：允许
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - slug：String
+
+  3. 必选查询：
+     - 无
+  
+  4. 可选查询：
+     - 无
+</details>
+
+<details>
+<summary>POST  /api/tags/:slug/posts/ ，关联指定 slug 文章到指定 slug 标签</summary>
+  
+ 1. 权限要求：
+    - PM4：禁止
+    - PM3：禁止
+    - PM2：禁止
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - slug：String
+
+  3. 必选查询：
+     - 无
+  
+  4. 可选查询：
+     - 无
+
+  5. 提交表单：
+     - slug：String，1 <= 长度 <= 150
+</details>
+
+<details>
+<summary>GET  /api/tags/:slug/posts/ ，获取指定 slug 标签的所有文章列表</summary>
+  
+ 1. 权限要求：
+    - PM4：允许
+    - PM3：允许
+    - PM2：允许
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - slug：String
+
+  3. 必选查询：
+     - 无
+  
+  4. 可选查询：
+     - 无
+</details>
