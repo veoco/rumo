@@ -184,7 +184,7 @@ pub async fn add_post_to_tag(
             .execute(&state.pool)
             .await;
 
-            return Ok(Json(json!({"detail": "ok"})));
+            return Ok(Json(json!({"msg": "ok"})));
         }
     }
 
