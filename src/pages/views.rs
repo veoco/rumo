@@ -6,12 +6,12 @@ use std::time::SystemTime;
 
 use super::models::{Page, PageCreate, PagesQuery};
 use crate::users::errors::FieldError;
-use crate::users::extractors::{PMContributor, ValidatedJson, ValidatedQuery};
+use crate::users::extractors::{PMEditor, ValidatedJson, ValidatedQuery};
 use crate::AppState;
 
 pub async fn create_page(
     State(state): State<Arc<AppState>>,
-    PMContributor(user): PMContributor,
+    PMEditor(user): PMEditor,
     ValidatedJson(page_create): ValidatedJson<PageCreate>,
 ) -> Result<Json<Value>, FieldError> {
     let exist = sqlx::query_scalar::<_, bool>(
