@@ -70,6 +70,7 @@ pub enum FieldError {
     AlreadyExist(String),
     PermissionDeny,
     InvalidParams(String),
+    DatabaseFailed(String),
 }
 
 impl IntoResponse for FieldError {
@@ -87,6 +88,10 @@ impl IntoResponse for FieldError {
                 StatusCode::BAD_REQUEST,
                 Json(json!({ "msg": format!("Invalid {}", field) })),
             ),
+            FieldError::DatabaseFailed(s) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "msg": format!("{}", s) })),
+            )
         }
         .into_response()
     }

@@ -21,7 +21,7 @@ async fn login_failed() {
 async fn login_success() {
     let data = json!({"name": "login_test","mail": "login_success@test.local", "url": "http://127.0.0.1", "password": "password"}).to_string();
     let (status_code, _) = post("/api/users", data).await;
-    assert_eq!(status_code, StatusCode::OK);
+    assert_eq!(status_code, StatusCode::CREATED);
 
     let data = json!({"mail": "login_success@test.local", "password": "password"}).to_string();
     let (status_code, _) = post("/api/users/token", data).await;

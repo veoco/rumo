@@ -1,4 +1,5 @@
 use axum::extract::{Path, State};
+use axum::http::StatusCode;
 use axum::response::Json;
 use hmac::{Hmac, Mac};
 use jwt::SignWithKey;
@@ -41,9 +42,9 @@ pub async fn login_for_access_token(
         .execute(&state.pool)
         .await;
 
-        return Ok(Json(
-            json!({"access_token": access_token, "token_type": "Bearer"}),
-        ));
+        return Ok(
+            Json(json!({"access_token": access_token, "token_type": "Bearer"})),
+        );
     }
     Err(AuthError::WrongCredentials)
 }
@@ -51,7 +52,7 @@ pub async fn login_for_access_token(
 pub async fn register(
     State(state): State<Arc<AppState>>,
     ValidatedJson(user_register): ValidatedJson<UserRegister>,
-) -> Result<Json<Value>, FieldError> {
+) -> Result<(StatusCode,Json<Value>), FieldError> {
     let now = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap()
@@ -63,7 +64,7 @@ pub async fn register(
         INSERT INTO typecho_users (name, mail, url, screenName, password, created, "group") VALUES (?1, ?2, ?3, ?1, ?4, ?5, ?6)"#,
     ).bind(user_register.name).bind(user_register.mail).bind(user_register.url).bind(hashed_password).bind(now).bind("subscriber")
     .execute(&state.pool).await {
-        return Ok(Json(json!({"id": r.last_insert_rowid()})))
+        return Ok((StatusCode::CREATED,Json(json!({"id": r.last_insert_rowid()}))))
     }
     Err(FieldError::AlreadyExist("name or mail".to_owned()))
 }
@@ -72,7 +73,7 @@ pub async fn list_users(
     State(state): State<Arc<AppState>>,
     PMAdministrator(_): PMAdministrator,
     ValidatedQuery(q): ValidatedQuery<UsersQuery>,
-) -> Json<Value> {
+) -> Result<Json<Value>, FieldError> {
     let all_count = sqlx::query_scalar::<_, i32>(
         r#"
         SELECT COUNT(*)
@@ -85,12 +86,13 @@ pub async fn list_users(
 
     let offset = (q.page - 1) * q.page_size;
     let order_by = match q.order_by.as_str() {
+        "uid" => "uid",
         "-uid" => "uid DESC",
         "name" => "name",
         "-name" => "name DESC",
         "mail" => "mail",
         "-mail" => "mail DESC",
-        _ => "uid",
+        f => return Err(FieldError::InvalidParams(f.to_string())),
     };
     let sql = format!(
         r#"
@@ -101,27 +103,22 @@ pub async fn list_users(
         order_by
     );
 
-    if let Ok(users) = sqlx::query_as::<_, User>(&sql)
+    match sqlx::query_as::<_, User>(&sql)
         .bind(q.page_size)
         .bind(offset)
         .fetch_all(&state.pool)
         .await
     {
-        return Json(json!({
+        Ok(users) => {
+            return Ok(Json(json!({
             "page": q.page,
             "page_size": q.page_size,
             "all_count": all_count,
             "count": users.len(),
             "results": users
-        }));
+        })));}
+        Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
     }
-    Json(json!({
-        "page": q.page,
-        "page_size": q.page_size,
-        "all_count": all_count,
-        "count": 0,
-        "results": []
-    }))
 }
 
 pub async fn get_user_by_id(
