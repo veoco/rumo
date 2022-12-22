@@ -1,4 +1,5 @@
 use axum::extract::{Path, State};
+use axum::http::StatusCode;
 use axum::response::Json;
 use serde_json::{json, Value};
 use std::sync::Arc;
@@ -13,7 +14,7 @@ pub async fn create_category(
     State(state): State<Arc<AppState>>,
     PMEditor(_): PMEditor,
     ValidatedJson(category_create): ValidatedJson<CategoryCreate>,
-) -> Result<Json<Value>, FieldError> {
+) -> Result<(StatusCode, Json<Value>), FieldError> {
     let exist = sqlx::query_scalar::<_, bool>(
         r#"
         SELECT EXISTS (SELECT 1 FROM typecho_metas WHERE slug == ?1)
@@ -43,7 +44,7 @@ pub async fn create_category(
     .execute(&state.pool)
     .await
     {
-        return Ok(Json(json!({"id": r.last_insert_rowid()})));
+        return Ok((StatusCode::CREATED,Json(json!({"id": r.last_insert_rowid()}))));
     }
     Err(FieldError::AlreadyExist("slug".to_owned()))
 }
@@ -51,7 +52,7 @@ pub async fn create_category(
 pub async fn list_categories(
     State(state): State<Arc<AppState>>,
     ValidatedQuery(q): ValidatedQuery<CategoriesQuery>,
-) -> Json<Value> {
+) -> Result<Json<Value>, FieldError> {
     let all_count = sqlx::query_scalar::<_, i32>(
         r#"
         SELECT COUNT(*)
@@ -65,10 +66,11 @@ pub async fn list_categories(
 
     let offset = (q.page - 1) * q.page_size;
     let order_by = match q.order_by.as_str() {
+        "mid" => "mid",
         "-mid" => "mid DESC",
         "slug" => "slug",
         "-slug" => "slug DESC",
-        _ => "mid",
+        f => return Err(FieldError::InvalidParams(f.to_string())),
     };
     let sql = format!(
         r#"
@@ -80,27 +82,23 @@ pub async fn list_categories(
         order_by
     );
 
-    if let Ok(categories) = sqlx::query_as::<_, Category>(&sql)
+    match sqlx::query_as::<_, Category>(&sql)
         .bind(q.page_size)
         .bind(offset)
         .fetch_all(&state.pool)
         .await
     {
-        return Json(json!({
-            "page": q.page,
-            "page_size": q.page_size,
-            "all_count": all_count,
-            "count": categories.len(),
-            "results": categories
-        }));
+        Ok(categories) => {
+            return Ok(Json(json!({
+                "page": q.page,
+                "page_size": q.page_size,
+                "all_count": all_count,
+                "count": categories.len(),
+                "results": categories
+            })))
+        }
+        Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
     }
-    Json(json!({
-        "page": q.page,
-        "page_size": q.page_size,
-        "all_count": all_count,
-        "count": 0,
-        "results": []
-    }))
 }
 
 pub async fn get_category_by_slug(
@@ -120,7 +118,7 @@ pub async fn get_category_by_slug(
         return Ok(Json(json!(target_category)));
     }
 
-    Err(FieldError::PermissionDeny)
+    Err(FieldError::InvalidParams("slug".to_string()))
 }
 
 pub async fn add_post_to_category(
@@ -128,7 +126,7 @@ pub async fn add_post_to_category(
     PMEditor(_): PMEditor,
     Path(slug): Path<String>,
     ValidatedJson(category_post_add): ValidatedJson<CategoryPostAdd>,
-) -> Result<Json<Value>, FieldError> {
+) -> Result<(StatusCode, Json<Value>), FieldError> {
     let mid = match sqlx::query_scalar::<_, i32>(
         r#"
             SELECT mid
@@ -180,15 +178,15 @@ pub async fn add_post_to_category(
                 .await
         {
             let _ = sqlx::query(r#"UPDATE typecho_metas SET count=count+1 WHERE mid == ?1"#)
-            .bind(mid)
-            .execute(&state.pool)
-            .await;
+                .bind(mid)
+                .execute(&state.pool)
+                .await;
 
-            return Ok(Json(json!({"msg": "ok"})));
+            return Ok((StatusCode::CREATED, Json(json!({"msg": "ok"}))));
         }
     }
 
-    return Err(FieldError::InvalidParams("slug".to_string()));
+    return Err(FieldError::AlreadyExist("slug".to_string()));
 }
 
 pub async fn list_category_posts_by_slug(
@@ -226,10 +224,11 @@ pub async fn list_category_posts_by_slug(
 
     let offset = (q.page - 1) * q.page_size;
     let order_by = match q.order_by.as_str() {
+        "cid" => "cid",
         "-cid" => "cid DESC",
         "slug" => "slug",
         "-slug" => "slug DESC",
-        _ => "cid",
+        f => return Err(FieldError::InvalidParams(f.to_string())),
     };
 
     if q.with_meta.unwrap_or(false) {
@@ -285,20 +284,23 @@ pub async fn list_category_posts_by_slug(
             order_by
         );
 
-        if let Ok(posts) = sqlx::query_as::<_, PostWithMeta>(&sql)
+        match sqlx::query_as::<_, PostWithMeta>(&sql)
             .bind(mid)
             .bind(q.page_size)
             .bind(offset)
             .fetch_all(&state.pool)
             .await
         {
-            return Ok(Json(json!({
-                "page": q.page,
-                "page_size": q.page_size,
-                "all_count": all_count,
-                "count": posts.len(),
-                "results": posts
-            })));
+            Ok(posts) => {
+                return Ok(Json(json!({
+                    "page": q.page,
+                    "page_size": q.page_size,
+                    "all_count": all_count,
+                    "count": posts.len(),
+                    "results": posts
+                })))
+            }
+            Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
         }
     } else {
         let sql = format!(
@@ -312,28 +314,23 @@ pub async fn list_category_posts_by_slug(
             order_by
         );
 
-        if let Ok(posts) = sqlx::query_as::<_, Post>(&sql)
+        match sqlx::query_as::<_, Post>(&sql)
             .bind(mid)
             .bind(q.page_size)
             .bind(offset)
             .fetch_all(&state.pool)
             .await
         {
-            return Ok(Json(json!({
-                "page": q.page,
-                "page_size": q.page_size,
-                "all_count": all_count,
-                "count": posts.len(),
-                "results": posts
-            })));
+            Ok(posts) => {
+                return Ok(Json(json!({
+                    "page": q.page,
+                    "page_size": q.page_size,
+                    "all_count": all_count,
+                    "count": posts.len(),
+                    "results": posts
+                })))
+            }
+            Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
         }
     }
-
-    Ok(Json(json!({
-        "page": q.page,
-        "page_size": q.page_size,
-        "all_count": all_count,
-        "count": 0,
-        "results": []
-    })))
 }
