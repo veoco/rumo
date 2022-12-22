@@ -2,6 +2,9 @@
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
+use crate::categories::models::Category;
+use crate::tags::models::Tag;
+
 #[derive(Serialize, Deserialize, sqlx::FromRow)]
 pub struct Post {
     pub cid: u32,
@@ -23,6 +26,29 @@ pub struct Post {
     pub parent: u32,
 }
 
+#[derive(Serialize, Deserialize, sqlx::FromRow)]
+pub struct PostWithMeta {
+    pub cid: u32,
+    pub title: Option<String>,
+    pub slug: Option<String>,
+    pub created: u32,
+    pub modified: u32,
+    pub text: String,
+    pub order: u32,
+    pub authorId: u32,
+    pub template: Option<String>,
+    pub r#type: String,
+    pub status: String,
+    pub password: Option<String>,
+    pub commentsNum: u32,
+    pub allowComment: String,
+    pub allowPing: String,
+    pub allowFeed: String,
+    pub parent: u32,
+    pub categories: sqlx::types::Json<Vec<Category>>,
+    pub tags: sqlx::types::Json<Vec<Tag>>,
+}
+
 #[derive(Serialize, Deserialize, Validate)]
 pub struct PostsQuery {
     #[validate(range(min = 1, message = "page must greater than 1"))]
@@ -31,6 +57,7 @@ pub struct PostsQuery {
     pub page_size: u32,
     #[validate(length(min = 1, max = 13, message = "order_by length must greater than 1"))]
     pub order_by: String,
+    pub with_meta: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize, Validate)]

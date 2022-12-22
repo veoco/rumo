@@ -4,7 +4,7 @@ use serde_json::{json, Value};
 use std::sync::Arc;
 
 use super::models::{Tag, TagCreate, TagPostAdd, TagsQuery};
-use crate::posts::models::{Post, PostsQuery};
+use crate::posts::models::{Post, PostWithMeta, PostsQuery};
 use crate::users::errors::FieldError;
 use crate::users::extractors::{PMEditor, ValidatedJson, ValidatedQuery};
 use crate::AppState;
@@ -226,32 +226,103 @@ pub async fn list_tag_posts_by_slug(
         "-slug" => "slug DESC",
         _ => "cid",
     };
-    let sql = format!(
-        r#"
+    if q.with_meta.unwrap_or(false) {
+        let sql = format!(
+            r#"
+            WITH categories_json AS (
+                SELECT typecho_contents.cid,
+                    json_group_array(json_object(
+                        'mid', typecho_metas.mid,
+                        'slug', typecho_metas.slug,
+                        'type', 'category',
+                        'name', typecho_metas.name,
+                        'description', typecho_metas.description,
+                        'count', typecho_metas."count",
+                        'order', typecho_metas."order",
+                        'parent', typecho_metas.parent
+                    )) AS categories
+                FROM typecho_contents
+                JOIN typecho_relationships ON typecho_contents.cid == typecho_relationships.cid
+                JOIN typecho_metas ON typecho_relationships.mid == typecho_metas.mid
+                WHERE typecho_contents."type" == "post" AND typecho_metas."type" == "category"
+                GROUP BY typecho_contents.cid
+                ORDER BY typecho_contents.cid
+            ), tags_json AS (
+                SELECT typecho_contents.cid,
+                    json_group_array(json_object(
+                        'mid', typecho_metas.mid,
+                        'slug', typecho_metas.slug,
+                        'type', 'tag',
+                        'name', typecho_metas.name,
+                        'description', typecho_metas.description,
+                        'count', typecho_metas."count",
+                        'order', typecho_metas."order",
+                        'parent', typecho_metas.parent
+                    )) AS tags
+                FROM typecho_contents
+                JOIN typecho_relationships ON typecho_contents.cid == typecho_relationships.cid
+                JOIN typecho_metas ON typecho_relationships.mid == typecho_metas.mid
+                WHERE typecho_contents."type" == "post" AND typecho_metas."type" == "tag"
+                GROUP BY typecho_contents.cid
+                ORDER BY typecho_contents.cid
+            )
+            
+            SELECT *
+            FROM typecho_contents
+            JOIN categories_json ON typecho_contents.cid == categories_json.cid
+            JOIN tags_json ON typecho_contents.cid == tags_json.cid
+            JOIN typecho_relationships ON typecho_contents.cid == typecho_relationships.cid
+            WHERE typecho_contents."type" == "post" AND mid == ?1
+            GROUP BY typecho_contents.cid
+            ORDER BY {}
+            LIMIT ?2 OFFSET ?3"#,
+            order_by
+        );
+
+        if let Ok(posts) = sqlx::query_as::<_, PostWithMeta>(&sql)
+            .bind(mid)
+            .bind(q.page_size)
+            .bind(offset)
+            .fetch_all(&state.pool)
+            .await
+        {
+            return Ok(Json(json!({
+                "page": q.page,
+                "page_size": q.page_size,
+                "all_count": all_count,
+                "count": posts.len(),
+                "results": posts
+            })));
+        }
+    } else {
+        let sql = format!(
+            r#"
         SELECT *
         FROM typecho_contents
         JOIN typecho_relationships ON typecho_contents.cid == typecho_relationships.cid
         WHERE type == "post" AND mid == ?1
         ORDER BY {}
         LIMIT ?2 OFFSET ?3"#,
-        order_by
-    );
+            order_by
+        );
 
-    if let Ok(posts) = sqlx::query_as::<_, Post>(&sql)
-        .bind(mid)
-        .bind(q.page_size)
-        .bind(offset)
-        .fetch_all(&state.pool)
-        .await
-    {
-        return Ok(Json(json!({
-            "page": q.page,
-            "page_size": q.page_size,
-            "all_count": all_count,
-            "count": posts.len(),
-            "results": posts
-        })));
+        if let Ok(posts) = sqlx::query_as::<_, Post>(&sql)
+            .bind(mid)
+            .bind(q.page_size)
+            .bind(offset)
+            .fetch_all(&state.pool)
+            .await
+        {
+            return Ok(Json(json!({
+                "page": q.page,
+                "page_size": q.page_size,
+                "all_count": all_count,
+                "count": posts.len(),
+                "results": posts
+            })));
+        }
     }
+
     Ok(Json(json!({
         "page": q.page,
         "page_size": q.page_size,
