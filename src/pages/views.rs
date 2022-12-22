@@ -80,7 +80,6 @@ pub async fn list_pages(
         "-cid" => "cid DESC",
         "slug" => "slug",
         "-slug" => "slug DESC",
-        _ => "cid",
         f => return Err(FieldError::InvalidParams(f.to_string())),
     };
     let sql = format!(
@@ -99,13 +98,15 @@ pub async fn list_pages(
         .fetch_all(&state.pool)
         .await
     {
-        Ok(pages) => {return Ok(Json(json!({
-            "page": q.page,
-            "page_size": q.page_size,
-            "all_count": all_count,
-            "count": pages.len(),
-            "results": pages
-        })))},
+        Ok(pages) => {
+            return Ok(Json(json!({
+                "page": q.page,
+                "page_size": q.page_size,
+                "all_count": all_count,
+                "count": pages.len(),
+                "results": pages
+            })))
+        }
         Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
     }
 }

@@ -47,6 +47,7 @@ pub async fn get(url: &str) -> (StatusCode, Option<Value>) {
     (status_code, body)
 }
 
+#[allow(dead_code)]
 pub async fn post(url: &str, data: String) -> (StatusCode, Option<Value>) {
     let state = setup_state().await;
     let app = setup_app(state.clone()).await;
@@ -64,6 +65,7 @@ pub async fn post(url: &str, data: String) -> (StatusCode, Option<Value>) {
     (status_code, body)
 }
 
+#[allow(dead_code)]
 pub async fn admin_get(url: &str) -> (StatusCode, Option<Value>) {
     let state = setup_state().await;
     let app = setup_app(state.clone()).await;
@@ -95,6 +97,7 @@ pub async fn admin_get(url: &str) -> (StatusCode, Option<Value>) {
     (status_code, body)
 }
 
+#[allow(dead_code)]
 pub async fn admin_post(url: &str, data: String) -> (StatusCode, Option<Value>) {
     let state = setup_state().await;
     let app = setup_app(state.clone()).await;
@@ -126,6 +129,7 @@ pub async fn admin_post(url: &str, data: String) -> (StatusCode, Option<Value>) 
     (status_code, body)
 }
 
+#[allow(dead_code)]
 pub async fn admin_patch(url: &str, data: String) -> (StatusCode, Option<Value>) {
     let state = setup_state().await;
     let app = setup_app(state.clone()).await;
