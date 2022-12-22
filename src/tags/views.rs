@@ -179,6 +179,11 @@ pub async fn add_post_to_tag(
                 .execute(&state.pool)
                 .await
         {
+            let _ = sqlx::query(r#"UPDATE typecho_metas SET count=count+1 WHERE mid == ?1"#)
+            .bind(mid)
+            .execute(&state.pool)
+            .await;
+
             return Ok(Json(json!({"detail": "ok"})));
         }
     }
