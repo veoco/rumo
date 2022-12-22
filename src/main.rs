@@ -3,7 +3,7 @@ use std::env;
 use tracing::{info, Level};
 use tracing_subscriber::FmtSubscriber;
 
-use ters::{app, init};
+use rumo::{app, init};
 
 fn print_usage(program: &str, opts: Options) {
     let brief = format!("Usage: {} run|init [options]", program);

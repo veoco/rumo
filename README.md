@@ -1,8 +1,8 @@
-# ters
+# rumo
 
-[![Test](https://github.com/veoco/ters/actions/workflows/test.yml/badge.svg)](https://github.com/veoco/ters/actions/workflows/test.yml)
+[![Test](https://github.com/veoco/rumo/actions/workflows/test.yml/badge.svg)](https://github.com/veoco/rumo/actions/workflows/test.yml)
 
-**T**yp**e**cho **R**u**s**t 版本
+使用 Rust 编写的博客后端程序，与 Typecho 数据库级兼容。
 
 ## 目标
 
@@ -18,7 +18,7 @@ axum + sqlx + jwt + sqlite
 
 **起步 - v0.5：**
 
-仅支持 sqlite，完成用户、文章与页面、标签与分类、附件、评论五大模块的读取 API，以及部分必须的写入 API，预期 v0.5 版本 ters 可以用作前端主题开发，但仍无法脱离原版 typecho。
+仅支持 sqlite，完成用户、文章与页面、标签与分类、附件、评论五大模块的读取 API，以及部分必须的写入 API，预期 v0.5 版本 rumo 可以用作前端主题开发，但仍无法脱离原版 typecho。
 
 
 **v0.5 - v1.0：**

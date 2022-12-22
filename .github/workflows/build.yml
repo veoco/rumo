@@ -17,9 +17,9 @@ jobs:
       run: |
         cargo build -r
         mkdir -p ./build/release
-        cp ./target/release/ters ./build/release/ters
+        cp ./target/release/rumo ./build/release/rumo
         cd ./build/release
-        shasum -a 256 ters > ters.sha256
+        shasum -a 256 rumo > rumo.sha256
     
     - name: Upload Github Assets
       uses: softprops/action-gh-release@v1

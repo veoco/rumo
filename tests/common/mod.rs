@@ -9,7 +9,7 @@ use sqlx::sqlite::SqlitePool;
 use std::env;
 use tower::ServiceExt;
 
-use ters::{app, AppState};
+use rumo::{app, AppState};
 
 async fn setup_state() -> AppState {
     let pool = SqlitePool::connect(&env::var("DATABASE_URL").unwrap())
