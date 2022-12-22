@@ -4,7 +4,7 @@ use serde_json::{json, Value};
 use std::sync::Arc;
 use std::time::SystemTime;
 
-use super::models::{Post, PostCreate, PostWithMeta, PostsQuery};
+use super::models::{Post, PostCreate, PostQuery, PostWithMeta, PostsQuery};
 use crate::users::errors::FieldError;
 use crate::users::extractors::{PMContributor, ValidatedJson, ValidatedQuery};
 use crate::AppState;
@@ -184,18 +184,74 @@ pub async fn list_posts(
 pub async fn get_post_by_slug(
     State(state): State<Arc<AppState>>,
     Path(slug): Path<String>,
+    ValidatedQuery(q): ValidatedQuery<PostQuery>,
 ) -> Result<Json<Value>, FieldError> {
-    if let Ok(target_post) = sqlx::query_as::<_, Post>(
-        r#"
+    if q.with_meta.unwrap_or(false) {
+        if let Ok(target_post) = sqlx::query_as::<_, PostWithMeta>(
+            r#"
+            WITH categories_json AS (
+                SELECT typecho_contents.cid,
+                    json_group_array(json_object(
+                        'mid', typecho_metas.mid,
+                        'slug', typecho_metas.slug,
+                        'type', 'category',
+                        'name', typecho_metas.name,
+                        'description', typecho_metas.description,
+                        'count', typecho_metas."count",
+                        'order', typecho_metas."order",
+                        'parent', typecho_metas.parent
+                    )) AS categories
+                FROM typecho_contents
+                JOIN typecho_relationships ON typecho_contents.cid == typecho_relationships.cid
+                JOIN typecho_metas ON typecho_relationships.mid == typecho_metas.mid
+                WHERE typecho_contents."type" == "post" AND typecho_metas."type" == "category"
+                GROUP BY typecho_contents.cid
+                ORDER BY typecho_contents.cid
+            ), tags_json AS (
+                SELECT typecho_contents.cid,
+                    json_group_array(json_object(
+                        'mid', typecho_metas.mid,
+                        'slug', typecho_metas.slug,
+                        'type', 'tag',
+                        'name', typecho_metas.name,
+                        'description', typecho_metas.description,
+                        'count', typecho_metas."count",
+                        'order', typecho_metas."order",
+                        'parent', typecho_metas.parent
+                    )) AS tags
+                FROM typecho_contents
+                JOIN typecho_relationships ON typecho_contents.cid == typecho_relationships.cid
+                JOIN typecho_metas ON typecho_relationships.mid == typecho_metas.mid
+                WHERE typecho_contents."type" == "post" AND typecho_metas."type" == "tag"
+                GROUP BY typecho_contents.cid
+                ORDER BY typecho_contents.cid
+            )
+
+            SELECT *
+            FROM typecho_contents
+            JOIN categories_json ON typecho_contents.cid == categories_json.cid
+            JOIN tags_json ON typecho_contents.cid == tags_json.cid
+            WHERE typecho_contents."type" == "post" AND slug == ?1"#,
+        )
+        .bind(slug)
+        .fetch_one(&state.pool)
+        .await
+        {
+            return Ok(Json(json!(target_post)));
+        }
+    } else {
+        if let Ok(target_post) = sqlx::query_as::<_, Post>(
+            r#"
             SELECT *
             FROM typecho_contents
             WHERE type == "post" AND slug == ?1"#,
-    )
-    .bind(slug)
-    .fetch_one(&state.pool)
-    .await
-    {
-        return Ok(Json(json!(target_post)));
+        )
+        .bind(slug)
+        .fetch_one(&state.pool)
+        .await
+        {
+            return Ok(Json(json!(target_post)));
+        }
     }
 
     Err(FieldError::PermissionDeny)

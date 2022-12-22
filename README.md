@@ -306,7 +306,7 @@ axum + sqlx + jwt + sqlite
      - 无
   
   4. 可选查询：
-     - 无
+     - with_meta：bool，启用后文章包含分类目录和标签信息
 </details>
 
 ### 分类目录相关 API：

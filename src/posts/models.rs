@@ -81,3 +81,8 @@ pub struct PostCreate {
     #[validate(length(min = 1, max = 1, message = "allowFeed length must equal 1"))]
     pub allowFeed: String,
 }
+
+#[derive(Serialize, Deserialize, Validate)]
+pub struct PostQuery {
+    pub with_meta: Option<bool>,
+}
