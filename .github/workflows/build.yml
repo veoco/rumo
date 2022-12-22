@@ -9,22 +9,122 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  build-linux:
     runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-    - name: Build
-      run: |
-        cargo build -r
-        mkdir -p ./build/release
-        cp ./target/release/rumo ./build/release/rumo
-        cd ./build/release
-        shasum -a 256 rumo > rumo.sha256
+    env:
+      RUST_BACKTRACE: full
     
-    - name: Upload Github Assets
-      uses: softprops/action-gh-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        files: build/release/*
-        prerelease: ${{ contains(github.ref, '-') }}
+    strategy:
+      matrix:
+        target:
+          - i586-unknown-linux-musl
+          - x86_64-unknown-linux-musl
+          - armv7-unknown-linux-musleabi
+          - aarch64-unknown-linux-musl
+          - mipsel-unknown-linux-musl
+          - mips64el-unknown-linux-muslabi64
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          target: ${{ matrix.target }}
+          toolchain: nightly
+          default: true
+          override: true
+
+      - name: Install cross
+        run: cargo install cross
+
+      - name: Build ${{ matrix.target }}
+        timeout-minutes: 120
+        env:
+          OUPUT_FILENAME: rumo-${{ matrix.target }}
+        run: |
+          cross build --target ${{ matrix.target }} -r
+          mkdir -p ./build/release
+          cp ./target/${{ matrix.target }}/release/rumo ./build/release/$OUPUT_FILENAME
+          cd ./build/release
+          shasum -a 256 $OUPUT_FILENAME > $OUPUT_FILENAME.sha256
+
+      - name: Upload Github Assets
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: build/release/*
+          prerelease: ${{ contains(github.ref, '-') }}
+  
+  build-windows:
+    runs-on: windows-latest
+    env:
+      RUST_BACKTRACE: full
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          default: true
+          override: true
+
+      - name: Build
+        timeout-minutes: 120
+        env:
+          OUPUT_FILENAME: rumo-windows.exe
+          OUPUT_FILENAME_SHA: rumo-windows.sha256
+        run: |
+          cargo build -r
+          mkdir -p ./build/release
+          cp ./target/release/rumo.exe ./build/release/$env:OUPUT_FILENAME
+          cd ./build/release
+          Get-FileHash $env:OUPUT_FILENAME | Format-List > $env:OUPUT_FILENAME_SHA
+
+      - name: Upload Github Assets
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: build/release/*
+          prerelease: ${{ contains(github.ref, '-') }}
+  
+  build-macos:
+    runs-on: macos-latest
+    env:
+      RUST_BACKTRACE: full
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          default: true
+          override: true
+
+      - name: Build
+        timeout-minutes: 120
+        env:
+          OUPUT_FILENAME: rumo-macos
+        run: |
+          cargo build -r
+          mkdir -p ./build/release
+          cp ./target/release/rumo ./build/release/$OUPUT_FILENAME
+          cd ./build/release
+          shasum -a 256 $OUPUT_FILENAME > $OUPUT_FILENAME.sha256
+
+      - name: Upload Github Assets
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: build/release/*
+          prerelease: ${{ contains(github.ref, '-') }}
