@@ -21,6 +21,7 @@ serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 
 sqlx = { version = "0.6", features = ["runtime-tokio-native-tls", "sqlite", "json"] }
+openssl = { version = "0.10", features = ["vendored"] }
 
 jwt = "0.16"
 md-5 = "0.10"
