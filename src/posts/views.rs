@@ -206,7 +206,6 @@ pub async fn get_post_by_slug(
                 JOIN typecho_metas ON typecho_relationships.mid == typecho_metas.mid
                 WHERE typecho_contents."type" == "post" AND typecho_metas."type" == "category"
                 GROUP BY typecho_contents.cid
-                ORDER BY typecho_contents.cid
             ), tags_json AS (
                 SELECT typecho_contents.cid,
                     json_group_array(json_object(
@@ -224,13 +223,12 @@ pub async fn get_post_by_slug(
                 JOIN typecho_metas ON typecho_relationships.mid == typecho_metas.mid
                 WHERE typecho_contents."type" == "post" AND typecho_metas."type" == "tag"
                 GROUP BY typecho_contents.cid
-                ORDER BY typecho_contents.cid
             )
 
             SELECT *
             FROM typecho_contents
-            JOIN categories_json ON typecho_contents.cid == categories_json.cid
-            JOIN tags_json ON typecho_contents.cid == tags_json.cid
+            LEFT OUTER JOIN categories_json ON typecho_contents.cid == categories_json.cid
+            LEFT OUTER JOIN tags_json ON typecho_contents.cid == tags_json.cid
             WHERE typecho_contents."type" == "post" AND slug == ?1"#,
         )
         .bind(slug)
