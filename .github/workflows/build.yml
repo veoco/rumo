@@ -13,16 +13,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       RUST_BACKTRACE: full
-    
-    strategy:
-      matrix:
-        target:
-          - i586-unknown-linux-musl
-          - x86_64-unknown-linux-musl
-          - armv7-unknown-linux-musleabi
-          - aarch64-unknown-linux-musl
-          - mipsel-unknown-linux-musl
-          - mips64el-unknown-linux-muslabi64
 
     steps:
       - uses: actions/checkout@v2
@@ -31,22 +21,22 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          target: ${{ matrix.target }}
+          target: x86_64-unknown-linux-gnu
           toolchain: nightly
           default: true
           override: true
 
-      - name: Install cross
-        run: cargo install cross
-
-      - name: Build ${{ matrix.target }}
+      - name: Build
         timeout-minutes: 120
         env:
-          OUPUT_FILENAME: rumo-${{ matrix.target }}
+          TARGET_TOOLCHAIN: x86_64-unknown-linux-musl
+          OUPUT_FILENAME: rumo-linux
         run: |
-          cross build --target ${{ matrix.target }} -r
+          apt -y install libssl-dev musl-dev musl-tools
+          rustup target add $TARGET_TOOLCHAIN
+          cargo build --release --target=$TARGET_TOOLCHAIN
           mkdir -p ./build/release
-          cp ./target/${{ matrix.target }}/release/rumo ./build/release/$OUPUT_FILENAME
+          cp ./target/$TARGET_TOOLCHAIN/release/rumo ./build/release/$OUPUT_FILENAME
           cd ./build/release
           shasum -a 256 $OUPUT_FILENAME > $OUPUT_FILENAME.sha256
 
