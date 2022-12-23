@@ -1,11 +1,12 @@
 #![allow(non_snake_case)]
 use serde::{Deserialize, Serialize};
 use validator::Validate;
+use sqlx::{FromRow, types::Json};
 
 use crate::categories::models::Category;
 use crate::tags::models::Tag;
 
-#[derive(Serialize, Deserialize, sqlx::FromRow)]
+#[derive(Serialize, Deserialize, FromRow)]
 pub struct Post {
     pub cid: u32,
     pub title: Option<String>,
@@ -26,7 +27,7 @@ pub struct Post {
     pub parent: u32,
 }
 
-#[derive(Serialize, Deserialize, sqlx::FromRow)]
+#[derive(Serialize, Deserialize, FromRow)]
 pub struct PostWithMeta {
     pub cid: u32,
     pub title: Option<String>,
@@ -45,8 +46,8 @@ pub struct PostWithMeta {
     pub allowPing: String,
     pub allowFeed: String,
     pub parent: u32,
-    pub categories: sqlx::types::Json<Vec<Category>>,
-    pub tags: sqlx::types::Json<Vec<Tag>>,
+    pub categories: Option<Json<Vec<Category>>>,
+    pub tags: Option<Json<Vec<Tag>>>,
 }
 
 #[derive(Serialize, Deserialize, Validate)]
