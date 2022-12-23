@@ -251,7 +251,6 @@ pub async fn list_category_posts_by_slug(
                 JOIN typecho_metas ON typecho_relationships.mid == typecho_metas.mid
                 WHERE typecho_contents."type" == "post" AND typecho_metas."type" == "category"
                 GROUP BY typecho_contents.cid
-                ORDER BY typecho_contents.cid
             ), tags_json AS (
                 SELECT typecho_contents.cid,
                     json_group_array(json_object(
@@ -269,17 +268,16 @@ pub async fn list_category_posts_by_slug(
                 JOIN typecho_metas ON typecho_relationships.mid == typecho_metas.mid
                 WHERE typecho_contents."type" == "post" AND typecho_metas."type" == "tag"
                 GROUP BY typecho_contents.cid
-                ORDER BY typecho_contents.cid
             )
             
             SELECT *
             FROM typecho_contents
-            JOIN categories_json ON typecho_contents.cid == categories_json.cid
-            JOIN tags_json ON typecho_contents.cid == tags_json.cid
+            LEFT OUTER JOIN categories_json ON typecho_contents.cid == categories_json.cid
+            LEFT OUTER JOIN tags_json ON typecho_contents.cid == tags_json.cid
             JOIN typecho_relationships ON typecho_contents.cid == typecho_relationships.cid
             WHERE typecho_contents."type" == "post" AND mid == ?1
             GROUP BY typecho_contents.cid
-            ORDER BY {}
+            ORDER BY typecho_contents.{}
             LIMIT ?2 OFFSET ?3"#,
             order_by
         );
