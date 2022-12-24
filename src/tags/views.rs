@@ -7,7 +7,7 @@ use std::sync::Arc;
 use super::models::{Tag, TagCreate, TagPostAdd, TagsQuery};
 use crate::posts::models::{Post, PostWithMeta, PostsQuery};
 use crate::users::errors::FieldError;
-use crate::users::extractors::{PMEditor, ValidatedJson, ValidatedQuery};
+use crate::users::extractors::{PMEditor, PMVisitor, ValidatedJson, ValidatedQuery};
 use crate::AppState;
 
 pub async fn create_tag(
@@ -191,6 +191,7 @@ pub async fn add_post_to_tag(
 
 pub async fn list_tag_posts_by_slug(
     State(state): State<Arc<AppState>>,
+    PMVisitor(user): PMVisitor,
     Path(slug): Path<String>,
     ValidatedQuery(q): ValidatedQuery<PostsQuery>,
 ) -> Result<Json<Value>, FieldError> {
@@ -209,18 +210,28 @@ pub async fn list_tag_posts_by_slug(
         Err(_) => return Err(FieldError::InvalidParams("slug".to_string())),
     };
 
-    let all_count = sqlx::query_scalar::<_, i32>(
+    let private =
+        q.private.unwrap_or(false) && (user.group == "editor" || user.group == "administrator");
+    let private_sql = if private {
+        ""
+    } else {
+        r#" AND typecho_contents.status == "publish" AND typecho_contents.password IS NULL"#
+    };
+
+    let all_sql = format!(
         r#"
         SELECT COUNT(*)
         FROM typecho_contents
         JOIN typecho_relationships ON typecho_contents.cid == typecho_relationships.cid
-        WHERE type == "post" AND mid == ?1
+        WHERE type == "post" AND mid == ?1{}
         "#,
-    )
-    .bind(mid)
-    .fetch_one(&state.pool)
-    .await
-    .unwrap_or(0);
+        private_sql
+    );
+    let all_count = sqlx::query_scalar::<_, i32>(&all_sql)
+        .bind(mid)
+        .fetch_one(&state.pool)
+        .await
+        .unwrap_or(0);
 
     let offset = (q.page - 1) * q.page_size;
     let order_by = match q.order_by.as_str() {
@@ -275,11 +286,11 @@ pub async fn list_tag_posts_by_slug(
             LEFT OUTER JOIN categories_json ON typecho_contents.cid == categories_json.cid
             LEFT OUTER JOIN tags_json ON typecho_contents.cid == tags_json.cid
             JOIN typecho_relationships ON typecho_contents.cid == typecho_relationships.cid
-            WHERE typecho_contents."type" == "post" AND mid == ?1
+            WHERE typecho_contents."type" == "post" AND mid == ?1{}
             GROUP BY typecho_contents.cid
             ORDER BY typecho_contents.{}
             LIMIT ?2 OFFSET ?3"#,
-            order_by
+            private_sql, order_by
         );
 
         match sqlx::query_as::<_, PostWithMeta>(&sql)
@@ -306,10 +317,10 @@ pub async fn list_tag_posts_by_slug(
         SELECT *
         FROM typecho_contents
         JOIN typecho_relationships ON typecho_contents.cid == typecho_relationships.cid
-        WHERE type == "post" AND mid == ?1
+        WHERE type == "post" AND mid == ?1{}
         ORDER BY {}
         LIMIT ?2 OFFSET ?3"#,
-            order_by
+            private_sql, order_by
         );
 
         match sqlx::query_as::<_, Post>(&sql)
