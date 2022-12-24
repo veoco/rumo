@@ -69,6 +69,7 @@ impl IntoResponse for AuthError {
 pub enum FieldError {
     AlreadyExist(String),
     PermissionDeny,
+    PasswordRequired,
     InvalidParams(String),
     DatabaseFailed(String),
 }
@@ -83,6 +84,10 @@ impl IntoResponse for FieldError {
             FieldError::PermissionDeny => (
                 StatusCode::FORBIDDEN,
                 Json(json!({"msg": "Permission deny"})),
+            ),
+            FieldError::PasswordRequired => (
+                StatusCode::UNAUTHORIZED,
+                Json(json!({"msg": "Password required"})),
             ),
             FieldError::InvalidParams(field) => (
                 StatusCode::BAD_REQUEST,

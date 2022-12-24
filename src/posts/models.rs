@@ -87,4 +87,6 @@ pub struct PostCreate {
 #[derive(Serialize, Deserialize, Validate)]
 pub struct PostQuery {
     pub with_meta: Option<bool>,
+    #[validate(length(min = 1, max = 32, message = "password length must greater than 1"))]
+    pub password: Option<String>,
 }

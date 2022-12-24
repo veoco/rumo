@@ -194,9 +194,12 @@ pub async fn list_posts(
 
 pub async fn get_post_by_slug(
     State(state): State<Arc<AppState>>,
+    PMVisitor(user): PMVisitor,
     Path(slug): Path<String>,
     ValidatedQuery(q): ValidatedQuery<PostQuery>,
 ) -> Result<Json<Value>, FieldError> {
+    let admin = user.group == "editor" || user.group == "administrator";
+
     if q.with_meta.unwrap_or(false) {
         if let Ok(target_post) = sqlx::query_as::<_, PostWithMeta>(
             r#"
@@ -246,7 +249,23 @@ pub async fn get_post_by_slug(
         .fetch_one(&state.pool)
         .await
         {
-            return Ok(Json(json!(target_post)));
+            let status = &target_post.status;
+            if admin || status == "publish" || status == "hidden" || status == "password" {
+                if target_post.password.is_none() {
+                    return Ok(Json(json!(target_post)));
+                }
+
+                let password = target_post.password.clone().unwrap();
+                if let Some(query_password) = q.password {
+                    if password == query_password {
+                        return Ok(Json(json!(target_post)));
+                    }
+                } else {
+                    return Err(FieldError::PasswordRequired);
+                }
+            } else {
+                return Err(FieldError::PermissionDeny);
+            }
         }
     } else {
         if let Ok(target_post) = sqlx::query_as::<_, Post>(
@@ -259,7 +278,23 @@ pub async fn get_post_by_slug(
         .fetch_one(&state.pool)
         .await
         {
-            return Ok(Json(json!(target_post)));
+            let status = &target_post.status;
+            if admin || status == "publish" || status == "hidden" || status == "password" {
+                if target_post.password.is_none() {
+                    return Ok(Json(json!(target_post)));
+                }
+
+                let password = target_post.password.clone().unwrap();
+                if let Some(query_password) = q.password {
+                    if password == query_password {
+                        return Ok(Json(json!(target_post)));
+                    }
+                } else {
+                    return Err(FieldError::PasswordRequired);
+                }
+            } else {
+                return Err(FieldError::PermissionDeny);
+            }
         }
     }
 
