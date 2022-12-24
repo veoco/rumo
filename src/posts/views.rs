@@ -69,7 +69,7 @@ pub async fn list_posts(
     let private_sql = if private {
         ""
     } else {
-        r#" AND typecho_contents.status == "public" AND typecho_contents.password IS NULL"#
+        r#" AND typecho_contents.status == "publish" AND typecho_contents.password IS NULL"#
     };
 
     let all_sql = format!(
