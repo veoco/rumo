@@ -7,7 +7,7 @@ use std::time::SystemTime;
 
 use super::models::{Post, PostCreate, PostQuery, PostWithMeta, PostsQuery};
 use crate::users::errors::FieldError;
-use crate::users::extractors::{PMContributor, ValidatedJson, ValidatedQuery};
+use crate::users::extractors::{PMContributor, PMVisitor, ValidatedJson, ValidatedQuery};
 use crate::AppState;
 
 pub async fn create_post(
@@ -61,18 +61,29 @@ pub async fn create_post(
 
 pub async fn list_posts(
     State(state): State<Arc<AppState>>,
+    PMVisitor(user): PMVisitor,
     ValidatedQuery(q): ValidatedQuery<PostsQuery>,
 ) -> Result<Json<Value>, FieldError> {
-    let all_count = sqlx::query_scalar::<_, i32>(
+    let private =
+        q.private.unwrap_or(false) && (user.group == "editor" || user.group == "administrator");
+    let private_sql = if private {
+        ""
+    } else {
+        r#" AND typecho_contents.status == "public" AND typecho_contents.password IS NULL"#
+    };
+
+    let all_sql = format!(
         r#"
         SELECT COUNT(*)
         FROM typecho_contents
-        WHERE type == "post"
+        WHERE type == "post"{}
         "#,
-    )
-    .fetch_one(&state.pool)
-    .await
-    .unwrap_or(0);
+        private_sql
+    );
+    let all_count = sqlx::query_scalar::<_, i32>(&all_sql)
+        .fetch_one(&state.pool)
+        .await
+        .unwrap_or(0);
 
     let offset = (q.page - 1) * q.page_size;
     let order_by = match q.order_by.as_str() {
@@ -126,11 +137,11 @@ pub async fn list_posts(
             FROM typecho_contents
             LEFT OUTER JOIN categories_json ON typecho_contents.cid == categories_json.cid
             LEFT OUTER JOIN tags_json ON typecho_contents.cid == tags_json.cid
-            WHERE typecho_contents."type" == "post"
+            WHERE typecho_contents."type" == "post"{}
             GROUP BY typecho_contents.cid
             ORDER BY typecho_contents.{}
             LIMIT ?1 OFFSET ?2"#,
-            order_by
+            private_sql, order_by
         );
 
         match sqlx::query_as::<_, PostWithMeta>(&sql)
@@ -153,12 +164,12 @@ pub async fn list_posts(
     } else {
         let sql = format!(
             r#"
-        SELECT *
-        FROM typecho_contents
-        WHERE type == "post"
-        ORDER BY {}
-        LIMIT ?1 OFFSET ?2"#,
-            order_by
+            SELECT *
+            FROM typecho_contents
+            WHERE type == "post"{}
+            ORDER BY {}
+            LIMIT ?1 OFFSET ?2"#,
+            private_sql, order_by
         );
 
         match sqlx::query_as::<_, Post>(&sql)
