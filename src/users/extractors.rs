@@ -54,6 +54,45 @@ where
     }
 }
 
+pub struct PMVisitor(pub User);
+
+#[async_trait]
+impl<S> FromRequestParts<Arc<S>> for PMVisitor
+where
+    AppState: FromRef<S>,
+    S: Send + Sync,
+{
+    type Rejection = AuthError;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &Arc<S>,
+    ) -> Result<Self, Self::Rejection> {
+        let state = AppState::from_ref(state);
+        let visitor = User {
+            uid: 0,
+            name: None,
+            password: None,
+            mail: None,
+            url: None,
+            screenName: None,
+            created: 0,
+            activated: 0,
+            logged: 0,
+            group: String::from("visitor"),
+            authCode: None,
+        };
+        let user = get_user(parts, state).await.unwrap_or(visitor);
+        let group = user.group.as_str();
+        match group {
+            "visitor" | "subscriber" | "contributor" | "editor" | "administrator" => {
+                return Ok(PMVisitor(user))
+            }
+            _ => return Err(AuthError::PermissionDeny),
+        }
+    }
+}
+
 pub struct PMSubscriber(pub User);
 
 #[async_trait]
