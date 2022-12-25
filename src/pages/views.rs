@@ -105,8 +105,8 @@ pub async fn list_pages(
 
         SELECT *
         FROM typecho_contents
-        WHERE type == "page"
         LEFT OUTER JOIN fields_json ON typecho_contents.cid == fields_json.cid
+        WHERE type == "page"
         ORDER BY {}
         LIMIT ?1 OFFSET ?2"#,
         order_by
