@@ -56,6 +56,8 @@ pub async fn post(url: &str, data: String) -> (StatusCode, Option<Value>) {
         .method(http::Method::POST)
         .uri(url)
         .header(http::header::CONTENT_TYPE, "application/json")
+        .header("User-Agent", "test")
+        .header("X-Forwarded-For", "1.1.1.1, 2.2.2.2")
         .body(Body::from(data))
         .unwrap();
     let response = app.oneshot(request).await.unwrap();

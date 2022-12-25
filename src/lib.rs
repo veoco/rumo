@@ -11,10 +11,12 @@ mod tags;
 mod users;
 mod posts;
 mod pages;
+mod comments;
 use categories::categories_routers;
 use tags::tags_routers;
 use posts::posts_routers;
 use pages::pages_routers;
+use comments::comments_routers;
 use users::{users_routers, UserRegister};
 
 #[derive(Clone)]
@@ -53,6 +55,7 @@ pub async fn app(app_state: Option<AppState>) -> Router {
         .merge(tags_routers())
         .merge(posts_routers())
         .merge(pages_routers())
+        .merge(comments_routers())
         .layer(TraceLayer::new_for_http())
         .with_state(state);
     app
