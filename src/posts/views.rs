@@ -188,69 +188,79 @@ pub async fn get_post_by_slug(
     ValidatedQuery(q): ValidatedQuery<PostQuery>,
 ) -> Result<Json<Value>, FieldError> {
     let admin = user.group == "editor" || user.group == "administrator";
+    let private =
+        q.private.unwrap_or(false) && (user.group == "editor" || user.group == "administrator");
+    let private_sql = if private {
+        ""
+    } else {
+        r#" AND (typecho_contents.status == "publish" OR typecho_contents.status == "password" OR typecho_contents.status == "hidden")"#
+    };
 
-    if let Ok(target_post) = sqlx::query_as::<_, PostWithMeta>(
+    let sql = format!(
         r#"
-            WITH categories_json AS (
-                SELECT typecho_contents.cid,
-                    json_group_array(json_object(
-                        'mid', typecho_metas.mid,
-                        'slug', typecho_metas.slug,
-                        'type', 'category',
-                        'name', typecho_metas.name,
-                        'description', typecho_metas.description,
-                        'count', typecho_metas."count",
-                        'order', typecho_metas."order",
-                        'parent', typecho_metas.parent
-                    )) AS categories
-                FROM typecho_contents
-                JOIN typecho_relationships ON typecho_contents.cid == typecho_relationships.cid
-                JOIN typecho_metas ON typecho_relationships.mid == typecho_metas.mid
-                WHERE typecho_contents."type" == "post" AND typecho_metas."type" == "category"
-                GROUP BY typecho_contents.cid
-            ), tags_json AS (
-                SELECT typecho_contents.cid,
-                    json_group_array(json_object(
-                        'mid', typecho_metas.mid,
-                        'slug', typecho_metas.slug,
-                        'type', 'tag',
-                        'name', typecho_metas.name,
-                        'description', typecho_metas.description,
-                        'count', typecho_metas."count",
-                        'order', typecho_metas."order",
-                        'parent', typecho_metas.parent
-                    )) AS tags
-                FROM typecho_contents
-                JOIN typecho_relationships ON typecho_contents.cid == typecho_relationships.cid
-                JOIN typecho_metas ON typecho_relationships.mid == typecho_metas.mid
-                WHERE typecho_contents."type" == "post" AND typecho_metas."type" == "tag"
-                GROUP BY typecho_contents.cid
-            ), fields_json AS (
-                SELECT typecho_contents.cid,
-                    json_group_array(json_object(
-                        'name', typecho_fields.name,
-                        'type', typecho_fields."type",
-                        'str_value', typecho_fields.str_value,
-                        'int_value', typecho_fields.int_value,
-                        'float_value', typecho_fields.float_value
-                    )) AS fields
-                FROM typecho_contents
-                JOIN typecho_fields ON typecho_contents.cid == typecho_fields.cid
-                WHERE typecho_contents."type" == "post"
-                GROUP BY typecho_contents.cid
-            )
-
-            SELECT typecho_contents.*, tags, categories, fields, typecho_users.screenName, typecho_users."group"
+        WITH categories_json AS (
+            SELECT typecho_contents.cid,
+                json_group_array(json_object(
+                    'mid', typecho_metas.mid,
+                    'slug', typecho_metas.slug,
+                    'type', 'category',
+                    'name', typecho_metas.name,
+                    'description', typecho_metas.description,
+                    'count', typecho_metas."count",
+                    'order', typecho_metas."order",
+                    'parent', typecho_metas.parent
+                )) AS categories
             FROM typecho_contents
-            LEFT OUTER JOIN categories_json ON typecho_contents.cid == categories_json.cid
-            LEFT OUTER JOIN tags_json ON typecho_contents.cid == tags_json.cid
-            LEFT OUTER JOIN fields_json ON typecho_contents.cid == fields_json.cid
-            LEFT OUTER JOIN typecho_users ON typecho_contents.authorId == typecho_users.uid
-            WHERE typecho_contents."type" == "post" AND slug == ?1"#,
-    )
-    .bind(slug)
-    .fetch_one(&state.pool)
-    .await
+            JOIN typecho_relationships ON typecho_contents.cid == typecho_relationships.cid
+            JOIN typecho_metas ON typecho_relationships.mid == typecho_metas.mid
+            WHERE typecho_contents."type" == "post" AND typecho_metas."type" == "category"
+            GROUP BY typecho_contents.cid
+        ), tags_json AS (
+            SELECT typecho_contents.cid,
+                json_group_array(json_object(
+                    'mid', typecho_metas.mid,
+                    'slug', typecho_metas.slug,
+                    'type', 'tag',
+                    'name', typecho_metas.name,
+                    'description', typecho_metas.description,
+                    'count', typecho_metas."count",
+                    'order', typecho_metas."order",
+                    'parent', typecho_metas.parent
+                )) AS tags
+            FROM typecho_contents
+            JOIN typecho_relationships ON typecho_contents.cid == typecho_relationships.cid
+            JOIN typecho_metas ON typecho_relationships.mid == typecho_metas.mid
+            WHERE typecho_contents."type" == "post" AND typecho_metas."type" == "tag"
+            GROUP BY typecho_contents.cid
+        ), fields_json AS (
+            SELECT typecho_contents.cid,
+                json_group_array(json_object(
+                    'name', typecho_fields.name,
+                    'type', typecho_fields."type",
+                    'str_value', typecho_fields.str_value,
+                    'int_value', typecho_fields.int_value,
+                    'float_value', typecho_fields.float_value
+                )) AS fields
+            FROM typecho_contents
+            JOIN typecho_fields ON typecho_contents.cid == typecho_fields.cid
+            WHERE typecho_contents."type" == "post"
+            GROUP BY typecho_contents.cid
+        )
+
+        SELECT typecho_contents.*, tags, categories, fields, typecho_users.screenName, typecho_users."group"
+        FROM typecho_contents
+        LEFT OUTER JOIN categories_json ON typecho_contents.cid == categories_json.cid
+        LEFT OUTER JOIN tags_json ON typecho_contents.cid == tags_json.cid
+        LEFT OUTER JOIN fields_json ON typecho_contents.cid == fields_json.cid
+        LEFT OUTER JOIN typecho_users ON typecho_contents.authorId == typecho_users.uid
+        WHERE typecho_contents."type" == "post" AND slug == ?1{}"#,
+        private_sql
+    );
+
+    if let Ok(target_post) = sqlx::query_as::<_, PostWithMeta>(&sql)
+        .bind(slug)
+        .fetch_one(&state.pool)
+        .await
     {
         let status = &target_post.status;
         if admin || status == "publish" || status == "hidden" || status == "password" {

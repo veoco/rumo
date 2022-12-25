@@ -100,4 +100,5 @@ pub struct PostCreate {
 pub struct PostQuery {
     #[validate(length(min = 1, max = 32, message = "password length must greater than 1"))]
     pub password: Option<String>,
+    pub private: Option<bool>,
 }
