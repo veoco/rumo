@@ -55,6 +55,6 @@ async fn normal_user_change_success() {
 
 #[tokio::test]
 async fn list_users_success() {
-    let (status_code, _) = admin_get("/api/users/?page=1&page_size=10&order_by=-uid").await;
+    let (status_code, _) = admin_get("/api/users/").await;
     assert_eq!(status_code, StatusCode::OK);
 }
