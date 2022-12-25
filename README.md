@@ -38,7 +38,9 @@ axum + sqlx + jwt + sqlite
  - PM1：PMEditor，对应 editor（编辑）
  - PM2：PMContributor，对应 contributor（贡献者）
  - PM3：PMSubscriber，对应 subscriber（关注者）
- - PM4：暂未实现，对应 visitor（访问者）
+ - PM4：PMVisitor，对应 visitor（访问者）
+
+查询参数无特别声明都是可选参数。
 
 ### 用户相关 API：
 <details>
@@ -54,13 +56,10 @@ axum + sqlx + jwt + sqlite
   2. 路径参数：
      - 无
 
-  3. 必选查询：
+  3. 查询参数：
      - page：u32，>= 1
      - page_size：u32，>= 1
      - order_by：String，1 <= 长度 <= 13
-  
-  4. 可选查询：
-     - 无
 </details>
 
 <details>
@@ -76,15 +75,12 @@ axum + sqlx + jwt + sqlite
   2. 路径参数：
      - uid：u32
 
-  3. 必选查询：
-     - 无
-  
-  4. 可选查询：
+  3. 查询参数：
      - 无
 </details>
 
 <details>
-<summary>PATH /api/users/:uid ，修改指定 uid 用户信息</summary>
+<summary>PACTH /api/users/:uid ，修改指定 uid 用户信息</summary>
   
  1. 权限要求：
     - PM4：禁止
@@ -96,13 +92,10 @@ axum + sqlx + jwt + sqlite
   2. 路径参数：
      - uid：u32
 
-  3. 必选查询：
-     - 无
-  
-  4. 可选查询：
+  3. 查询参数：
      - 无
 
-  5. 提交表单：
+  4. 提交表单：
      - name：String，1 <= 长度 <= 32
      - screenName：String，1 <= 长度 <= 32
      - mail：String，邮箱格式
@@ -124,13 +117,10 @@ axum + sqlx + jwt + sqlite
   2. 路径参数：
      - 无
 
-  3. 必选查询：
+  3. 查询参数：
      - 无
   
-  4. 可选查询：
-     - 无
-  
-  5. 提交表单：
+  4. 提交表单：
      - mail：String，邮箱格式
      - password：String，长度 <= 150
 </details>
@@ -148,13 +138,10 @@ axum + sqlx + jwt + sqlite
   2. 路径参数：
      - 无
 
-  3. 必选查询：
+  3. 查询参数：
      - 无
   
-  4. 可选查询：
-     - 无
-  
-  5. 提交表单：
+  4. 提交表单：
      - name：String，1 <= 长度 <= 32
      - mail：String，邮箱格式
      - password：String，1 <= 长度 <= 150
@@ -175,13 +162,10 @@ axum + sqlx + jwt + sqlite
   2. 路径参数：
      - 无
 
-  3. 必选查询：
+  3. 查询参数：
      - page：u32，>= 1
      - page_size：u32，>= 1
      - order_by：String，1 <= 长度 <= 13
-  
-  4. 可选查询：
-     - 无
 </details>
 
 <details>
@@ -197,13 +181,10 @@ axum + sqlx + jwt + sqlite
   2. 路径参数：
      - 无
 
-  3. 必选查询：
-     - 无
-  
-  4. 可选查询：
+  3. 查询参数：
      - 无
 
-  5. 提交表单：
+  4. 提交表单：
      - title：String，1 <= 长度 <= 150
      - slug：String，1 <= 长度 <= 150
      - created：u32，unix 时间戳，精确到秒
@@ -229,10 +210,7 @@ axum + sqlx + jwt + sqlite
   2. 路径参数：
      - slug：String
 
-  3. 必选查询：
-     - 无
-  
-  4. 可选查询：
+  3. 查询参数：
      - 无
 </details>
 
@@ -250,13 +228,11 @@ axum + sqlx + jwt + sqlite
   2. 路径参数：
      - 无
 
-  3. 必选查询：
+  3. 查询参数：
      - page：u32，>= 1
      - page_size：u32，>= 1
      - order_by：String，1 <= 长度 <= 13
-  
-  4. 可选查询：
-     - with_meta：bool，启用后文章包含分类目录和标签信息
+     - private：bool，启用查询所有类型文章，仅 PM1 或更高权限可用
 </details>
 
 <details>
@@ -272,13 +248,10 @@ axum + sqlx + jwt + sqlite
   2. 路径参数：
      - 无
 
-  3. 必选查询：
-     - 无
-  
-  4. 可选查询：
+  3. 查询参数：
      - 无
 
-  5. 提交表单：
+  4. 提交表单：
      - title：String，1 <= 长度 <= 150
      - slug：String，1 <= 长度 <= 150
      - created：u32，unix 时间戳，精确到秒
@@ -304,11 +277,9 @@ axum + sqlx + jwt + sqlite
   2. 路径参数：
      - slug：String
 
-  3. 必选查询：
-     - 无
-  
-  4. 可选查询：
-     - with_meta：bool，启用后文章包含分类目录和标签信息
+  3. 查询参数：
+     - password: String，1 <= 长度 <= 32
+     - private：bool，启用查询所有类型文章，仅 PM1 或更高权限可用
 </details>
 
 ### 分类目录相关 API：
@@ -325,13 +296,10 @@ axum + sqlx + jwt + sqlite
   2. 路径参数：
      - 无
 
-  3. 必选查询：
+  3. 查询参数：
      - page：u32，>= 1
      - page_size：u32，>= 1
      - order_by：String，1 <= 长度 <= 13
-  
-  4. 可选查询：
-     - 无
 </details>
 
 <details>
@@ -347,13 +315,10 @@ axum + sqlx + jwt + sqlite
   2. 路径参数：
      - 无
 
-  3. 必选查询：
-     - 无
-  
-  4. 可选查询：
+  3. 查询参数：
      - 无
 
-  5. 提交表单：
+  4. 提交表单：
      - name：String，1 <= 长度 <= 150
      - slug：String，1 <= 长度 <= 150
      - description：Option<String>，1 <= 长度 <= 150
@@ -373,10 +338,7 @@ axum + sqlx + jwt + sqlite
   2. 路径参数：
      - slug：String
 
-  3. 必选查询：
-     - 无
-  
-  4. 可选查询：
+  3. 查询参数：
      - 无
 </details>
 
@@ -393,14 +355,11 @@ axum + sqlx + jwt + sqlite
   2. 路径参数：
      - slug：String
 
-  3. 必选查询：
-     - 无
-  
-  4. 可选查询：
-     - 无
-
-  5. 提交表单：
-     - slug：String，1 <= 长度 <= 150
+  3. 查询参数：
+     - page：u32，>= 1
+     - page_size：u32，>= 1
+     - order_by：String，1 <= 长度 <= 13
+     - private：bool，启用查询所有类型文章，仅 PM1 或更高权限可用
 </details>
 
 <details>
@@ -416,16 +375,13 @@ axum + sqlx + jwt + sqlite
   2. 路径参数：
      - slug：String
 
-  3. 必选查询：
-     - 无
-  
-  4. 可选查询：
+  3. 查询参数：
      - 无
 </details>
 
 ### 标签相关 API：
 <details>
-<summary>GET  /api/tags/ ，获取所有标签列表</summary>
+<summary>GET /api/tags/ ，获取所有标签列表</summary>
   
  1. 权限要求：
     - PM4：允许
@@ -437,17 +393,14 @@ axum + sqlx + jwt + sqlite
   2. 路径参数：
      - 无
 
-  3. 必选查询：
+  3. 查询参数：
      - page：u32，>= 1
      - page_size：u32，>= 1
      - order_by：String，1 <= 长度 <= 13
-  
-  4. 可选查询：
-     - 无
 </details>
 
 <details>
-<summary>POST  /api/tags/ ，新建标签</summary>
+<summary>POST /api/tags/ ，新建标签</summary>
   
  1. 权限要求：
     - PM4：禁止
@@ -459,13 +412,10 @@ axum + sqlx + jwt + sqlite
   2. 路径参数：
      - 无
 
-  3. 必选查询：
-     - 无
-  
-  4. 可选查询：
+  3. 查询参数：
      - 无
 
-  5. 提交表单：
+  4. 提交表单：
      - name：String，1 <= 长度 <= 150
      - slug：String，1 <= 长度 <= 150
      - description：Option<String>，1 <= 长度 <= 150
@@ -473,7 +423,7 @@ axum + sqlx + jwt + sqlite
 </details>
 
 <details>
-<summary>GET  /api/tags/:slug ，获取指定 slug 标签详情</summary>
+<summary>GET /api/tags/:slug ，获取指定 slug 标签详情</summary>
   
  1. 权限要求：
     - PM4：允许
@@ -485,15 +435,12 @@ axum + sqlx + jwt + sqlite
   2. 路径参数：
      - slug：String
 
-  3. 必选查询：
-     - 无
-  
-  4. 可选查询：
+  3. 查询参数：
      - 无
 </details>
 
 <details>
-<summary>POST  /api/tags/:slug/posts/ ，关联指定 slug 文章到指定 slug 标签</summary>
+<summary>POST /api/tags/:slug/posts/ ，关联指定 slug 文章到指定 slug 标签</summary>
   
  1. 权限要求：
     - PM4：禁止
@@ -505,18 +452,15 @@ axum + sqlx + jwt + sqlite
   2. 路径参数：
      - slug：String
 
-  3. 必选查询：
-     - 无
-  
-  4. 可选查询：
+  3. 查询参数：
      - 无
 
-  5. 提交表单：
+  4. 提交表单：
      - slug：String，1 <= 长度 <= 150
 </details>
 
 <details>
-<summary>GET  /api/tags/:slug/posts/ ，获取指定 slug 标签的所有文章列表</summary>
+<summary>GET /api/tags/:slug/posts/ ，获取指定 slug 标签的所有文章列表</summary>
   
  1. 权限要求：
     - PM4：允许
@@ -528,9 +472,54 @@ axum + sqlx + jwt + sqlite
   2. 路径参数：
      - slug：String
 
-  3. 必选查询：
-     - 无
+  3. 查询参数：
+     - page：u32，>= 1
+     - page_size：u32，>= 1
+     - order_by：String，1 <= 长度 <= 13
+     - private：bool，启用查询所有类型文章，仅 PM1 或更高权限可用
+</details>
+
+### 评论相关 API：
+<details>
+<summary>GET /api/comments/:slug ，获取指定 slug 文章的评论列表</summary>
   
-  4. 可选查询：
+ 1. 权限要求：
+    - PM4：允许
+    - PM3：允许
+    - PM2：允许
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
      - 无
+
+  3. 查询参数：
+     - page：u32，>= 1
+     - page_size：u32，>= 1
+     - order_by：String，1 <= 长度 <= 13
+     - private：bool，启用查询所有类型文章，仅 PM1 或更高权限可用
+</details>
+
+<details>
+<summary>POST /api/comments/:slug ，新建指定 slug 文章的评论</summary>
+  
+ 1. 权限要求：
+    - PM4：允许
+    - PM3：允许
+    - PM2：允许
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - slug：String
+
+  3. 查询参数：
+     - 无
+
+  4. 提交表单：
+     - author：Option<String>，1 <= 长度 <= 150
+     - mail：Option<String>，邮箱格式
+     - url：Option<String>，url 格式
+     - text: String
+     - parent：Option<u32>，> 0
 </details>
