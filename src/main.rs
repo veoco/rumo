@@ -2,6 +2,7 @@ use getopts::Options;
 use std::env;
 use tracing::{info, Level};
 use tracing_subscriber::FmtSubscriber;
+use std::net::SocketAddr;
 
 use rumo::{app, init};
 
@@ -47,7 +48,7 @@ async fn main() {
 
             let app = app(None).await;
             axum::Server::bind(&addr.parse().unwrap())
-                .serve(app.into_make_service())
+                .serve(app.into_make_service_with_connect_info::<SocketAddr>())
                 .await
                 .expect("start server failed");
         }
