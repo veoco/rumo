@@ -5,7 +5,7 @@ use serde_json::{json, Value};
 use std::sync::Arc;
 use std::time::SystemTime;
 
-use super::models::{Post, PostCreate, PostQuery, PostWithMeta, PostsQuery};
+use super::models::{PostCreate, PostQuery, PostWithMeta, PostsQuery};
 use crate::users::errors::FieldError;
 use crate::users::extractors::{PMContributor, PMVisitor, ValidatedJson, ValidatedQuery};
 use crate::AppState;

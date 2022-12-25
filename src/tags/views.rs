@@ -5,7 +5,7 @@ use serde_json::{json, Value};
 use std::sync::Arc;
 
 use super::models::{Tag, TagCreate, TagPostAdd, TagsQuery};
-use crate::posts::models::{Post, PostWithMeta, PostsQuery};
+use crate::posts::models::{PostWithMeta, PostsQuery};
 use crate::users::errors::FieldError;
 use crate::users::extractors::{PMEditor, PMVisitor, ValidatedJson, ValidatedQuery};
 use crate::AppState;
@@ -64,8 +64,12 @@ pub async fn list_tags(
     .await
     .unwrap_or(0);
 
-    let offset = (q.page - 1) * q.page_size;
-    let order_by = match q.order_by.as_str() {
+    let page = q.page.unwrap_or(1);
+    let page_size = q.page_size.unwrap_or(10);
+    let order_by = q.order_by.unwrap_or("-mid".to_string());
+
+    let offset = (page - 1) * page_size;
+    let order_by = match order_by.as_str() {
         "mid" => "mid",
         "-mid" => "mid DESC",
         "slug" => "slug",

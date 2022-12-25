@@ -6,7 +6,7 @@ use common::{admin_post, get};
 
 #[tokio::test]
 async fn create_then_list_categories_success() {
-    let (status_code, body) = get("/api/categories/?page=1&page_size=10&order_by=-mid").await;
+    let (status_code, body) = get("/api/categories/").await;
     assert_eq!(status_code, StatusCode::OK);
 
     let body = body.unwrap();
@@ -16,7 +16,7 @@ async fn create_then_list_categories_success() {
     let (status_code, _) = admin_post("/api/categories/", data).await;
     assert_eq!(status_code, StatusCode::CREATED);
 
-    let (status_code, body) = get("/api/categories/?page=1&page_size=10&order_by=-mid").await;
+    let (status_code, body) = get("/api/categories/").await;
     assert_eq!(status_code, StatusCode::OK);
 
     let body = body.unwrap();
