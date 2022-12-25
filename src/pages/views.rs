@@ -106,7 +106,7 @@ pub async fn list_pages(
         SELECT *
         FROM typecho_contents
         WHERE type == "page"
-        LEFT OUTER JOIN fields_json ON typecho_contents.cid == tags_json.cid
+        LEFT OUTER JOIN fields_json ON typecho_contents.cid == fields_json.cid
         ORDER BY {}
         LIMIT ?1 OFFSET ?2"#,
         order_by
@@ -154,7 +154,7 @@ pub async fn get_page_by_slug(
 
         SELECT *
         FROM typecho_contents
-        LEFT OUTER JOIN fields_json ON typecho_contents.cid == tags_json.cid
+        LEFT OUTER JOIN fields_json ON typecho_contents.cid == fields_json.cid
         WHERE type == "page" AND slug == ?1"#,
     )
     .bind(slug)

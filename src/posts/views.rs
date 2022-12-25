@@ -153,7 +153,7 @@ pub async fn list_posts(
         FROM typecho_contents
         LEFT OUTER JOIN categories_json ON typecho_contents.cid == categories_json.cid
         LEFT OUTER JOIN tags_json ON typecho_contents.cid == tags_json.cid
-        LEFT OUTER JOIN fields_json ON typecho_contents.cid == tags_json.cid
+        LEFT OUTER JOIN fields_json ON typecho_contents.cid == fields_json.cid
         LEFT OUTER JOIN typecho_users ON typecho_contents.authorId == typecho_users.uid
         WHERE typecho_contents."type" == "post"{}
         GROUP BY typecho_contents.cid
@@ -244,7 +244,7 @@ pub async fn get_post_by_slug(
             FROM typecho_contents
             LEFT OUTER JOIN categories_json ON typecho_contents.cid == categories_json.cid
             LEFT OUTER JOIN tags_json ON typecho_contents.cid == tags_json.cid
-            LEFT OUTER JOIN fields_json ON typecho_contents.cid == tags_json.cid
+            LEFT OUTER JOIN fields_json ON typecho_contents.cid == fields_json.cid
             LEFT OUTER JOIN typecho_users ON typecho_contents.authorId == typecho_users.uid
             WHERE typecho_contents."type" == "post" AND slug == ?1"#,
     )

@@ -305,7 +305,7 @@ pub async fn list_category_posts_by_slug(
         FROM typecho_contents
         LEFT OUTER JOIN categories_json ON typecho_contents.cid == categories_json.cid
         LEFT OUTER JOIN tags_json ON typecho_contents.cid == tags_json.cid
-        LEFT OUTER JOIN fields_json ON typecho_contents.cid == tags_json.cid
+        LEFT OUTER JOIN fields_json ON typecho_contents.cid == fields_json.cid
         LEFT OUTER JOIN typecho_users ON typecho_contents.authorId == typecho_users.uid
         JOIN typecho_relationships ON typecho_contents.cid == typecho_relationships.cid
         WHERE typecho_contents."type" == "post" AND mid == ?1{}
