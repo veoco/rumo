@@ -35,7 +35,7 @@ pub async fn create_category(
     };
     if let Ok(r) = sqlx::query(
         r#"
-        INSERT INTO typecho_metas (type, name, slug, description, parent) VALUES ("category", ?1, ?2, ?3, ?4)"#,
+        INSERT INTO typecho_metas (type, name, slug, description, parent) VALUES ('category', ?1, ?2, ?3, ?4)"#,
     )
     .bind(category_create.name)
     .bind(category_create.slug)
@@ -57,7 +57,7 @@ pub async fn list_categories(
         r#"
         SELECT COUNT(*)
         FROM typecho_metas
-        WHERE type == "category"
+        WHERE type == 'category'
         "#,
     )
     .fetch_one(&state.pool)
@@ -80,7 +80,7 @@ pub async fn list_categories(
         r#"
         SELECT *
         FROM typecho_metas
-        WHERE type == "category"
+        WHERE type == 'category'
         ORDER BY {}
         LIMIT ?1 OFFSET ?2"#,
         order_by
@@ -113,7 +113,7 @@ pub async fn get_category_by_slug(
         r#"
             SELECT *
             FROM typecho_metas
-            WHERE type == "category" AND slug == ?1"#,
+            WHERE type == 'category' AND slug == ?1"#,
     )
     .bind(slug)
     .fetch_one(&state.pool)
@@ -135,7 +135,7 @@ pub async fn add_post_to_category(
         r#"
             SELECT mid
             FROM typecho_metas
-            WHERE type == "category" AND slug == ?1
+            WHERE type == 'category' AND slug == ?1
             "#,
     )
     .bind(slug)
@@ -150,7 +150,7 @@ pub async fn add_post_to_category(
         r#"
             SELECT cid
             FROM typecho_contents
-            WHERE type == "post" AND slug == ?1
+            WHERE type == 'post' AND slug == ?1
             "#,
     )
     .bind(category_post_add.slug)
@@ -203,7 +203,7 @@ pub async fn list_category_posts_by_slug(
         r#"
             SELECT mid
             FROM typecho_metas
-            WHERE type == "category" AND slug == ?1
+            WHERE type == 'category' AND slug == ?1
             "#,
     )
     .bind(slug)
@@ -219,7 +219,7 @@ pub async fn list_category_posts_by_slug(
     let private_sql = if private {
         ""
     } else {
-        r#" AND typecho_contents.status == "publish" AND typecho_contents.password IS NULL"#
+        r#" AND typecho_contents.status == 'publish' AND typecho_contents.password IS NULL"#
     };
 
     let all_sql = format!(
@@ -227,7 +227,7 @@ pub async fn list_category_posts_by_slug(
         SELECT COUNT(*)
         FROM typecho_contents
         JOIN typecho_relationships ON typecho_contents.cid == typecho_relationships.cid
-        WHERE type == "post" AND mid == ?1{}
+        WHERE type == 'post' AND mid == ?1{}
         "#,
         private_sql
     );
@@ -267,7 +267,7 @@ pub async fn list_category_posts_by_slug(
             FROM typecho_contents
             JOIN typecho_relationships ON typecho_contents.cid == typecho_relationships.cid
             JOIN typecho_metas ON typecho_relationships.mid == typecho_metas.mid
-            WHERE typecho_contents."type" == "post" AND typecho_metas."type" == "category"
+            WHERE typecho_contents."type" == 'post' AND typecho_metas."type" == 'category'
             GROUP BY typecho_contents.cid
         ), tags_json AS (
             SELECT typecho_contents.cid,
@@ -284,7 +284,7 @@ pub async fn list_category_posts_by_slug(
             FROM typecho_contents
             JOIN typecho_relationships ON typecho_contents.cid == typecho_relationships.cid
             JOIN typecho_metas ON typecho_relationships.mid == typecho_metas.mid
-            WHERE typecho_contents."type" == "post" AND typecho_metas."type" == "tag"
+            WHERE typecho_contents."type" == 'post' AND typecho_metas."type" == 'tag'
             GROUP BY typecho_contents.cid
         ), fields_json AS (
             SELECT typecho_contents.cid,
@@ -297,7 +297,7 @@ pub async fn list_category_posts_by_slug(
                 )) AS fields
             FROM typecho_contents
             JOIN typecho_fields ON typecho_contents.cid == typecho_fields.cid
-            WHERE typecho_contents."type" == "post"
+            WHERE typecho_contents."type" == 'post'
             GROUP BY typecho_contents.cid
         )
         
@@ -308,7 +308,7 @@ pub async fn list_category_posts_by_slug(
         LEFT OUTER JOIN fields_json ON typecho_contents.cid == fields_json.cid
         LEFT OUTER JOIN typecho_users ON typecho_contents.authorId == typecho_users.uid
         JOIN typecho_relationships ON typecho_contents.cid == typecho_relationships.cid
-        WHERE typecho_contents."type" == "post" AND mid == ?1{}
+        WHERE typecho_contents."type" == 'post' AND mid == ?1{}
         GROUP BY typecho_contents.cid
         ORDER BY typecho_contents.{}
         LIMIT ?2 OFFSET ?3"#,

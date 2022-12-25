@@ -37,7 +37,7 @@ pub async fn create_page(
     if let Ok(r) = sqlx::query(
         r#"
         INSERT INTO typecho_contents (type, title, slug, created, modified, text, authorId, template, status, password, allowComment, allowPing, allowFeed)
-        VALUES ("page", ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)"#,
+        VALUES ('page', ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)"#,
     )
     .bind(page_create.title)
     .bind(page_create.slug)
@@ -67,7 +67,7 @@ pub async fn list_pages(
         r#"
         SELECT COUNT(*)
         FROM typecho_contents
-        WHERE type == "page"
+        WHERE type == 'page'
         "#,
     )
     .fetch_one(&state.pool)
@@ -99,14 +99,14 @@ pub async fn list_pages(
                 )) AS fields
             FROM typecho_contents
             JOIN typecho_fields ON typecho_contents.cid == typecho_fields.cid
-            WHERE typecho_contents."type" == "post"
+            WHERE typecho_contents."type" == 'post'
             GROUP BY typecho_contents.cid
         )
 
         SELECT *
         FROM typecho_contents
         LEFT OUTER JOIN fields_json ON typecho_contents.cid == fields_json.cid
-        WHERE type == "page"
+        WHERE type == 'page'
         ORDER BY {}
         LIMIT ?1 OFFSET ?2"#,
         order_by
@@ -148,14 +148,14 @@ pub async fn get_page_by_slug(
                 )) AS fields
             FROM typecho_contents
             JOIN typecho_fields ON typecho_contents.cid == typecho_fields.cid
-            WHERE typecho_contents."type" == "post"
+            WHERE typecho_contents."type" == 'post'
             GROUP BY typecho_contents.cid
         )
 
         SELECT *
         FROM typecho_contents
         LEFT OUTER JOIN fields_json ON typecho_contents.cid == fields_json.cid
-        WHERE type == "page" AND slug == ?1"#,
+        WHERE type == 'page' AND slug == ?1"#,
     )
     .bind(slug)
     .fetch_one(&state.pool)

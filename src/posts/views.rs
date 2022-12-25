@@ -37,7 +37,7 @@ pub async fn create_post(
     if let Ok(r) = sqlx::query(
         r#"
         INSERT INTO typecho_contents (type, title, slug, created, modified, text, authorId, template, status, password, allowComment, allowPing, allowFeed)
-        VALUES ("post", ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)"#,
+        VALUES ('post', ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)"#,
     )
     .bind(post_create.title)
     .bind(post_create.slug)
@@ -69,14 +69,14 @@ pub async fn list_posts(
     let private_sql = if private {
         ""
     } else {
-        r#" AND typecho_contents.status == "publish" AND typecho_contents.password IS NULL"#
+        r#" AND typecho_contents.status == 'publish' AND typecho_contents.password IS NULL"#
     };
 
     let all_sql = format!(
         r#"
         SELECT COUNT(*)
         FROM typecho_contents
-        WHERE type == "post"{}
+        WHERE type == 'post'{}
         "#,
         private_sql
     );
@@ -115,7 +115,7 @@ pub async fn list_posts(
             FROM typecho_contents
             JOIN typecho_relationships ON typecho_contents.cid == typecho_relationships.cid
             JOIN typecho_metas ON typecho_relationships.mid == typecho_metas.mid
-            WHERE typecho_contents."type" == "post" AND typecho_metas."type" == "category"
+            WHERE typecho_contents."type" == 'post' AND typecho_metas."type" == 'category'
             GROUP BY typecho_contents.cid
         ), tags_json AS (
             SELECT typecho_contents.cid,
@@ -132,7 +132,7 @@ pub async fn list_posts(
             FROM typecho_contents
             JOIN typecho_relationships ON typecho_contents.cid == typecho_relationships.cid
             JOIN typecho_metas ON typecho_relationships.mid == typecho_metas.mid
-            WHERE typecho_contents."type" == "post" AND typecho_metas."type" == "tag"
+            WHERE typecho_contents."type" == 'post' AND typecho_metas."type" == 'tag'
             GROUP BY typecho_contents.cid
         ), fields_json AS (
             SELECT typecho_contents.cid,
@@ -145,7 +145,7 @@ pub async fn list_posts(
                 )) AS fields
             FROM typecho_contents
             JOIN typecho_fields ON typecho_contents.cid == typecho_fields.cid
-            WHERE typecho_contents."type" == "post"
+            WHERE typecho_contents."type" == 'post'
             GROUP BY typecho_contents.cid
         )
             
@@ -155,7 +155,7 @@ pub async fn list_posts(
         LEFT OUTER JOIN tags_json ON typecho_contents.cid == tags_json.cid
         LEFT OUTER JOIN fields_json ON typecho_contents.cid == fields_json.cid
         LEFT OUTER JOIN typecho_users ON typecho_contents.authorId == typecho_users.uid
-        WHERE typecho_contents."type" == "post"{}
+        WHERE typecho_contents."type" == 'post'{}
         GROUP BY typecho_contents.cid
         ORDER BY typecho_contents.{}
         LIMIT ?1 OFFSET ?2"#,
@@ -193,7 +193,7 @@ pub async fn get_post_by_slug(
     let private_sql = if private {
         ""
     } else {
-        r#" AND (typecho_contents.status == "publish" OR typecho_contents.status == "password" OR typecho_contents.status == "hidden")"#
+        r#" AND (typecho_contents.status == 'publish' OR typecho_contents.status == 'password' OR typecho_contents.status == 'hidden')"#
     };
 
     let sql = format!(
@@ -213,7 +213,7 @@ pub async fn get_post_by_slug(
             FROM typecho_contents
             JOIN typecho_relationships ON typecho_contents.cid == typecho_relationships.cid
             JOIN typecho_metas ON typecho_relationships.mid == typecho_metas.mid
-            WHERE typecho_contents."type" == "post" AND typecho_metas."type" == "category"
+            WHERE typecho_contents."type" == 'post' AND typecho_metas."type" == 'category'
             GROUP BY typecho_contents.cid
         ), tags_json AS (
             SELECT typecho_contents.cid,
@@ -230,7 +230,7 @@ pub async fn get_post_by_slug(
             FROM typecho_contents
             JOIN typecho_relationships ON typecho_contents.cid == typecho_relationships.cid
             JOIN typecho_metas ON typecho_relationships.mid == typecho_metas.mid
-            WHERE typecho_contents."type" == "post" AND typecho_metas."type" == "tag"
+            WHERE typecho_contents."type" == 'post' AND typecho_metas."type" == 'tag'
             GROUP BY typecho_contents.cid
         ), fields_json AS (
             SELECT typecho_contents.cid,
@@ -243,7 +243,7 @@ pub async fn get_post_by_slug(
                 )) AS fields
             FROM typecho_contents
             JOIN typecho_fields ON typecho_contents.cid == typecho_fields.cid
-            WHERE typecho_contents."type" == "post"
+            WHERE typecho_contents."type" == 'post'
             GROUP BY typecho_contents.cid
         )
 
@@ -253,7 +253,7 @@ pub async fn get_post_by_slug(
         LEFT OUTER JOIN tags_json ON typecho_contents.cid == tags_json.cid
         LEFT OUTER JOIN fields_json ON typecho_contents.cid == fields_json.cid
         LEFT OUTER JOIN typecho_users ON typecho_contents.authorId == typecho_users.uid
-        WHERE typecho_contents."type" == "post" AND slug == ?1{}"#,
+        WHERE typecho_contents."type" == 'post' AND slug == ?1{}"#,
         private_sql
     );
 

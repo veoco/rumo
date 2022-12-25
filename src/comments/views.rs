@@ -51,7 +51,7 @@ pub async fn create_comment(
             r#"
             SELECT *
             FROM typecho_comments
-            WHERE status == "approved" AND type == "comment" AND cid == ?1 AND coid == ?2"#,
+            WHERE status == 'approved' AND type == 'comment' AND cid == ?1 AND coid == ?2"#,
         )
         .bind(content.cid)
         .bind(coid)
@@ -94,7 +94,7 @@ pub async fn create_comment(
     match sqlx::query(
       r#"
         INSERT INTO typecho_comments (type, cid, created, author, authorId, ownerId, mail, url, ip, agent, text, status, parent)
-        VALUES ("comment", ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)"#,
+        VALUES ('comment', ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)"#,
     )
     .bind(content.cid)
     .bind(now as u32)
@@ -127,7 +127,7 @@ pub async fn list_content_comments_by_slug(
     let private_sql = if private {
         ""
     } else {
-        r#" AND typecho_comments.status == "approved""#
+        r#" AND typecho_comments.status == 'approved'"#
     };
 
     let content = match sqlx::query_as::<_, Post>(
@@ -148,7 +148,7 @@ pub async fn list_content_comments_by_slug(
         r#"
         SELECT COUNT(*)
         FROM typecho_comments
-        WHERE type == "comment" AND cid == ?1{}
+        WHERE type == 'comment' AND cid == ?1{}
         "#,
         private_sql
     );
@@ -172,7 +172,7 @@ pub async fn list_content_comments_by_slug(
         r#"            
         SELECT *
         FROM typecho_comments
-        WHERE type == "comment" AND cid == ?1{}
+        WHERE type == 'comment' AND cid == ?1{}
         ORDER BY typecho_comments.{}
         LIMIT ?2 OFFSET ?3"#,
         private_sql, order_by

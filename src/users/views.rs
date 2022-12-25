@@ -61,7 +61,7 @@ pub async fn register(
 
     if let Ok(r) = sqlx::query(
         r#"
-        INSERT INTO typecho_users (name, mail, url, screenName, password, created, "group") VALUES (?1, ?2, ?3, ?1, ?4, ?5, ?6)"#,
+        INSERT INTO typecho_users (name, mail, url, screenName, password, created, 'group') VALUES (?1, ?2, ?3, ?1, ?4, ?5, ?6)"#,
     ).bind(user_register.name).bind(user_register.mail).bind(user_register.url).bind(hashed_password).bind(now).bind("subscriber")
     .execute(&state.pool).await {
         return Ok((StatusCode::CREATED,Json(json!({"id": r.last_insert_rowid()}))))
