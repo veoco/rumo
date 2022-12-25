@@ -288,7 +288,7 @@ pub async fn list_tag_posts_by_slug(
             GROUP BY typecho_contents.cid
         )
             
-        SELECT typecho_contents.*, tags, categories, typecho_users.screenName, typecho_users."group"
+        SELECT *
         FROM typecho_contents
         LEFT OUTER JOIN categories_json ON typecho_contents.cid == categories_json.cid
         LEFT OUTER JOIN tags_json ON typecho_contents.cid == tags_json.cid
