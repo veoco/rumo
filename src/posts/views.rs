@@ -170,8 +170,8 @@ pub async fn list_posts(
     {
         Ok(posts) => {
             return Ok(Json(json!({
-                "page": q.page,
-                "page_size": q.page_size,
+                "page": page,
+                "page_size": page_size,
                 "all_count": all_count,
                 "count": posts.len(),
                 "results": posts
