@@ -87,15 +87,15 @@ pub async fn list_tags(
     );
 
     match sqlx::query_as::<_, Tag>(&sql)
-        .bind(q.page_size)
+        .bind(page_size)
         .bind(offset)
         .fetch_all(&state.pool)
         .await
     {
         Ok(tags) => {
             return Ok(Json(json!({
-                "page": q.page,
-                "page_size": q.page_size,
+                "page": page,
+                "page_size": page_size,
                 "all_count": all_count,
                 "count": tags.len(),
                 "results": tags
@@ -303,15 +303,15 @@ pub async fn list_tag_posts_by_slug(
 
     match sqlx::query_as::<_, PostWithMeta>(&sql)
         .bind(mid)
-        .bind(q.page_size)
+        .bind(page_size)
         .bind(offset)
         .fetch_all(&state.pool)
         .await
     {
         Ok(posts) => {
             return Ok(Json(json!({
-                "page": q.page,
-                "page_size": q.page_size,
+                "page": page,
+                "page_size": page_size,
                 "all_count": all_count,
                 "count": posts.len(),
                 "results": posts
