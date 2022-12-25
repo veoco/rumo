@@ -26,11 +26,11 @@ pub struct Page {
 #[derive(Serialize, Deserialize, Validate)]
 pub struct PagesQuery {
     #[validate(range(min = 1, message = "page must greater than 1"))]
-    pub page: u32,
+    pub page: Option<u32>,
     #[validate(range(min = 1, message = "page_size must greater than 1"))]
-    pub page_size: u32,
+    pub page_size: Option<u32>,
     #[validate(length(min = 1, max = 13, message = "order_by length must greater than 1"))]
-    pub order_by: String,
+    pub order_by: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Validate)]

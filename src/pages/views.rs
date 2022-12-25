@@ -74,8 +74,12 @@ pub async fn list_pages(
     .await
     .unwrap_or(0);
 
-    let offset = (q.page - 1) * q.page_size;
-    let order_by = match q.order_by.as_str() {
+    let page = q.page.unwrap_or(1);
+    let page_size = q.page_size.unwrap_or(10);
+    let order_by = q.order_by.unwrap_or("-cid".to_string());
+
+    let offset = (page - 1) * page_size;
+    let order_by = match order_by.as_str() {
         "cid" => "cid",
         "-cid" => "cid DESC",
         "slug" => "slug",
@@ -93,15 +97,15 @@ pub async fn list_pages(
     );
 
     match sqlx::query_as::<_, Page>(&sql)
-        .bind(q.page_size)
+        .bind(page_size)
         .bind(offset)
         .fetch_all(&state.pool)
         .await
     {
         Ok(pages) => {
             return Ok(Json(json!({
-                "page": q.page,
-                "page_size": q.page_size,
+                "page": page,
+                "page_size": page_size,
                 "all_count": all_count,
                 "count": pages.len(),
                 "results": pages
