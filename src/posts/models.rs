@@ -28,6 +28,16 @@ pub struct Post {
 }
 
 #[derive(Serialize, Deserialize, FromRow)]
+pub struct Field {
+    pub cid: u32,
+    pub name: String,
+    pub r#type: String,
+    pub str_value: Option<String>,
+    pub int_value: u32,
+    pub float_value: f64,
+}
+
+#[derive(Serialize, Deserialize, FromRow)]
 pub struct PostWithMeta {
     pub cid: u32,
     pub title: Option<String>,
@@ -50,6 +60,7 @@ pub struct PostWithMeta {
     pub parent: u32,
     pub categories: Option<Json<Vec<Category>>>,
     pub tags: Option<Json<Vec<Tag>>>,
+    pub fields: Option<Json<Vec<Field>>>,
 }
 
 #[derive(Serialize, Deserialize, Validate)]

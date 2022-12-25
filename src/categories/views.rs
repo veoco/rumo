@@ -286,12 +286,26 @@ pub async fn list_category_posts_by_slug(
             JOIN typecho_metas ON typecho_relationships.mid == typecho_metas.mid
             WHERE typecho_contents."type" == "post" AND typecho_metas."type" == "tag"
             GROUP BY typecho_contents.cid
+        ), fields_json AS (
+            SELECT typecho_contents.cid,
+                json_group_array(json_object(
+                    'name', typecho_fields.name,
+                    'type', typecho_fields."type",
+                    'str_value', typecho_fields.str_value,
+                    'int_value', typecho_fields.int_value,
+                    'float_value', typecho_fields.float_value
+                )) AS fields
+            FROM typecho_contents
+            JOIN typecho_fields ON typecho_contents.cid == typecho_fields.cid
+            WHERE typecho_contents."type" == "post"
+            GROUP BY typecho_contents.cid
         )
         
         SELECT *
         FROM typecho_contents
         LEFT OUTER JOIN categories_json ON typecho_contents.cid == categories_json.cid
         LEFT OUTER JOIN tags_json ON typecho_contents.cid == tags_json.cid
+        LEFT OUTER JOIN fields_json ON typecho_contents.cid == tags_json.cid
         LEFT OUTER JOIN typecho_users ON typecho_contents.authorId == typecho_users.uid
         JOIN typecho_relationships ON typecho_contents.cid == typecho_relationships.cid
         WHERE typecho_contents."type" == "post" AND mid == ?1{}

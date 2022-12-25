@@ -5,7 +5,7 @@ use serde_json::{json, Value};
 use std::sync::Arc;
 use std::time::SystemTime;
 
-use super::models::{Page, PageCreate, PagesQuery};
+use super::models::{PageCreate, PageWithMeta, PagesQuery};
 use crate::users::errors::FieldError;
 use crate::users::extractors::{PMEditor, ValidatedJson, ValidatedQuery};
 use crate::AppState;
@@ -88,15 +88,31 @@ pub async fn list_pages(
     };
     let sql = format!(
         r#"
+        WITH fields_json AS (
+            SELECT typecho_contents.cid,
+                json_group_array(json_object(
+                    'name', typecho_fields.name,
+                    'type', typecho_fields."type",
+                    'str_value', typecho_fields.str_value,
+                    'int_value', typecho_fields.int_value,
+                    'float_value', typecho_fields.float_value
+                )) AS fields
+            FROM typecho_contents
+            JOIN typecho_fields ON typecho_contents.cid == typecho_fields.cid
+            WHERE typecho_contents."type" == "post"
+            GROUP BY typecho_contents.cid
+        )
+
         SELECT *
         FROM typecho_contents
         WHERE type == "page"
+        LEFT OUTER JOIN fields_json ON typecho_contents.cid == tags_json.cid
         ORDER BY {}
         LIMIT ?1 OFFSET ?2"#,
         order_by
     );
 
-    match sqlx::query_as::<_, Page>(&sql)
+    match sqlx::query_as::<_, PageWithMeta>(&sql)
         .bind(page_size)
         .bind(offset)
         .fetch_all(&state.pool)
@@ -119,11 +135,27 @@ pub async fn get_page_by_slug(
     State(state): State<Arc<AppState>>,
     Path(slug): Path<String>,
 ) -> Result<Json<Value>, FieldError> {
-    if let Ok(target_page) = sqlx::query_as::<_, Page>(
+    if let Ok(target_page) = sqlx::query_as::<_, PageWithMeta>(
         r#"
-            SELECT *
+        WITH fields_json AS (
+            SELECT typecho_contents.cid,
+                json_group_array(json_object(
+                    'name', typecho_fields.name,
+                    'type', typecho_fields."type",
+                    'str_value', typecho_fields.str_value,
+                    'int_value', typecho_fields.int_value,
+                    'float_value', typecho_fields.float_value
+                )) AS fields
             FROM typecho_contents
-            WHERE type == "page" AND slug == ?1"#,
+            JOIN typecho_fields ON typecho_contents.cid == typecho_fields.cid
+            WHERE typecho_contents."type" == "post"
+            GROUP BY typecho_contents.cid
+        )
+
+        SELECT *
+        FROM typecho_contents
+        LEFT OUTER JOIN fields_json ON typecho_contents.cid == tags_json.cid
+        WHERE type == "page" AND slug == ?1"#,
     )
     .bind(slug)
     .fetch_one(&state.pool)
