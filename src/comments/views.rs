@@ -41,6 +41,10 @@ pub async fn create_comment(
         Err(_) => return Err(FieldError::InvalidParams("slug".to_string())),
     };
 
+    if content.allowComment == "0" {
+        return Err(FieldError::InvalidParams("slug".to_string()));
+    }
+
     let mut parent = 0;
     if let Some(coid) = comment_create.parent {
         match sqlx::query_as::<_, Comment>(
