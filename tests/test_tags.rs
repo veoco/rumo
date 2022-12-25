@@ -40,8 +40,7 @@ async fn create_then_list_tag_posts_success() {
     let (status_code, _) = admin_post("/api/tags/", data).await;
     assert_eq!(status_code, StatusCode::CREATED);
 
-    let (status_code, body) =
-        get("/api/tags/test-tag-post/posts/?page=1&page_size=10&order_by=-cid").await;
+    let (status_code, body) = get("/api/tags/test-tag-post/posts/").await;
     assert_eq!(status_code, StatusCode::OK);
 
     let body = body.unwrap();
@@ -65,8 +64,7 @@ async fn create_then_list_tag_posts_success() {
     let (status_code, _) = admin_post("/api/tags/test-tag-post/posts/", data).await;
     assert_eq!(status_code, StatusCode::CREATED);
 
-    let (status_code, body) =
-        get("/api/tags/test-tag-post/posts/?page=1&page_size=10&order_by=-cid").await;
+    let (status_code, body) = get("/api/tags/test-tag-post/posts/").await;
     assert_eq!(status_code, StatusCode::OK);
 
     let body = body.unwrap();

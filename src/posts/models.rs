@@ -37,6 +37,8 @@ pub struct PostWithMeta {
     pub text: String,
     pub order: u32,
     pub authorId: u32,
+    pub screenName: Option<String>,
+    pub group: Option<String>,
     pub template: Option<String>,
     pub r#type: String,
     pub status: String,
@@ -53,12 +55,11 @@ pub struct PostWithMeta {
 #[derive(Serialize, Deserialize, Validate)]
 pub struct PostsQuery {
     #[validate(range(min = 1, message = "page must greater than 1"))]
-    pub page: u32,
+    pub page: Option<u32>,
     #[validate(range(min = 1, message = "page_size must greater than 1"))]
-    pub page_size: u32,
+    pub page_size: Option<u32>,
     #[validate(length(min = 1, max = 13, message = "order_by length must greater than 1"))]
-    pub order_by: String,
-    pub with_meta: Option<bool>,
+    pub order_by: Option<String>,
     pub private: Option<bool>,
 }
 
@@ -86,7 +87,6 @@ pub struct PostCreate {
 
 #[derive(Serialize, Deserialize, Validate)]
 pub struct PostQuery {
-    pub with_meta: Option<bool>,
     #[validate(length(min = 1, max = 32, message = "password length must greater than 1"))]
     pub password: Option<String>,
 }

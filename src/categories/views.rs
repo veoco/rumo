@@ -233,8 +233,12 @@ pub async fn list_category_posts_by_slug(
         .await
         .unwrap_or(0);
 
-    let offset = (q.page - 1) * q.page_size;
-    let order_by = match q.order_by.as_str() {
+    let page = q.page.unwrap_or(1);
+    let page_size = q.page_size.unwrap_or(10);
+    let order_by = q.order_by.unwrap_or("-cid".to_string());
+
+    let offset = (page - 1) * page_size;
+    let order_by = match order_by.as_str() {
         "cid" => "cid",
         "-cid" => "cid DESC",
         "slug" => "slug",
@@ -242,104 +246,73 @@ pub async fn list_category_posts_by_slug(
         f => return Err(FieldError::InvalidParams(f.to_string())),
     };
 
-    if q.with_meta.unwrap_or(false) {
-        let sql = format!(
-            r#"
-            WITH categories_json AS (
-                SELECT typecho_contents.cid,
-                    json_group_array(json_object(
-                        'mid', typecho_metas.mid,
-                        'slug', typecho_metas.slug,
-                        'type', 'category',
-                        'name', typecho_metas.name,
-                        'description', typecho_metas.description,
-                        'count', typecho_metas."count",
-                        'order', typecho_metas."order",
-                        'parent', typecho_metas.parent
-                    )) AS categories
-                FROM typecho_contents
-                JOIN typecho_relationships ON typecho_contents.cid == typecho_relationships.cid
-                JOIN typecho_metas ON typecho_relationships.mid == typecho_metas.mid
-                WHERE typecho_contents."type" == "post" AND typecho_metas."type" == "category"
-                GROUP BY typecho_contents.cid
-            ), tags_json AS (
-                SELECT typecho_contents.cid,
-                    json_group_array(json_object(
-                        'mid', typecho_metas.mid,
-                        'slug', typecho_metas.slug,
-                        'type', 'tag',
-                        'name', typecho_metas.name,
-                        'description', typecho_metas.description,
-                        'count', typecho_metas."count",
-                        'order', typecho_metas."order",
-                        'parent', typecho_metas.parent
-                    )) AS tags
-                FROM typecho_contents
-                JOIN typecho_relationships ON typecho_contents.cid == typecho_relationships.cid
-                JOIN typecho_metas ON typecho_relationships.mid == typecho_metas.mid
-                WHERE typecho_contents."type" == "post" AND typecho_metas."type" == "tag"
-                GROUP BY typecho_contents.cid
-            )
-            
-            SELECT *
+    let sql = format!(
+        r#"
+        WITH categories_json AS (
+            SELECT typecho_contents.cid,
+                json_group_array(json_object(
+                    'mid', typecho_metas.mid,
+                    'slug', typecho_metas.slug,
+                    'type', 'category',
+                    'name', typecho_metas.name,
+                    'description', typecho_metas.description,
+                    'count', typecho_metas."count",
+                    'order', typecho_metas."order",
+                    'parent', typecho_metas.parent
+                )) AS categories
             FROM typecho_contents
-            LEFT OUTER JOIN categories_json ON typecho_contents.cid == categories_json.cid
-            LEFT OUTER JOIN tags_json ON typecho_contents.cid == tags_json.cid
             JOIN typecho_relationships ON typecho_contents.cid == typecho_relationships.cid
-            WHERE typecho_contents."type" == "post" AND mid == ?1{}
+            JOIN typecho_metas ON typecho_relationships.mid == typecho_metas.mid
+            WHERE typecho_contents."type" == "post" AND typecho_metas."type" == "category"
             GROUP BY typecho_contents.cid
-            ORDER BY typecho_contents.{}
-            LIMIT ?2 OFFSET ?3"#,
-            private_sql, order_by
-        );
-
-        match sqlx::query_as::<_, PostWithMeta>(&sql)
-            .bind(mid)
-            .bind(q.page_size)
-            .bind(offset)
-            .fetch_all(&state.pool)
-            .await
-        {
-            Ok(posts) => {
-                return Ok(Json(json!({
-                    "page": q.page,
-                    "page_size": q.page_size,
-                    "all_count": all_count,
-                    "count": posts.len(),
-                    "results": posts
-                })))
-            }
-            Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
-        }
-    } else {
-        let sql = format!(
-            r#"
-        SELECT *
+        ), tags_json AS (
+            SELECT typecho_contents.cid,
+                json_group_array(json_object(
+                    'mid', typecho_metas.mid,
+                    'slug', typecho_metas.slug,
+                    'type', 'tag',
+                    'name', typecho_metas.name,
+                    'description', typecho_metas.description,
+                    'count', typecho_metas."count",
+                    'order', typecho_metas."order",
+                    'parent', typecho_metas.parent
+                )) AS tags
+            FROM typecho_contents
+            JOIN typecho_relationships ON typecho_contents.cid == typecho_relationships.cid
+            JOIN typecho_metas ON typecho_relationships.mid == typecho_metas.mid
+            WHERE typecho_contents."type" == "post" AND typecho_metas."type" == "tag"
+            GROUP BY typecho_contents.cid
+        )
+        
+        SELECT typecho_contents.*, tags, categories, typecho_users.screenName, typecho_users."group"
         FROM typecho_contents
+        LEFT OUTER JOIN categories_json ON typecho_contents.cid == categories_json.cid
+        LEFT OUTER JOIN tags_json ON typecho_contents.cid == tags_json.cid
+        LEFT OUTER JOIN typecho_users ON typecho_contents.authorId == typecho_users.uid
         JOIN typecho_relationships ON typecho_contents.cid == typecho_relationships.cid
-        WHERE type == "post" AND mid == ?1{}
-        ORDER BY {}
+        WHERE typecho_contents."type" == "post" AND mid == ?1{}
+        GROUP BY typecho_contents.cid
+        ORDER BY typecho_contents.{}
         LIMIT ?2 OFFSET ?3"#,
-            private_sql, order_by
-        );
+        private_sql, order_by
+    );
 
-        match sqlx::query_as::<_, Post>(&sql)
-            .bind(mid)
-            .bind(q.page_size)
-            .bind(offset)
-            .fetch_all(&state.pool)
-            .await
-        {
-            Ok(posts) => {
-                return Ok(Json(json!({
-                    "page": q.page,
-                    "page_size": q.page_size,
-                    "all_count": all_count,
-                    "count": posts.len(),
-                    "results": posts
-                })))
-            }
-            Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
+    match sqlx::query_as::<_, PostWithMeta>(&sql)
+        .bind(mid)
+        .bind(q.page_size)
+        .bind(offset)
+        .fetch_all(&state.pool)
+        .await
+    {
+        Ok(posts) => {
+            return Ok(Json(json!({
+                "page": q.page,
+                "page_size": q.page_size,
+                "all_count": all_count,
+                "count": posts.len(),
+                "results": posts
+            })))
         }
+        Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
     }
 }
