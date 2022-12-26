@@ -19,10 +19,26 @@ async fn setup_state() -> AppState {
     let secret_key = env::var("SECRET_KEY").unwrap();
     let access_token_expire_secondes = 3600 * 24 * 30;
 
+    let table_prefix = env::var("TABLE_PREFIX").unwrap_or("typecho_".to_string());
+    let comments_table = format!("{}_comments", table_prefix);
+    let contents_table = format!("{}_contents", table_prefix);
+    let fields_table = format!("{}_fields", table_prefix);
+    let metas_table = format!("{}_metas", table_prefix);
+    let options_table = format!("{}_options", table_prefix);
+    let relationships_table = format!("{}_relationships", table_prefix);
+    let users_table = format!("{}_users", table_prefix);
+
     AppState {
         pool,
         secret_key,
         access_token_expire_secondes,
+        comments_table,
+        contents_table,
+        fields_table,
+        metas_table,
+        options_table,
+        relationships_table,
+        users_table,
     }
 }
 

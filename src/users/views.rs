@@ -30,21 +30,23 @@ pub async fn login_for_access_token(
         };
         let access_token = token_data.sign_with_key(&key).unwrap();
 
-        let _ = sqlx::query(
+        let update_sql = format!(
             r#"
-            UPDATE typecho_users
-            SET activated = ?1, logged = ?1
-            WHERE uid = ?2
+            UPDATE {users_table}
+            SET "activated" = ?1, "logged" = ?1
+            WHERE {users_table}."uid" = ?2
             "#,
-        )
-        .bind(now as u32)
-        .bind(user.uid)
-        .execute(&state.pool)
-        .await;
-
-        return Ok(
-            Json(json!({"access_token": access_token, "token_type": "Bearer"})),
+            users_table = &state.users_table
         );
+        let _ = sqlx::query(&update_sql)
+            .bind(now as u32)
+            .bind(user.uid)
+            .execute(&state.pool)
+            .await;
+
+        return Ok(Json(
+            json!({"access_token": access_token, "token_type": "Bearer"}),
+        ));
     }
     Err(AuthError::WrongCredentials)
 }
@@ -52,19 +54,33 @@ pub async fn login_for_access_token(
 pub async fn register(
     State(state): State<Arc<AppState>>,
     ValidatedJson(user_register): ValidatedJson<UserRegister>,
-) -> Result<(StatusCode,Json<Value>), FieldError> {
+) -> Result<(StatusCode, Json<Value>), FieldError> {
     let now = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap()
         .as_secs() as u32;
     let hashed_password = hash(&user_register.password);
 
-    if let Ok(r) = sqlx::query(
+    let insert_sql = format!(
         r#"
-        INSERT INTO typecho_users (name, mail, url, screenName, password, created, 'group') VALUES (?1, ?2, ?3, ?1, ?4, ?5, ?6)"#,
-    ).bind(user_register.name).bind(user_register.mail).bind(user_register.url).bind(hashed_password).bind(now).bind("subscriber")
-    .execute(&state.pool).await {
-        return Ok((StatusCode::CREATED,Json(json!({"id": r.last_insert_rowid()}))))
+        INSERT INTO {users_table} ("name", "mail", "url", "screenName", "password", "created", "group")
+        VALUES (?1, ?2, ?3, ?1, ?4, ?5, 'subscriber')
+        "#,
+        users_table = &state.users_table
+    );
+    if let Ok(r) = sqlx::query(&insert_sql)
+        .bind(user_register.name)
+        .bind(user_register.mail)
+        .bind(user_register.url)
+        .bind(hashed_password)
+        .bind(now)
+        .execute(&state.pool)
+        .await
+    {
+        return Ok((
+            StatusCode::CREATED,
+            Json(json!({"id": r.last_insert_rowid()})),
+        ));
     }
     Err(FieldError::AlreadyExist("name or mail".to_owned()))
 }
@@ -74,15 +90,17 @@ pub async fn list_users(
     PMAdministrator(_): PMAdministrator,
     ValidatedQuery(q): ValidatedQuery<UsersQuery>,
 ) -> Result<Json<Value>, FieldError> {
-    let all_count = sqlx::query_scalar::<_, i32>(
+    let all_sql = format!(
         r#"
         SELECT COUNT(*)
-        FROM typecho_users;
+        FROM {users_table};
         "#,
-    )
-    .fetch_one(&state.pool)
-    .await
-    .unwrap_or(0);
+        users_table = &state.users_table
+    );
+    let all_count = sqlx::query_scalar::<_, i32>(&all_sql)
+        .fetch_one(&state.pool)
+        .await
+        .unwrap_or(0);
 
     let page = q.page.unwrap_or(1);
     let page_size = q.page_size.unwrap_or(10);
@@ -101,10 +119,11 @@ pub async fn list_users(
     let sql = format!(
         r#"
         SELECT *
-        FROM typecho_users
-        ORDER BY {}
+        FROM {users_table}
+        ORDER BY {users_table}.{}
         LIMIT ?1 OFFSET ?2"#,
-        order_by
+        order_by,
+        users_table = &state.users_table
     );
 
     match sqlx::query_as::<_, User>(&sql)
@@ -115,12 +134,13 @@ pub async fn list_users(
     {
         Ok(users) => {
             return Ok(Json(json!({
-            "page": page,
-            "page_size": page_size,
-            "all_count": all_count,
-            "count": users.len(),
-            "results": users
-        })));}
+                "page": page,
+                "page_size": page_size,
+                "all_count": all_count,
+                "count": users.len(),
+                "results": users
+            })));
+        }
         Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
     }
 }
@@ -135,16 +155,18 @@ pub async fn get_user_by_id(
     }
 
     if user.group == "administrator" {
-        if let Ok(target_user) = sqlx::query_as::<_, User>(
+        let user_sql = format!(
             r#"
             SELECT *
-            FROM typecho_users
-            WHERE uid == ?1
-                "#,
-        )
-        .bind(uid)
-        .fetch_one(&state.pool)
-        .await
+            FROM {users_table}
+            WHERE {users_table}."uid" == ?1
+            "#,
+            users_table = &state.users_table
+        );
+        if let Ok(target_user) = sqlx::query_as::<_, User>(&user_sql)
+            .bind(uid)
+            .fetch_one(&state.pool)
+            .await
         {
             return Ok(Json(json!(target_user)));
         }
@@ -165,38 +187,54 @@ pub async fn modify_user_by_id(
             _ => return Err(FieldError::InvalidParams("group".to_string())),
         }
 
-        let exist = sqlx::query_scalar::<_, bool>(
+        let exist_sql = format!(
             r#"
-            SELECT EXISTS (SELECT 1 FROM typecho_users WHERE uid == ?1)
+            SELECT EXISTS (SELECT 1 FROM {users_table} WHERE {users_table}."uid" == ?1)
             "#,
-        )
-        .bind(uid)
-        .fetch_one(&state.pool)
-        .await
-        .unwrap_or(false);
+            users_table = &state.users_table
+        );
+        let exist = sqlx::query_scalar::<_, bool>(&exist_sql)
+            .bind(uid)
+            .fetch_one(&state.pool)
+            .await
+            .unwrap_or(false);
 
         if exist {
             if user_modify.password.is_none() {
-                if let Ok(r) = sqlx::query(
-                r#"
-                UPDATE typecho_users SET name = ?1, mail = ?2, url = ?3, screenName = ?4, "group" = ?5 WHERE uid = ?6
-                "#,
-                ).bind(user_modify.name).bind(user_modify.mail).bind(user_modify.url).bind(user_modify.screenName).bind(user_modify.group).bind(uid)
-                .execute(&state.pool).await {
-                    return Ok(Json(json!({"msg": format!("{} infomation changed",r.last_insert_rowid())})))
+                let update_sql = format!(
+                    r#"
+                    UPDATE {users_table} SET "name" = ?1, "mail" = ?2, url = ?3, "screenName" = ?4, "group" = ?5 WHERE {users_table}."uid" = ?6
+                    "#,
+                    users_table = &state.users_table
+                );
+                if let Ok(r) = sqlx::query(&update_sql)
+                    .bind(user_modify.name)
+                    .bind(user_modify.mail)
+                    .bind(user_modify.url)
+                    .bind(user_modify.screenName)
+                    .bind(user_modify.group)
+                    .bind(uid)
+                    .execute(&state.pool)
+                    .await
+                {
+                    return Ok(Json(json!({
+                        "msg": format!("{} infomation changed", r.last_insert_rowid())
+                    })));
                 }
             } else {
                 let password = user_modify.password.unwrap();
                 let hashed_password = hash(&password);
-                if let Ok(r) = sqlx::query(
+                let update_sql = format!(
                     r#"
-                    UPDATE typecho_users SET password = ?1 WHERE uid = ?2
+                    UPDATE {users_table} SET {users_table}."password" = ?1 WHERE {users_table}."uid" = ?2
                     "#,
-                )
-                .bind(hashed_password)
-                .bind(uid)
-                .execute(&state.pool)
-                .await
+                    users_table = &state.users_table
+                );
+                if let Ok(r) = sqlx::query(&update_sql)
+                    .bind(hashed_password)
+                    .bind(uid)
+                    .execute(&state.pool)
+                    .await
                 {
                     return Ok(Json(json!({
                         "msg": format!("{} password changed", r.last_insert_rowid())

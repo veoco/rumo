@@ -27,15 +27,18 @@ pub async fn create_comment(
         .unwrap()
         .as_secs();
 
-    let content = match sqlx::query_as::<_, Post>(
+    let content_sql = format!(
         r#"
         SELECT *
-        FROM typecho_contents
-        WHERE slug == ?1"#,
-    )
-    .bind(slug)
-    .fetch_one(&state.pool)
-    .await
+        FROM {contents_table}
+        WHERE {contents_table}."slug" == ?1
+        "#,
+        contents_table = &state.contents_table,
+    );
+    let content = match sqlx::query_as::<_, Post>(&content_sql)
+        .bind(slug)
+        .fetch_one(&state.pool)
+        .await
     {
         Ok(p) => p,
         Err(_) => return Err(FieldError::InvalidParams("slug".to_string())),
@@ -47,16 +50,19 @@ pub async fn create_comment(
 
     let mut parent = 0;
     if let Some(coid) = comment_create.parent {
-        match sqlx::query_as::<_, Comment>(
+        let parent_sql = format!(
             r#"
             SELECT *
-            FROM typecho_comments
-            WHERE status == 'approved' AND type == 'comment' AND cid == ?1 AND coid == ?2"#,
-        )
-        .bind(content.cid)
-        .bind(coid)
-        .fetch_one(&state.pool)
-        .await
+            FROM {comments_table}
+            WHERE {comments_table}."status" == 'approved' AND {comments_table}."type" == 'comment' AND {comments_table}."cid" == ?1 AND {comments_table}."coid" == ?2
+            "#,
+            comments_table = &state.comments_table
+        );
+        match sqlx::query_as::<_, Comment>(&parent_sql)
+            .bind(content.cid)
+            .bind(coid)
+            .fetch_one(&state.pool)
+            .await
         {
             Ok(_) => {}
             Err(_) => return Err(FieldError::InvalidParams("slug".to_string())),
@@ -91,28 +97,36 @@ pub async fn create_comment(
     let ua = user_agent.to_string();
     let status = "approved";
 
-    match sqlx::query(
-      r#"
-        INSERT INTO typecho_comments (type, cid, created, author, authorId, ownerId, mail, url, ip, agent, text, status, parent)
-        VALUES ('comment', ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)"#,
-    )
-    .bind(content.cid)
-    .bind(now as u32)
-    .bind(author)
-    .bind(author_id)
-    .bind(content.authorId)
-    .bind(mail)
-    .bind(url)
-    .bind(ip)
-    .bind(ua)
-    .bind(comment_create.text)
-    .bind(status)
-    .bind(parent)
-    .execute(&state.pool)
-    .await
+    let insert_sql = format!(
+        r#"
+        INSERT INTO {comments_table} ("type", "cid", "created", "author", "authorId", "ownerId", "mail", "url", "ip", "agent", "text", "status", "parent")
+        VALUES ('comment', ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
+        "#,
+        comments_table = &state.comments_table
+    );
+    match sqlx::query(&insert_sql)
+        .bind(content.cid)
+        .bind(now as u32)
+        .bind(author)
+        .bind(author_id)
+        .bind(content.authorId)
+        .bind(mail)
+        .bind(url)
+        .bind(ip)
+        .bind(ua)
+        .bind(comment_create.text)
+        .bind(status)
+        .bind(parent)
+        .execute(&state.pool)
+        .await
     {
-        Ok(r) => return Ok((StatusCode::CREATED,Json(json!({"id": r.last_insert_rowid()})))),
-        Err(e) => return Err(FieldError::DatabaseFailed(e.to_string()))
+        Ok(r) => {
+            return Ok((
+                StatusCode::CREATED,
+                Json(json!({"id": r.last_insert_rowid()})),
+            ))
+        }
+        Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
     }
 }
 
@@ -125,20 +139,26 @@ pub async fn list_content_comments_by_slug(
     let private =
         q.private.unwrap_or(false) && (user.group == "editor" || user.group == "administrator");
     let private_sql = if private {
-        ""
+        String::from("")
     } else {
-        r#" AND typecho_comments.status == 'approved'"#
+        format!(
+            r#" AND {comments_table}."status" == 'approved'"#,
+            comments_table = &state.comments_table
+        )
     };
 
-    let content = match sqlx::query_as::<_, Post>(
+    let content_sql = format!(
         r#"
         SELECT *
-        FROM typecho_contents
-        WHERE slug == ?1"#,
-    )
-    .bind(slug)
-    .fetch_one(&state.pool)
-    .await
+        FROM {contents_table}
+        WHERE {contents_table}."slug" == ?1
+        "#,
+        contents_table = &state.contents_table
+    );
+    let content = match sqlx::query_as::<_, Post>(&content_sql)
+        .bind(slug)
+        .fetch_one(&state.pool)
+        .await
     {
         Ok(p) => p,
         Err(_) => return Err(FieldError::InvalidParams("slug".to_string())),
@@ -147,10 +167,11 @@ pub async fn list_content_comments_by_slug(
     let all_sql = format!(
         r#"
         SELECT COUNT(*)
-        FROM typecho_comments
-        WHERE type == 'comment' AND cid == ?1{}
+        FROM {comments_table}
+        WHERE {comments_table}."type" == 'comment' AND {comments_table}."cid" == ?1{}
         "#,
-        private_sql
+        private_sql,
+        comments_table = &state.comments_table
     );
     let all_count = sqlx::query_scalar::<_, i32>(&all_sql)
         .fetch_one(&state.pool)
@@ -171,13 +192,14 @@ pub async fn list_content_comments_by_slug(
     let sql = format!(
         r#"            
         SELECT *
-        FROM typecho_comments
-        WHERE type == 'comment' AND cid == ?1{}
-        ORDER BY typecho_comments.{}
+        FROM {comments_table}
+        WHERE {comments_table}."type" == 'comment' AND {comments_table}."cid" == ?1{}
+        ORDER BY {comments_table}.{}
         LIMIT ?2 OFFSET ?3"#,
-        private_sql, order_by
+        private_sql,
+        order_by,
+        comments_table = &state.comments_table
     );
-
     match sqlx::query_as::<_, Comment>(&sql)
         .bind(content.cid)
         .bind(page_size)

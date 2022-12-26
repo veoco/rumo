@@ -24,22 +24,45 @@ pub struct AppState {
     pub pool: SqlitePool,
     pub secret_key: String,
     pub access_token_expire_secondes: u64,
+    pub comments_table: String,
+    pub contents_table: String,
+    pub fields_table: String,
+    pub metas_table: String,
+    pub options_table: String,
+    pub relationships_table: String,
+    pub users_table: String,
 }
 
 async fn get_state(app_state: Option<AppState>) -> AppState {
     let state = match app_state {
         Some(s) => s,
         None => {
-            let pool = SqlitePool::connect(&env::var("DATABASE_URL").unwrap())
+            let pool = SqlitePool::connect(&env::var("DATABASE_URL").expect("DATABASE_URL is required"))
                 .await
-                .unwrap();
-            let secret_key = env::var("SECRET_KEY").unwrap();
+                .expect("Database connect failed");
+            let secret_key = env::var("SECRET_KEY").expect("SECRET_KEY is required");
             let access_token_expire_secondes = 3600 * 24 * 30;
+
+            let table_prefix = env::var("TABLE_PREFIX").unwrap_or("typecho_".to_string());
+            let comments_table = format!("{}_comments", table_prefix);
+            let contents_table = format!("{}_contents", table_prefix);
+            let fields_table = format!("{}_fields", table_prefix);
+            let metas_table = format!("{}_metas", table_prefix);
+            let options_table = format!("{}_options", table_prefix);
+            let relationships_table = format!("{}_relationships", table_prefix);
+            let users_table = format!("{}_users", table_prefix);
 
             let s = AppState {
                 pool,
                 secret_key,
                 access_token_expire_secondes,
+                comments_table,
+                contents_table,
+                fields_table,
+                metas_table,
+                options_table,
+                relationships_table,
+                users_table
             };
             s
         }
