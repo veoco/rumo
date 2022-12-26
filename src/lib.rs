@@ -44,13 +44,13 @@ async fn get_state(app_state: Option<AppState>) -> AppState {
             let access_token_expire_secondes = 3600 * 24 * 30;
 
             let table_prefix = env::var("TABLE_PREFIX").unwrap_or("typecho_".to_string());
-            let comments_table = format!("{}_comments", table_prefix);
-            let contents_table = format!("{}_contents", table_prefix);
-            let fields_table = format!("{}_fields", table_prefix);
-            let metas_table = format!("{}_metas", table_prefix);
-            let options_table = format!("{}_options", table_prefix);
-            let relationships_table = format!("{}_relationships", table_prefix);
-            let users_table = format!("{}_users", table_prefix);
+            let comments_table = format!("{}comments", table_prefix);
+            let contents_table = format!("{}contents", table_prefix);
+            let fields_table = format!("{}fields", table_prefix);
+            let metas_table = format!("{}metas", table_prefix);
+            let options_table = format!("{}options", table_prefix);
+            let relationships_table = format!("{}relationships", table_prefix);
+            let users_table = format!("{}users", table_prefix);
 
             let s = AppState {
                 pool,
