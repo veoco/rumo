@@ -163,7 +163,7 @@ pub async fn list_posts(
     );
 
     match sqlx::query_as::<_, PostWithMeta>(&sql)
-        .bind(q.page_size)
+        .bind(page_size)
         .bind(offset)
         .fetch_all(&state.pool)
         .await
