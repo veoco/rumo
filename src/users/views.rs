@@ -163,11 +163,12 @@ pub async fn get_user_by_id(
             "#,
             users_table = &state.users_table
         );
-        if let Ok(target_user) = sqlx::query_as::<_, User>(&user_sql)
+        if let Ok(mut target_user) = sqlx::query_as::<_, User>(&user_sql)
             .bind(uid)
             .fetch_one(&state.pool)
             .await
         {
+            target_user.password = None;
             return Ok(Json(json!(target_user)));
         }
         return Err(FieldError::InvalidParams("uid".to_string()));
