@@ -233,6 +233,7 @@ axum + sqlx + jwt + sqlite
      - page_size：u32，>= 1
      - order_by：String，1 <= 长度 <= 13
      - private：bool，启用查询所有类型文章，仅 PM1 或更高权限可用
+     - own: bool，启用查询当前用户所有文章，仅 PM3 或更高权限可用，与 private 同时使用时，两者均无效。
 </details>
 
 <details>

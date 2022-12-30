@@ -74,9 +74,18 @@ pub async fn list_posts(
 ) -> Result<Json<Value>, FieldError> {
     let private =
         q.private.unwrap_or(false) && (user.group == "editor" || user.group == "administrator");
-    let private_sql = if private {
+    let own = q.own.unwrap_or(false) && user.group != "visitor";
+
+    let filter_sql = if private && !own {
         String::from("")
-    } else {
+    }else if !private && own{
+        format!(
+            r#" AND {contents_table}."authorId" == {}"#,
+            user.uid,
+            contents_table = &state.contents_table,
+        )
+    }
+    else{
         format!(
             r#" AND {contents_table}."status" == 'publish' AND {contents_table}."password" IS NULL"#,
             contents_table = &state.contents_table,
@@ -89,7 +98,7 @@ pub async fn list_posts(
         FROM {contents_table}
         WHERE {contents_table}."type" == 'post'{}
         "#,
-        private_sql,
+        filter_sql,
         contents_table = &state.contents_table,
     );
     let all_count = sqlx::query_scalar::<_, i32>(&all_sql)
@@ -171,7 +180,7 @@ pub async fn list_posts(
         GROUP BY {contents_table}."cid"
         ORDER BY {contents_table}.{}
         LIMIT ?1 OFFSET ?2"#,
-        private_sql,
+        filter_sql,
         order_by,
         contents_table = &state.contents_table,
         relationships_table = &state.relationships_table,
