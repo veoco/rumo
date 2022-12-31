@@ -29,7 +29,6 @@ pub struct Post {
 
 #[derive(Serialize, Deserialize, FromRow)]
 pub struct Field {
-    pub cid: u32,
     pub name: String,
     pub r#type: String,
     pub str_value: Option<String>,
