@@ -283,7 +283,7 @@ axum + sqlx + jwt + sqlite
      - private：bool，启用查询所有类型文章，仅 PM1 或更高权限可用
 </details>
 
-### 分类目录相关 API：
+### 分类相关 API：
 <details>
 <summary>GET /api/categories/ ，获取所有分类目录列表</summary>
   
@@ -523,4 +523,45 @@ axum + sqlx + jwt + sqlite
      - url：Option<String>，url 格式
      - text: String
      - parent：Option<u32>，> 0
+</details>
+
+### 附件相关 API：
+<details>
+<summary>GET /api/attachments/ ，获取当前用户所有附件列表</summary>
+  
+ 1. 权限要求：
+    - PM4：禁止
+    - PM3：禁止
+    - PM2：允许
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - 无
+
+  3. 查询参数：
+     - page：u32，>= 1
+     - page_size：u32，>= 1
+     - order_by：String，1 <= 长度 <= 13
+     - private：bool，启用查询所有用户附件，仅 PM1 或更高权限可用
+</details>
+
+<details>
+<summary>POST /api/attachments/ ，新建附件</summary>
+  
+ 1. 权限要求：
+    - PM4：禁止
+    - PM3：禁止
+    - PM2：允许
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - 无
+
+  3. 查询参数：
+     - 无
+
+  4. 提交表单：
+     - file：multipart，multipart/form-data 单个或多个文件，可用 `<input type="file" name="file" multiple>`
 </details>
