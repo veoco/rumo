@@ -45,7 +45,7 @@ impl<'a> ser::Serializer for &'a mut Serializer {
         unimplemented!()
     }
 
-    fn serialize_i64(self, v: i64) -> Result<()> {
+    fn serialize_i64(self, _v: i64) -> Result<()> {
         unimplemented!()
     }
 
