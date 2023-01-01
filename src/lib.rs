@@ -47,7 +47,7 @@ async fn get_state(app_state: Option<AppState>) -> AppState {
                     .expect("Database connect failed");
             let secret_key = env::var("SECRET_KEY").expect("SECRET_KEY is required");
             let access_token_expire_secondes = 3600 * 24 * 30;
-            let upload_root = env::var("UPLOAD_ROOT").expect("UPLOAD_ROOT is required");
+            let upload_root = env::var("UPLOAD_ROOT").unwrap_or(String::from("."));
 
             let table_prefix = env::var("TABLE_PREFIX").unwrap_or("typecho_".to_string());
             let comments_table = format!("{}comments", table_prefix);
