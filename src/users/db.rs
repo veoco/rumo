@@ -70,7 +70,7 @@ pub async fn update_user_by_uid_with_user_modify_for_data_without_password(
         r#"
         UPDATE {users_table}
         SET "name" = ?1, "mail" = ?2, url = ?3, "screenName" = ?4, "group" = ?5
-        WHERE {users_table}."uid" = ?2
+        WHERE {users_table}."uid" = ?6
         "#,
         users_table = &state.users_table
     );
