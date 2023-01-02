@@ -7,16 +7,23 @@ use std::sync::Arc;
 use super::views;
 use crate::AppState;
 
-pub fn comments_routers() -> Router<Arc<AppState>> {
+pub fn comments_routers(ro: bool) -> Router<Arc<AppState>> {
     let comments_route = Router::new()
         .route("/api/comments/", get(views::list_comments))
         .route(
             "/api/pages/:slug/comments/",
-            post(views::create_comment).get(views::list_content_comments_by_slug),
+            get(views::list_content_comments_by_slug),
         )
         .route(
             "/api/posts/:slug/comments/",
-            post(views::create_comment).get(views::list_content_comments_by_slug),
+            get(views::list_content_comments_by_slug),
         );
-    comments_route
+
+    if !ro {
+        comments_route
+            .route("/api/pages/:slug/comments/", post(views::create_comment))
+            .route("/api/posts/:slug/comments/", post(views::create_comment))
+    } else {
+        comments_route
+    }
 }

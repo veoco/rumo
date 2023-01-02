@@ -1,15 +1,19 @@
-use axum::{routing::get, Router};
+use axum::{
+    routing::{get, post},
+    Router,
+};
 use std::sync::Arc;
 
 use super::views;
 use crate::AppState;
 
-pub fn posts_routers() -> Router<Arc<AppState>> {
+pub fn posts_routers(ro: bool) -> Router<Arc<AppState>> {
     let posts_route = Router::new()
-        .route(
-            "/api/posts/",
-            get(views::list_posts).post(views::create_post),
-        )
+        .route("/api/posts/", get(views::list_posts))
         .route("/api/posts/:slug", get(views::get_post_by_slug));
-    posts_route
+    if !ro {
+        posts_route.route("/api/posts/", post(views::create_post))
+    } else {
+        posts_route
+    }
 }

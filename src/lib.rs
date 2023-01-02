@@ -27,6 +27,7 @@ pub struct AppState {
     pub secret_key: String,
     pub access_token_expire_secondes: u64,
     pub upload_root: String,
+    pub read_only: bool,
 
     pub comments_table: String,
     pub contents_table: String,
@@ -48,6 +49,16 @@ async fn get_state(app_state: Option<AppState>) -> AppState {
             let secret_key = env::var("SECRET_KEY").expect("SECRET_KEY is required");
             let access_token_expire_secondes = 3600 * 24 * 30;
             let upload_root = env::var("UPLOAD_ROOT").unwrap_or(String::from("."));
+            let read_only = match env::var("READ_ONLY") {
+                Ok(s) => {
+                    if s == "true" {
+                        true
+                    } else {
+                        false
+                    }
+                }
+                _ => false,
+            };
 
             let table_prefix = env::var("TABLE_PREFIX").unwrap_or("typecho_".to_string());
             let comments_table = format!("{}comments", table_prefix);
@@ -63,6 +74,8 @@ async fn get_state(app_state: Option<AppState>) -> AppState {
                 secret_key,
                 access_token_expire_secondes,
                 upload_root,
+                read_only,
+
                 comments_table,
                 contents_table,
                 fields_table,
@@ -79,14 +92,15 @@ async fn get_state(app_state: Option<AppState>) -> AppState {
 
 pub async fn app(app_state: Option<AppState>) -> Router {
     let state = Arc::new(get_state(app_state).await);
+    let ro = state.read_only;
     let app = Router::new()
-        .merge(users_routers())
-        .merge(categories_routers())
-        .merge(tags_routers())
-        .merge(posts_routers())
-        .merge(pages_routers())
-        .merge(comments_routers())
-        .merge(attachments_routers())
+        .merge(users_routers(ro))
+        .merge(categories_routers(ro))
+        .merge(tags_routers(ro))
+        .merge(posts_routers(ro))
+        .merge(pages_routers(ro))
+        .merge(comments_routers(ro))
+        .merge(attachments_routers(ro))
         .layer(TraceLayer::new_for_http())
         .with_state(state);
     app
