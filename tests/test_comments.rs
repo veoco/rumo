@@ -27,10 +27,10 @@ async fn create_then_list_comments_success() {
         "text": "test comment",
     })
     .to_string();
-    let (status_code, _) = post("/api/comments/test-comment-post", data).await;
+    let (status_code, _) = post("/api/posts/test-comment-post/comments/", data).await;
     assert_eq!(status_code, StatusCode::CREATED);
 
-    let (status_code, body) = get("/api/comments/test-comment-post").await;
+    let (status_code, body) = get("/api/posts/test-comment-post/comments/").await;
     assert_eq!(status_code, StatusCode::OK);
 
     let body = body.unwrap();
