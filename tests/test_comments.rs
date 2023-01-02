@@ -2,7 +2,7 @@ use axum::http::StatusCode;
 use serde_json::json;
 
 mod common;
-use common::{admin_post, get, post};
+use common::{admin_post, admin_get, get, post};
 
 #[tokio::test]
 async fn create_then_list_comments_success() {
@@ -34,6 +34,14 @@ async fn create_then_list_comments_success() {
     assert_eq!(status_code, StatusCode::OK);
 
     let body = body.unwrap();
+    let count = body.get("count").unwrap().as_u64().unwrap();
+    assert!(count > 0);
+
+    let (status_code, body) = admin_get("/api/comments/").await;
+    assert_eq!(status_code, StatusCode::OK);
+
+    let body = body.unwrap();
+    println!("{:?}", body);
     let count = body.get("count").unwrap().as_u64().unwrap();
     assert!(count > 0);
 }
