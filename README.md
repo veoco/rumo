@@ -482,7 +482,26 @@ axum + sqlx + jwt + sqlite
 
 ### 评论相关 API：
 <details>
-<summary>GET /api/comments/:slug ，获取指定 slug 文章的评论列表</summary>
+<summary>GET /api/comments/ ，获取所有评论列表</summary>
+  
+ 1. 权限要求：
+    - PM4：禁止
+    - PM3：禁止
+    - PM2：禁止
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - 无
+
+  3. 查询参数：
+     - page：u32，>= 1
+     - page_size：u32，>= 1
+     - order_by：String，1 <= 长度 <= 13
+</details>
+
+<details>
+<summary>GET /api/pages/:slug/comments/ ，获取指定 slug 页面的评论列表</summary>
   
  1. 权限要求：
     - PM4：允许
@@ -498,11 +517,55 @@ axum + sqlx + jwt + sqlite
      - page：u32，>= 1
      - page_size：u32，>= 1
      - order_by：String，1 <= 长度 <= 13
-     - private：bool，启用查询所有类型文章，仅 PM1 或更高权限可用
+     - private：bool，启用查询所有类型页面的评论，仅 PM1 或更高权限可用
 </details>
 
 <details>
-<summary>POST /api/comments/:slug ，新建指定 slug 文章的评论</summary>
+<summary>POST /api/pages/:slug/comments/ ，新建指定 slug 页面的评论</summary>
+  
+ 1. 权限要求：
+    - PM4：允许
+    - PM3：允许
+    - PM2：允许
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - slug：String
+
+  3. 查询参数：
+     - 无
+
+  4. 提交表单：
+     - author：Option<String>，1 <= 长度 <= 150
+     - mail：Option<String>，邮箱格式
+     - url：Option<String>，url 格式
+     - text: String
+     - parent：Option<u32>，> 0
+</details>
+
+<details>
+<summary>GET /api/posts/:slug/comments/ ，获取指定 slug 文章的评论列表</summary>
+  
+ 1. 权限要求：
+    - PM4：允许
+    - PM3：允许
+    - PM2：允许
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - 无
+
+  3. 查询参数：
+     - page：u32，>= 1
+     - page_size：u32，>= 1
+     - order_by：String，1 <= 长度 <= 13
+     - private：bool，启用查询所有类型文章的评论，仅 PM1 或更高权限可用
+</details>
+
+<details>
+<summary>POST /api/posts/:slug/comments/ ，新建指定 slug 文章的评论</summary>
   
  1. 权限要求：
     - PM4：允许
