@@ -8,11 +8,7 @@ use sha2::Sha256;
 use std::sync::Arc;
 use std::time::SystemTime;
 
-use super::db::{
-    create_user_with_user_register, get_user_by_uid, get_users_by_list_query, get_users_count,
-    update_user_by_uid_for_activity, update_user_by_uid_for_password,
-    update_user_by_uid_with_user_modify_for_data_without_password,
-};
+use super::db;
 use super::errors::{AuthError, FieldError};
 use super::extractors::{PMAdministrator, PMSubscriber, ValidatedJson, ValidatedQuery};
 use super::models::{TokenData, UserLogin, UserModify, UserRegister, UsersQuery};
@@ -35,7 +31,7 @@ pub async fn login_for_access_token(
         };
         let access_token = token_data.sign_with_key(&key).unwrap();
 
-        update_user_by_uid_for_activity(&state, user.uid, now as u32).await;
+        db::update_user_by_uid_for_activity(&state, user.uid, now as u32).await;
 
         return Ok(Json(
             json!({"access_token": access_token, "token_type": "Bearer"}),
@@ -48,7 +44,7 @@ pub async fn register(
     State(state): State<Arc<AppState>>,
     ValidatedJson(user_register): ValidatedJson<UserRegister>,
 ) -> Result<(StatusCode, Json<Value>), FieldError> {
-    let row_id = create_user_with_user_register(&state, &user_register).await?;
+    let row_id = db::create_user_with_user_register(&state, &user_register).await?;
     return Ok((StatusCode::CREATED, Json(json!({ "id": row_id }))));
 }
 
@@ -57,7 +53,7 @@ pub async fn list_users(
     PMAdministrator(_): PMAdministrator,
     ValidatedQuery(q): ValidatedQuery<UsersQuery>,
 ) -> Result<Json<Value>, FieldError> {
-    let all_count = get_users_count(&state).await;
+    let all_count = db::get_users_count(&state).await;
 
     let page = q.page.unwrap_or(1);
     let page_size = q.page_size.unwrap_or(10);
@@ -74,7 +70,7 @@ pub async fn list_users(
         f => return Err(FieldError::InvalidParams(f.to_string())),
     };
 
-    let users = get_users_by_list_query(&state, page_size, offset, order_by).await?;
+    let users = db::get_users_by_list_query(&state, page_size, offset, order_by).await?;
     Ok(Json(json!({
         "page": page,
         "page_size": page_size,
@@ -95,7 +91,7 @@ pub async fn get_user_by_id(
 
     if user.group == "administrator" {
         let uid = uid.to_string();
-        if let Some(mut target_user) = get_user_by_uid(&state, &uid).await {
+        if let Some(mut target_user) = db::get_user_by_uid(&state, &uid).await {
             target_user.password = None;
             Ok(Json(json!(target_user)))
         } else {
@@ -119,11 +115,11 @@ pub async fn modify_user_by_id(
         }
 
         let uid = uid.to_string();
-        let exist_user = get_user_by_uid(&state, &uid).await;
+        let exist_user = db::get_user_by_uid(&state, &uid).await;
 
         if exist_user.is_some() {
             if user_modify.password.is_none() {
-                let row_id = update_user_by_uid_with_user_modify_for_data_without_password(
+                let row_id = db::update_user_by_uid_with_user_modify_for_data_without_password(
                     &state,
                     &uid,
                     &user_modify,
@@ -137,7 +133,7 @@ pub async fn modify_user_by_id(
                 let hashed_password = hash(&password);
 
                 let row_id =
-                    update_user_by_uid_for_password(&state, &uid, &hashed_password).await?;
+                    db::update_user_by_uid_for_password(&state, &uid, &hashed_password).await?;
                 Ok(Json(json!({
                     "msg": format!("{} password changed", row_id)
                 })))
