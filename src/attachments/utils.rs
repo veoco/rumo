@@ -53,15 +53,3 @@ where
     .await
     .map_err(|_| FieldError::InvalidParams("files".to_string()))
 }
-
-pub fn get_mime(ext: &str) -> Option<String> {
-    let s = match ext {
-        "png" => "image/png",
-        "gif" => "image/gif",
-        "jpg" | "jpeg" => "image/jpeg",
-        "webp" => "image/webp",
-        "bmp" => "image/bmp",
-        _ => return None,
-    };
-    Some(s.to_string())
-}

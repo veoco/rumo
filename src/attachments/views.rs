@@ -8,86 +8,82 @@ use std::sync::Arc;
 
 use super::models::{Attachment, AttachmentInfo, AttachmentText, AttachmentsQuery};
 use super::ser::to_string;
-use super::utils::{get_mime, stream_to_file};
+use super::utils::stream_to_file;
 use crate::users::errors::FieldError;
 use crate::users::extractors::{PMContributor, ValidatedQuery};
 use crate::AppState;
 
-pub async fn create_attachments(
+pub async fn create_attachment(
     State(state): State<Arc<AppState>>,
     PMContributor(user): PMContributor,
     mut multipart: Multipart,
 ) -> Result<(StatusCode, Json<Value>), FieldError> {
     let now = Local::now();
-    let mut resutls = vec![];
 
-    while let Some(field) = multipart.next_field().await.unwrap_or(None) {
-        let file_name = if let Some(file_name) = field.file_name() {
-            file_name.to_owned()
-        } else {
-            continue;
-        };
+    let field = match multipart.next_field().await {
+        Ok(Some(f)) => f,
+        _ => return Err(FieldError::InvalidParams("file".to_string())),
+    };
 
-        if let Some(dot_pos) = file_name.find(".") {
-            let ext = &file_name[dot_pos + 1..];
-            let mime = match get_mime(ext) {
-                Some(m) => m,
-                None => continue,
-            };
+    let file_name = match field.file_name() {
+        Some(f) => f.to_string(),
+        None => return Err(FieldError::InvalidParams("file".to_string())),
+    };
 
-            let rand_fname: u64 = rand::thread_rng().gen_range(1_000_000_000..9_999_999_999);
-            let name = format!("{rand_fname}.{ext}");
+    let content_type = match field.content_type() {
+        Some(f) => f.to_string(),
+        None => return Err(FieldError::InvalidParams("file".to_string())),
+    };
 
-            let path = format!("usr/uploads/{}/{}/{}", now.year(), now.month(), name);
-            let base_dir = std::path::Path::new(&state.upload_root).join(&path);
-            let size = stream_to_file(base_dir, &name, field).await?;
+    let dot_pos = match file_name.find(".") {
+        Some(f) => f,
+        None => return Err(FieldError::InvalidParams("file".to_string())),
+    };
+    let ext = (&file_name[dot_pos + 1..]).to_string();
 
-            let name = file_name.clone();
-            let path = format!("/{path}");
-            let r#type = ext.to_string();
-            let text = AttachmentText {
-                name,
-                path,
-                size,
-                r#type,
-                mime,
-            };
-            let attachment_text = match to_string(&text) {
-                Ok(t) => t,
-                Err(_) => return Err(FieldError::InvalidParams(file_name)),
-            };
-            let now_timestamp = now.timestamp();
+    let rand_name: u64 = rand::thread_rng().gen_range(1_000_000_000..9_999_999_999);
+    let name = format!("{rand_name}.{ext}");
 
-            let insert_sql = format!(
-                r#"
-                INSERT INTO {contents_table} ("type", "title", "slug", "created", "modified", "text", "authorId")
-                VALUES ('attachment', ?1, ?1, ?2, ?2, ?3, ?4)
-                "#,
-                contents_table = &state.contents_table,
-            );
-            if let Ok(r) = sqlx::query(&insert_sql)
-                .bind(&text.name)
-                .bind(now_timestamp)
-                .bind(attachment_text)
-                .bind(user.uid)
-                .execute(&state.pool)
-                .await
-            {
-                let cid = r.last_insert_rowid();
-                let res = AttachmentInfo::from_attachment_text(
-                    text,
-                    cid as u32,
-                    now_timestamp as u32,
-                    now_timestamp as u32,
-                );
-                resutls.push(res);
-            }
-        } else {
-            return Err(FieldError::InvalidParams(file_name));
-        }
+    let path = format!("usr/uploads/{}/{}/{}", now.year(), now.month(), name);
+    let base_dir = std::path::Path::new(&state.upload_root).join(&path);
+    let size = stream_to_file(base_dir, &name, field).await?;
+
+    let path = format!("/{path}");
+    let text = AttachmentText {
+        name: file_name,
+        path,
+        size,
+        r#type: ext,
+        mime: content_type,
+    };
+    let attachment_text = match to_string(&text) {
+        Ok(t) => t,
+        Err(_) => return Err(FieldError::InvalidParams("file".to_string())),
+    };
+    let now_timestamp = now.timestamp() as u32;
+
+    let insert_sql = format!(
+        r#"
+        INSERT INTO {contents_table} ("type", "title", "slug", "created", "modified", "text", "authorId")
+        VALUES ('attachment', ?1, ?1, ?2, ?2, ?3, ?4)
+        "#,
+        contents_table = &state.contents_table,
+    );
+    if let Ok(r) = sqlx::query(&insert_sql)
+        .bind(&text.name)
+        .bind(now_timestamp)
+        .bind(attachment_text)
+        .bind(user.uid)
+        .execute(&state.pool)
+        .await
+    {
+        let cid = r.last_insert_rowid();
+        let res =
+            AttachmentInfo::from_attachment_text(text, cid as u32, now_timestamp, now_timestamp);
+        return Ok((StatusCode::CREATED, Json(json!({ "msg": res }))));
     }
 
-    Ok((StatusCode::CREATED, Json(json!({ "results": resutls }))))
+    Err(FieldError::InvalidParams("file".to_string()))
 }
 
 pub async fn list_attachments(

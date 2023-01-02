@@ -563,5 +563,5 @@ axum + sqlx + jwt + sqlite
      - 无
 
   4. 提交表单：
-     - file：multipart，multipart/form-data 单个或多个文件，可用 `<input type="file" name="file" multiple>`
+     - file：multipart，multipart/form-data 单个文件，可用 `<input type="file" name="file">`
 </details>
