@@ -48,6 +48,7 @@ async fn setup_app(state: AppState) -> Router {
     app(Some(state)).await
 }
 
+#[allow(dead_code)]
 pub async fn get(url: &str) -> (StatusCode, Option<Value>) {
     let state = setup_state().await;
     let app = setup_app(state.clone()).await;
