@@ -10,6 +10,7 @@ use md5::{Digest, Md5};
 use rand::Rng;
 use sha2::Sha256;
 
+use super::db::{get_user_by_mail, get_user_by_uid};
 use super::errors::AuthError;
 use super::models::{TokenData, User, UserLogin};
 use crate::AppState;
@@ -93,19 +94,7 @@ pub fn hash(password: &str) -> String {
 }
 
 pub async fn authenticate_user(state: &AppState, user_login: &UserLogin) -> Option<User> {
-    let user_sql = format!(
-        r#"
-        SELECT *
-        FROM {users_table}
-        WHERE {users_table}."mail" = ?1
-        "#,
-        users_table = &state.users_table
-    );
-    if let Ok(user) = sqlx::query_as::<_, User>(&user_sql)
-        .bind(&user_login.mail)
-        .fetch_one(&state.pool)
-        .await
-    {
+    if let Some(user) = get_user_by_mail(&state, &user_login.mail).await {
         let user_password = user.password.clone().unwrap_or(String::from(""));
         let valid = verify(&user_login.password, &user_password);
         if valid {
@@ -121,7 +110,7 @@ pub async fn get_user(parts: &mut Parts, state: AppState) -> Result<User, AuthEr
         .await
         .map_err(|_| AuthError::InvalidToken)?;
 
-    let secret_key = state.secret_key;
+    let secret_key = &state.secret_key;
 
     let key: Hmac<Sha256> =
         Hmac::new_from_slice(secret_key.as_bytes()).map_err(|_| AuthError::InvalidToken)?;
@@ -131,20 +120,7 @@ pub async fn get_user(parts: &mut Parts, state: AppState) -> Result<User, AuthEr
         .map_err(|_| AuthError::InvalidToken)?;
 
     let user_id = token_data.sub;
-    let user_sql = format!(
-        r#"
-        SELECT *
-        FROM {users_table}
-        WHERE {users_table}."uid" == ?1
-        ORDER BY {users_table}."uid"
-        "#,
-        users_table = &state.users_table
-    );
-    if let Ok(user) = sqlx::query_as::<_, User>(&user_sql)
-        .bind(user_id)
-        .fetch_one(&state.pool)
-        .await
-    {
+    if let Some(user) = get_user_by_uid(&state, &user_id).await {
         return Ok(user);
     }
     Err(AuthError::InvalidToken)
