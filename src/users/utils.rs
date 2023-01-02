@@ -9,7 +9,6 @@ use jwt::VerifyWithKey;
 use md5::{Digest, Md5};
 use rand::Rng;
 use sha2::Sha256;
-use sqlx::sqlite::SqlitePool;
 
 use super::errors::AuthError;
 use super::models::{TokenData, User, UserLogin};
@@ -93,17 +92,19 @@ pub fn hash(password: &str) -> String {
     hashed_password
 }
 
-pub async fn authenticate_user(pool: &SqlitePool, user_login: &UserLogin) -> Option<User> {
-    if let Ok(user) = sqlx::query_as::<_, User>(
+pub async fn authenticate_user(state: &AppState, user_login: &UserLogin) -> Option<User> {
+    let user_sql = format!(
         r#"
-SELECT *
-FROM typecho_users
-WHERE mail = ?1
+        SELECT *
+        FROM {users_table}
+        WHERE {users_table}."mail" = ?1
         "#,
-    )
-    .bind(&user_login.mail)
-    .fetch_one(pool)
-    .await
+        users_table = &state.users_table
+    );
+    if let Ok(user) = sqlx::query_as::<_, User>(&user_sql)
+        .bind(&user_login.mail)
+        .fetch_one(&state.pool)
+        .await
     {
         let user_password = user.password.clone().unwrap_or(String::from(""));
         let valid = verify(&user_login.password, &user_password);
@@ -130,16 +131,19 @@ pub async fn get_user(parts: &mut Parts, state: AppState) -> Result<User, AuthEr
         .map_err(|_| AuthError::InvalidToken)?;
 
     let user_id = token_data.sub;
-    if let Ok(user) = sqlx::query_as::<_, User>(
+    let user_sql = format!(
         r#"
-    SELECT *
-    FROM typecho_users
-    ORDER BY uid
-            "#,
-    )
-    .bind(user_id)
-    .fetch_one(&state.pool)
-    .await
+        SELECT *
+        FROM {users_table}
+        WHERE {users_table}."uid" == ?1
+        ORDER BY {users_table}."uid"
+        "#,
+        users_table = &state.users_table
+    );
+    if let Ok(user) = sqlx::query_as::<_, User>(&user_sql)
+        .bind(user_id)
+        .fetch_one(&state.pool)
+        .await
     {
         return Ok(user);
     }

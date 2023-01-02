@@ -18,7 +18,7 @@ pub async fn login_for_access_token(
     State(state): State<Arc<AppState>>,
     ValidatedJson(user_login): ValidatedJson<UserLogin>,
 ) -> Result<Json<Value>, AuthError> {
-    if let Some(user) = authenticate_user(&state.pool, &user_login).await {
+    if let Some(user) = authenticate_user(&state, &user_login).await {
         let key: Hmac<Sha256> = Hmac::new_from_slice(state.secret_key.as_bytes()).unwrap();
         let now = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
