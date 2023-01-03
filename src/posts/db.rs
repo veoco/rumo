@@ -248,6 +248,6 @@ pub async fn get_post_by_slug_and_private(
         .await
     {
         Ok(post) => Ok(post),
-        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
+        Err(_) => Err(FieldError::InvalidParams("slug".to_string())),
     }
 }
