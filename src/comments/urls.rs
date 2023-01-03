@@ -12,17 +12,23 @@ pub fn comments_routers(ro: bool) -> Router<Arc<AppState>> {
         .route("/api/comments/", get(views::list_comments))
         .route(
             "/api/pages/:slug/comments/",
-            get(views::list_content_comments_by_slug),
+            get(views::list_page_comments_by_slug),
         )
         .route(
             "/api/posts/:slug/comments/",
-            get(views::list_content_comments_by_slug),
+            get(views::list_post_comments_by_slug),
         );
 
     if !ro {
         comments_route
-            .route("/api/pages/:slug/comments/", post(views::create_comment))
-            .route("/api/posts/:slug/comments/", post(views::create_comment))
+            .route(
+                "/api/pages/:slug/comments/",
+                post(views::create_page_comment),
+            )
+            .route(
+                "/api/posts/:slug/comments/",
+                post(views::create_post_comment),
+            )
     } else {
         comments_route
     }
