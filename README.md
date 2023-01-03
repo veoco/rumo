@@ -34,10 +34,10 @@ axum + sqlx + jwt + sqlite
 
 配置通过以下环境变量获取：
 
-`DATABASE_URL`：必选，数据库 URL，当前仅支持 sqlite
-`SECRET_KEY`：必选，密钥字符串，用于 jwt 加密
-`UPLOAD_ROOT`：可选，文件上传根目录，相当于原版 usr 文件夹所在目录，默认为当前工作目录。
-`READ_ONLY`：可选，只读模式将关闭所有写入 api，默认为 false。
+- `DATABASE_URL`：必选，数据库 URL，当前仅支持 sqlite
+- `SECRET_KEY`：必选，密钥字符串，用于 jwt 加密
+- `UPLOAD_ROOT`：可选，文件上传根目录，相当于原版 usr 文件夹所在目录，默认为当前工作目录。
+- `READ_ONLY`：可选，只读模式将关闭所有写入 api，默认为 false。
 
 以下是 `systemd` 参考配置：
 
