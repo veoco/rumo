@@ -6,7 +6,8 @@ use rand::Rng;
 use serde_json::{json, Value};
 use std::sync::Arc;
 
-use super::models::{Attachment, AttachmentInfo, AttachmentText, AttachmentsQuery};
+use super::db;
+use super::models::{AttachmentInfo, AttachmentText, AttachmentsQuery};
 use super::ser::to_string;
 use super::utils::stream_to_file;
 use crate::users::errors::FieldError;
@@ -62,28 +63,17 @@ pub async fn create_attachment(
     };
     let now_timestamp = now.timestamp() as u32;
 
-    let insert_sql = format!(
-        r#"
-        INSERT INTO {contents_table} ("type", "title", "slug", "created", "modified", "text", "authorId")
-        VALUES ('attachment', ?1, ?1, ?2, ?2, ?3, ?4)
-        "#,
-        contents_table = &state.contents_table,
-    );
-    if let Ok(r) = sqlx::query(&insert_sql)
-        .bind(&text.name)
-        .bind(now_timestamp)
-        .bind(attachment_text)
-        .bind(user.uid)
-        .execute(&state.pool)
-        .await
-    {
-        let cid = r.last_insert_rowid();
-        let res =
-            AttachmentInfo::from_attachment_text(text, cid as u32, now_timestamp, now_timestamp);
-        return Ok((StatusCode::CREATED, Json(json!({ "msg": res }))));
-    }
-
-    Err(FieldError::InvalidParams("file".to_string()))
+    let row_id = db::create_attachment_with_params(
+        &state,
+        &text.name,
+        now_timestamp,
+        &attachment_text,
+        user.uid,
+    )
+    .await?;
+    let res =
+        AttachmentInfo::from_attachment_text(text, row_id as u32, now_timestamp, now_timestamp);
+    Ok((StatusCode::CREATED, Json(json!({ "msg": res }))))
 }
 
 pub async fn list_attachments(
@@ -104,19 +94,7 @@ pub async fn list_attachments(
         )
     };
 
-    let all_sql = format!(
-        r#"
-        SELECT COUNT(*)
-        FROM {contents_table}
-        WHERE {contents_table}.type == 'attachment'{}
-        "#,
-        private_sql,
-        contents_table = &state.contents_table,
-    );
-    let all_count = sqlx::query_scalar::<_, i32>(&all_sql)
-        .fetch_one(&state.pool)
-        .await
-        .unwrap_or(0);
+    let all_count = db::get_attachments_count_with_private(&state, &private_sql).await;
 
     let page = q.page.unwrap_or(1);
     let page_size = q.page_size.unwrap_or(10);
@@ -131,38 +109,22 @@ pub async fn list_attachments(
         f => return Err(FieldError::InvalidParams(f.to_string())),
     };
 
-    let sql = format!(
-        r#"
-        SELECT *
-        FROM {contents_table}
-        WHERE {contents_table}."type" == 'attachment'{}
-        ORDER BY {}
-        LIMIT ?1 OFFSET ?2"#,
-        private_sql,
-        order_by,
-        contents_table = &state.contents_table,
-    );
-    match sqlx::query_as::<_, Attachment>(&sql)
-        .bind(page_size)
-        .bind(offset)
-        .fetch_all(&state.pool)
-        .await
-    {
-        Ok(ats) => {
-            let mut results = vec![];
-            for at in ats {
-                let attachment_info = AttachmentInfo::from_attachment(at)
-                    .map_err(|_| FieldError::InvalidParams("text".to_string()))?;
-                results.push(attachment_info);
-            }
-            return Ok(Json(json!({
-                "page": page,
-                "page_size": page_size,
-                "all_count": all_count,
-                "count": results.len(),
-                "results": results
-            })));
-        }
-        Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
+    let attachments =
+        db::get_attachments_count_by_list_query(&state, &private_sql, page_size, offset, order_by)
+            .await?;
+
+    let mut results = vec![];
+    for at in attachments {
+        let attachment_info = AttachmentInfo::from_attachment(at)
+            .map_err(|_| FieldError::InvalidParams("text".to_string()))?;
+        results.push(attachment_info);
     }
+
+    Ok(Json(json!({
+        "page": page,
+        "page_size": page_size,
+        "all_count": all_count,
+        "count": results.len(),
+        "results": results
+    })))
 }

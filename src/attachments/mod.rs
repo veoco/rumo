@@ -1,9 +1,10 @@
+mod db;
 mod de;
 mod errors;
 pub mod models;
 mod ser;
 mod urls;
-mod views;
 mod utils;
+mod views;
 
 pub use urls::attachments_routers;
