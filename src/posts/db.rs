@@ -1,4 +1,6 @@
-use super::models::Post;
+use std::time::SystemTime;
+
+use super::models::{Post, PostCreate, PostWithMeta};
 use crate::users::errors::FieldError;
 use crate::AppState;
 
@@ -122,6 +124,130 @@ pub async fn create_relationship_by_cid_and_mid(
         .await
     {
         Ok(r) => Ok(r.last_insert_rowid()),
+        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
+    }
+}
+
+pub async fn create_post_by_post_create_with_uid(
+    state: &AppState,
+    post_create: &PostCreate,
+    uid: u32,
+) -> Result<i64, FieldError> {
+    let now = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as u32;
+
+    let insert_sql = format!(
+        r#"
+        INSERT INTO {contents_table} ("type", "title", "slug", "created", "modified", "text", "authorId", "template", "status", "password", "allowComment", "allowPing", "allowFeed")
+        VALUES ('post', ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
+        "#,
+        contents_table = &state.contents_table,
+    );
+    match sqlx::query(&insert_sql)
+        .bind(&post_create.title)
+        .bind(&post_create.slug)
+        .bind(&post_create.created)
+        .bind(now)
+        .bind(&post_create.text)
+        .bind(uid)
+        .bind(&post_create.template)
+        .bind(&post_create.status)
+        .bind(&post_create.password)
+        .bind(&post_create.allowComment)
+        .bind(&post_create.allowPing)
+        .bind(&post_create.allowFeed)
+        .execute(&state.pool)
+        .await
+    {
+        Ok(r) => Ok(r.last_insert_rowid()),
+        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
+    }
+}
+
+pub async fn get_posts_count_by_filter(state: &AppState, filter_sql: &str) -> i32 {
+    let all_sql = format!(
+        r#"
+        SELECT COUNT(*)
+        FROM {contents_table}
+        WHERE {contents_table}."type" == 'post'{}
+        "#,
+        filter_sql,
+        contents_table = &state.contents_table,
+    );
+    let all_count = sqlx::query_scalar::<_, i32>(&all_sql)
+        .fetch_one(&state.pool)
+        .await
+        .unwrap_or(0);
+    all_count
+}
+
+pub async fn get_posts_by_filter_and_list_query(
+    state: &AppState,
+    filter_sql: &str,
+    page_size: u32,
+    offset: u32,
+    order_by: &str,
+) -> Result<Vec<PostWithMeta>, FieldError> {
+    let with_sql = get_with_sql(state);
+    let sql = format!(
+        r#"
+        {with_sql}
+        SELECT {contents_table}.*, "tags", "categories", "fields", {users_table}."screenName", {users_table}."group"
+        FROM {contents_table}
+        LEFT OUTER JOIN categories_json ON {contents_table}."cid" == categories_json."cid"
+        LEFT OUTER JOIN tags_json ON {contents_table}."cid" == tags_json."cid"
+        LEFT OUTER JOIN fields_json ON {contents_table}."cid" == fields_json."cid"
+        LEFT OUTER JOIN {users_table} ON {contents_table}."authorId" == {users_table}."uid"
+        WHERE {contents_table}."type" == 'post'{}
+        GROUP BY {contents_table}."cid"
+        ORDER BY {contents_table}.{}
+        LIMIT ?1 OFFSET ?2"#,
+        filter_sql,
+        order_by,
+        contents_table = &state.contents_table,
+        users_table = &state.users_table
+    );
+
+    match sqlx::query_as::<_, PostWithMeta>(&sql)
+        .bind(page_size)
+        .bind(offset)
+        .fetch_all(&state.pool)
+        .await
+    {
+        Ok(posts) => Ok(posts),
+        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
+    }
+}
+
+pub async fn get_post_by_slug_and_private(
+    state: &AppState,
+    slug: &str,
+    private_sql: &str,
+) -> Result<PostWithMeta, FieldError> {
+    let with_sql = get_with_sql(state);
+    let sql = format!(
+        r#"
+        {with_sql}
+        SELECT {contents_table}.*, "tags", "categories", "fields", {users_table}."screenName", {users_table}."group"
+        FROM {contents_table}
+        LEFT OUTER JOIN categories_json ON {contents_table}."cid" == categories_json."cid"
+        LEFT OUTER JOIN tags_json ON {contents_table}."cid" == tags_json."cid"
+        LEFT OUTER JOIN fields_json ON {contents_table}."cid" == fields_json."cid"
+        LEFT OUTER JOIN {users_table} ON {contents_table}.authorId == {users_table}."uid"
+        WHERE {contents_table}."type" == 'post' AND {contents_table}."slug" == ?1{}"#,
+        private_sql,
+        contents_table = &state.contents_table,
+        users_table = &state.users_table
+    );
+
+    match sqlx::query_as::<_, PostWithMeta>(&sql)
+        .bind(slug)
+        .fetch_one(&state.pool)
+        .await
+    {
+        Ok(post) => Ok(post),
         Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
     }
 }
