@@ -18,18 +18,48 @@ axum + sqlx + jwt + sqlite
 
 ## 路线图
 
-**起步 - v0.5：**
+**起步 - v0.5（已完成）：**
 
-仅支持 sqlite，完成用户、文章与页面、标签与分类、附件、评论五大模块的读取 API，以及部分必须的写入 API，预期 v0.5 版本 rumo 可以用作前端主题开发，但仍无法脱离原版 typecho。
-
+仅支持 sqlite，完成主要读取 API，v0.5 版本可以用作前端主题开发。
 
 **v0.5 - v1.0：**
 
-完成五大模块写入 API，添加 mariadb 和 postgresql 支持，预期 v1.0 版本可以完全替代原版。
+完善读取和写入 API，添加 mariadb 和 postgresql 支持，预期 v1.0 版本可以完全替代原版。
 
 **v1.0 以后：**
 
 待定
+
+## 使用方法
+
+配置通过以下环境变量获取：
+
+`DATABASE_URL`：必选，数据库 URL，当前仅支持 sqlite
+`SECRET_KEY`：必选，密钥字符串，用于 jwt 加密
+`UPLOAD_ROOT`：可选，文件上传根目录，相当于原版 usr 文件夹所在目录，默认为当前工作目录。
+`READ_ONLY`：可选，只读模式将关闭所有写入 api，默认为 false。
+
+以下是 `systemd` 参考配置：
+
+```
+[Unit]
+Description=rumo
+After=network.target
+
+[Service]
+Environment="DATABASE_URL=sqlite:data.db"
+Environment="SECRET_KEY=fake-key"
+Environment="UPLOAD_ROOT=/opt/rumo"
+Environment="READ_ONLY=false"
+Environment="RUST_LOG=ERROR"
+WorkingDirectory=/opt/rumo
+ExecStart=/opt/rumo/rumo run
+User=rumo
+Group=rumo
+
+[Install]
+WantedBy=multi-user.target
+```
 
 ## API 列表
 
