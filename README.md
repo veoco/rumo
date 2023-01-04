@@ -182,7 +182,7 @@ WantedBy=multi-user.target
 <details>
 <summary>GET /api/pages/ ，获取所有页面列表</summary>
 
-  1. 权限要求：
+ 1. 权限要求：
     - PM4：允许
     - PM3：允许
     - PM2：允许
@@ -190,19 +190,19 @@ WantedBy=multi-user.target
     - PM0：允许
 
   2. 路径参数：
-    - 无
+     - 无
 
   3. 查询参数：
-    - page：u32，>= 1
-    - page_size：u32，>= 1
-    - order_by：String，1 <= 长度 <= 13
-    - private：Option<bool>，启用查询所有类型页面，默认 false，仅 PM1 或更高权限可用
+     - page：u32，>= 1
+     - page_size：u32，>= 1
+     - order_by：String，1 <= 长度 <= 13
+     - private：Option<bool>，启用查询所有类型页面，默认 false，仅 PM1 或更高权限可用
 </details>
 
 <details>
 <summary>POST /api/pages/ ，新建页面</summary>
   
-  1. 权限要求：
+ 1. 权限要求：
     - PM4：禁止
     - PM3：禁止
     - PM2：禁止
@@ -210,27 +210,27 @@ WantedBy=multi-user.target
     - PM0：允许
 
   2. 路径参数：
-    - 无
+     - 无
 
   3. 查询参数：
-    - 无
+     - 无
 
   4. 提交表单：
-    - title：String，1 <= 长度 <= 150
-    - slug：String，1 <= 长度 <= 150
-    - created：u32，unix 时间戳，精确到秒
-    - text：String
-    - template：Option<String>，1 <= 长度 <= 16
-    - publish：Option<bool>，默认 true
-    - allowComment：Option<bool>，默认 true
-    - allowPing：Option<bool>，默认 true
-    - allowFeed：Option<bool>，默认 true
+     - title：String，1 <= 长度 <= 150
+     - slug：String，1 <= 长度 <= 150
+     - created：u32，unix 时间戳，精确到秒
+     - text：String
+     - template：Option<String>，1 <= 长度 <= 16
+     - publish：Option<bool>，默认 true
+     - allowComment：Option<bool>，默认 true
+     - allowPing：Option<bool>，默认 true
+     - allowFeed：Option<bool>，默认 true
 </details>
 
 <details>
 <summary>GET /api/pages/:slug ，获取指定 slug 页面详情，隐藏页面仅 PM1 或更高权限可获取</summary>
   
-  1. 权限要求：
+ 1. 权限要求：
     - PM4：允许
     - PM3：允许
     - PM2：允许
@@ -238,10 +238,10 @@ WantedBy=multi-user.target
     - PM0：允许
 
   2. 路径参数：
-    - slug：String
+     - slug：String
 
   3. 查询参数：
-    - 无
+     - 无
 </details>
 
 ### 文章相关 API：
