@@ -1,6 +1,7 @@
 use std::time::SystemTime;
 
 use super::models::{FieldCreate, Page, PageCreate, PageWithMeta};
+use crate::posts::models::Field;
 use crate::users::errors::FieldError;
 use crate::AppState;
 
@@ -250,11 +251,9 @@ pub async fn get_page_with_meta_by_slug(
     }
 }
 
-pub async fn create_field_by_cid_with_field_create(
-    state: &AppState,
-    cid: u32,
+fn get_field_params(
     field_create: &FieldCreate,
-) -> Result<i64, FieldError> {
+) -> Result<(String, Option<String>, i32, f32), FieldError> {
     let str_value;
     let int_value;
     let float_value;
@@ -293,6 +292,15 @@ pub async fn create_field_by_cid_with_field_create(
         }
         _ => return Err(FieldError::InvalidParams("type".to_string())),
     };
+    Ok((field_type.to_string(), str_value, int_value, float_value))
+}
+
+pub async fn create_field_by_cid_with_field_create(
+    state: &AppState,
+    cid: u32,
+    field_create: &FieldCreate,
+) -> Result<i64, FieldError> {
+    let (field_type, str_value, int_value, float_value) = get_field_params(&field_create)?;
 
     let insert_sql = format!(
         r#"
@@ -304,10 +312,67 @@ pub async fn create_field_by_cid_with_field_create(
     match sqlx::query(&insert_sql)
         .bind(cid)
         .bind(&field_create.name)
-        .bind(field_type)
+        .bind(&field_type)
         .bind(str_value)
         .bind(int_value)
         .bind(float_value)
+        .execute(&state.pool)
+        .await
+    {
+        Ok(r) => Ok(r.last_insert_rowid()),
+        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
+    }
+}
+
+pub async fn get_field_by_cid_and_name(state: &AppState, cid: u32, name: &str) -> Option<Field> {
+    let select_sql = format!(
+        r#"
+        SELECT *
+        FROM {fields_table}
+        WHERE {fields_table}."cid" == ?1 AND {fields_table}."name" == ?2
+        "#,
+        fields_table = &state.fields_table,
+    );
+    if let Ok(field) = sqlx::query_as::<_, Field>(&select_sql)
+        .bind(cid)
+        .bind(name)
+        .fetch_one(&state.pool)
+        .await
+    {
+        Some(field)
+    } else {
+        None
+    }
+}
+
+pub async fn modify_field_by_cid_and_name_with_field_create(
+    state: &AppState,
+    cid: u32,
+    name: &str,
+    field_create: &FieldCreate,
+) -> Result<i64, FieldError> {
+    let (field_type, str_value, int_value, float_value) = get_field_params(&field_create)?;
+
+    let insert_sql = format!(
+        r#"
+        UPDATE {fields_table}
+        SET "name" = ?1,
+            "type" = ?2,
+            "str_value" = ?3,
+            "int_value" = ?4,
+            "float_value" = ?5
+        WHERE "cid" == ?6 and "name" = ?7
+        "#,
+        fields_table = &state.fields_table,
+    );
+    match sqlx::query(&insert_sql)
+        .bind(&field_create.name)
+        .bind(&field_type)
+        .bind(str_value)
+        .bind(int_value)
+        .bind(float_value)
+        .bind(cid)
+        .bind(name)
         .execute(&state.pool)
         .await
     {

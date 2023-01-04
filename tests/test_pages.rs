@@ -128,3 +128,48 @@ async fn create_then_get_page_field_success() {
     let count = body.get("fields").unwrap().as_array().unwrap().len();
     assert!(count == 3);
 }
+
+#[tokio::test]
+async fn create_then_modify_page_field_success() {
+    let data = json!({
+        "title": "testPageFieldModify",
+        "slug": "test-page-field-modify",
+        "created": 1666666666,
+        "text": "testText",
+    })
+    .to_string();
+    let (status_code, _) = admin_post("/api/pages/", data).await;
+    assert_eq!(status_code, StatusCode::CREATED);
+
+    let data = json!({
+        "name": "test_str",
+        "type": "str",
+        "str_value": "test-str-feild",
+    })
+    .to_string();
+    let (status_code, _) = admin_post("/api/pages/test-page-field-modify/fields/", data).await;
+    assert_eq!(status_code, StatusCode::CREATED);
+
+    let (status_code, body) = get("/api/pages/test-page-field-modify/fields/test_str").await;
+    assert_eq!(status_code, StatusCode::OK);
+
+    let body = body.unwrap();
+    let value = body.get("str_value").unwrap().as_str().unwrap();
+    assert!(value == "test-str-feild");
+
+    let data = json!({
+        "name": "test_str",
+        "type": "str",
+        "str_value": "test-str-feild-modified",
+    })
+    .to_string();
+    let (status_code, _) = admin_patch("/api/pages/test-page-field/fields/test_str", data).await;
+    assert_eq!(status_code, StatusCode::OK);
+
+    let (status_code, body) = get("/api/pages/test-page-field/fields/test_str").await;
+    assert_eq!(status_code, StatusCode::OK);
+
+    let body = body.unwrap();
+    let value = body.get("str_value").unwrap().as_str().unwrap();
+    assert!(value == "test-str-feild-modified");
+}

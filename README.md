@@ -255,7 +255,7 @@ WantedBy=multi-user.target
     - PM0：允许
 
   2. 路径参数：
-     - 无
+     - slug：String
 
   3. 查询参数：
      - 无
@@ -283,7 +283,53 @@ WantedBy=multi-user.target
     - PM0：允许
 
   2. 路径参数：
+     - slug：String
+
+  3. 查询参数：
      - 无
+
+  4. 提交表单：
+     - name：String，1 <= 长度 <= 150
+     - type：String，1 <= 长度 <= 8
+     - str_value：Option<String>，仅当 type 为 str 时有效
+     - int_value：Option<i32>，仅当 type 为 int 时有效
+     - float_value：Option<f32>，仅当 type 为 float 时有效
+</details>
+
+<details>
+<summary>GET /api/pages/:slug/fields/:name ，获取指定 slug 页面中指定 name 的 field</summary>
+  
+ 1. 权限要求：
+    - PM4：允许
+    - PM3：允许
+    - PM2：允许
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - slug：String
+     - name：String
+
+  3. 查询参数：
+     - 无
+
+  4. 提交表单：
+     - 无
+</details>
+
+<details>
+<summary>PATCH /api/pages/:slug/fields/:name ，修改指定 slug 页面中指定 name 的 field</summary>
+  
+ 1. 权限要求：
+    - PM4：禁止
+    - PM3：禁止
+    - PM2：禁止
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - slug：String
+     - name：String
 
   3. 查询参数：
      - 无
