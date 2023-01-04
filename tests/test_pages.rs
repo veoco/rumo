@@ -17,10 +17,6 @@ async fn create_then_list_pages_success() {
         "slug": "test-page",
         "created": 1666666666,
         "text": "testText",
-        "status": "publish",
-        "allowComment": "1",
-        "allowPing": "1",
-        "allowFeed": "1",
     })
     .to_string();
     let (status_code, _) = admin_post("/api/pages/", data).await;
@@ -41,10 +37,6 @@ async fn create_then_get_page_by_slug_success() {
         "slug": "test-page-create",
         "created": 1666666666,
         "text": "testText",
-        "status": "publish",
-        "allowComment": "1",
-        "allowPing": "1",
-        "allowFeed": "1",
     })
     .to_string();
     let (status_code, _) = admin_post("/api/pages/", data).await;

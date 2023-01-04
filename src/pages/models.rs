@@ -69,14 +69,8 @@ pub struct PageCreate {
     pub text: String,
     #[validate(length(min = 1, max = 32, message = "template length must greater than 1"))]
     pub template: Option<String>,
-    #[validate(length(min = 1, max = 16, message = "status length must greater than 1"))]
-    pub status: String,
-    #[validate(length(min = 1, max = 32, message = "password length must greater than 1"))]
-    pub password: Option<String>,
-    #[validate(length(min = 1, max = 1, message = "allowComment length must equal 1"))]
-    pub allowComment: String,
-    #[validate(length(min = 1, max = 1, message = "allowPing length must equal 1"))]
-    pub allowPing: String,
-    #[validate(length(min = 1, max = 1, message = "allowFeed length must equal 1"))]
-    pub allowFeed: String,
+    pub publish: Option<bool>,
+    pub allowComment: Option<bool>,
+    pub allowPing: Option<bool>,
+    pub allowFeed: Option<bool>,
 }

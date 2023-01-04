@@ -202,7 +202,7 @@ WantedBy=multi-user.target
 <details>
 <summary>POST /api/pages/ ，新建页面</summary>
   
- 1. 权限要求：
+  1. 权限要求：
     - PM4：禁止
     - PM3：禁止
     - PM2：禁止
@@ -210,22 +210,21 @@ WantedBy=multi-user.target
     - PM0：允许
 
   2. 路径参数：
-     - 无
+    - 无
 
   3. 查询参数：
-     - 无
+    - 无
 
   4. 提交表单：
-     - title：String，1 <= 长度 <= 150
-     - slug：String，1 <= 长度 <= 150
-     - created：u32，unix 时间戳，精确到秒
-     - text：String
-     - template：Option<String>，1 <= 长度 <= 16
-     - status：String，1 <= 长度 <= 32
-     - password：Option<String>，1 <= 长度 <= 32
-     - allowComment：String，长度 = 1
-     - allowPing：String，长度 = 1
-     - allowFeed：String，长度 = 1
+    - title：String，1 <= 长度 <= 150
+    - slug：String，1 <= 长度 <= 150
+    - created：u32，unix 时间戳，精确到秒
+    - text：String
+    - template：Option<String>，1 <= 长度 <= 16
+    - publish：Option<bool>，默认 true
+    - allowComment：Option<bool>，默认 true
+    - allowPing：Option<bool>，默认 true
+    - allowFeed：Option<bool>，默认 true
 </details>
 
 <details>
