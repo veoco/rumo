@@ -144,6 +144,26 @@ pub async fn get_page_field_by_slug_and_name(
     Ok(Json(json!(field)))
 }
 
+pub async fn delete_page_field_by_slug_and_name(
+    State(state): State<Arc<AppState>>,
+    PMEditor(_): PMEditor,
+    Path((slug, name)): Path<(String, String)>,
+) -> Result<Json<Value>, FieldError> {
+    let exist_page = db::get_page_by_slug(&state, &slug).await;
+    if exist_page.is_none() {
+        return Err(FieldError::InvalidParams("slug".to_owned()));
+    }
+    let exist_page = exist_page.unwrap();
+
+    let field = db::get_field_by_cid_and_name(&state, exist_page.cid, &name).await;
+    if field.is_none() {
+        return Err(FieldError::InvalidParams("name".to_owned()));
+    }
+
+    let row_id = db::delete_field_by_cid_and_name(&state, exist_page.cid, &name).await?;
+    Ok(Json(json!({"id": row_id})))
+}
+
 pub async fn modify_page_field_by_slug_and_name(
     State(state): State<Arc<AppState>>,
     PMEditor(_): PMEditor,

@@ -342,6 +342,27 @@ WantedBy=multi-user.target
      - float_value：Option<f32>，仅当 type 为 float 时有效
 </details>
 
+<details>
+<summary>DELETE /api/pages/:slug/fields/:name ，删除改指定 slug 页面中指定 name 的 field</summary>
+  
+ 1. 权限要求：
+    - PM4：禁止
+    - PM3：禁止
+    - PM2：禁止
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - slug：String
+     - name：String
+
+  3. 查询参数：
+     - 无
+
+  4. 提交表单：
+     - 无
+</details>
+
 ### 文章相关 API：
 <details>
 <summary>GET /api/posts/ ，获取所有文章列表</summary>

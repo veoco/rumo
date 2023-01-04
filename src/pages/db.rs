@@ -345,6 +345,29 @@ pub async fn get_field_by_cid_and_name(state: &AppState, cid: u32, name: &str) -
     }
 }
 
+pub async fn delete_field_by_cid_and_name(
+    state: &AppState,
+    cid: u32,
+    name: &str,
+) -> Result<u64, FieldError> {
+    let delete_sql = format!(
+        r#"
+        DELETE FROM {fields_table}
+        WHERE {fields_table}."cid" == ?1 AND {fields_table}."name" == ?2
+        "#,
+        fields_table = &state.fields_table,
+    );
+    match sqlx::query(&delete_sql)
+        .bind(cid)
+        .bind(name)
+        .execute(&state.pool)
+        .await
+    {
+        Ok(r) => Ok(r.rows_affected()),
+        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
+    }
+}
+
 pub async fn modify_field_by_cid_and_name_with_field_create(
     state: &AppState,
     cid: u32,
