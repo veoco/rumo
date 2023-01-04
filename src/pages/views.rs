@@ -100,7 +100,7 @@ pub async fn get_page_by_slug(
     PMVisitor(user): PMVisitor,
     Path(slug): Path<String>,
 ) -> Result<Json<Value>, FieldError> {
-    let page = db::get_page_with_meta_by_slug(&state, &slug).await?;
+    let page = db::get_page_with_meta_by_slug(&state, &slug).await.map_err(|_|FieldError::NotFound("slug".to_string()))?;
     let admin = user.group == "editor" || user.group == "administrator";
 
     if page.status == "hidden" && !admin {
@@ -108,6 +108,24 @@ pub async fn get_page_by_slug(
     } else {
         Ok(Json(json!(page)))
     }
+}
+
+pub async fn delete_page_by_slug(
+    State(state): State<Arc<AppState>>,
+    PMEditor(_): PMEditor,
+    Path(slug): Path<String>,
+) -> Result<Json<Value>, FieldError> {
+    let page = db::get_page_by_slug(&state, &slug).await;
+
+    if page.is_none(){
+        return Err(FieldError::InvalidParams("slug".to_string()));
+    }
+    let page = page.unwrap();
+
+    let _ = db::delete_fields_by_cid(&state, page.cid).await?;
+
+    let row_id = db::delete_content_by_cid(&state, page.cid).await?;
+    Ok(Json(json!({ "id": row_id })))
 }
 
 pub async fn create_page_field_by_slug(
@@ -133,13 +151,13 @@ pub async fn get_page_field_by_slug_and_name(
 ) -> Result<Json<Value>, FieldError> {
     let exist_page = db::get_page_by_slug(&state, &slug).await;
     if exist_page.is_none() {
-        return Err(FieldError::InvalidParams("slug".to_owned()));
+        return Err(FieldError::NotFound("slug".to_owned()));
     }
     let exist_page = exist_page.unwrap();
 
     let field = db::get_field_by_cid_and_name(&state, exist_page.cid, &name).await;
     if field.is_none() {
-        return Err(FieldError::InvalidParams("name".to_owned()));
+        return Err(FieldError::NotFound("name".to_owned()));
     }
     Ok(Json(json!(field)))
 }

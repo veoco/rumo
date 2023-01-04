@@ -251,6 +251,27 @@ pub async fn get_page_with_meta_by_slug(
     }
 }
 
+pub async fn delete_content_by_cid(
+    state: &AppState,
+    cid: u32,
+) -> Result<u64, FieldError>{
+    let delete_sql = format!(
+        r#"
+        DELETE FROM {contents_table}
+        WHERE {contents_table}."cid" == ?1
+        "#,
+        contents_table = &state.contents_table,
+    );
+    match sqlx::query(&delete_sql)
+        .bind(cid)
+        .execute(&state.pool)
+        .await
+    {
+        Ok(r) => Ok(r.rows_affected()),
+        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
+    }
+}
+
 fn get_field_params(
     field_create: &FieldCreate,
 ) -> Result<(String, Option<String>, i32, f32), FieldError> {
@@ -342,6 +363,27 @@ pub async fn get_field_by_cid_and_name(state: &AppState, cid: u32, name: &str) -
         Some(field)
     } else {
         None
+    }
+}
+
+pub async fn delete_fields_by_cid(
+    state: &AppState,
+    cid: u32,
+) -> Result<u64, FieldError> {
+    let delete_sql = format!(
+        r#"
+        DELETE FROM {fields_table}
+        WHERE {fields_table}."cid" == ?1
+        "#,
+        fields_table = &state.fields_table,
+    );
+    match sqlx::query(&delete_sql)
+        .bind(cid)
+        .execute(&state.pool)
+        .await
+    {
+        Ok(r) => Ok(r.rows_affected()),
+        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
     }
 }
 

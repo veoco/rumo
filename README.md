@@ -245,6 +245,23 @@ WantedBy=multi-user.target
 </details>
 
 <details>
+<summary>DELETE /api/pages/:slug ，删除指定 slug 页面</summary>
+  
+ 1. 权限要求：
+    - PM4：禁止
+    - PM3：禁止
+    - PM2：禁止
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - slug：String
+
+  3. 查询参数：
+     - 无
+</details>
+
+<details>
 <summary>PATCH /api/pages/:slug ，修改指定 slug 页面</summary>
   
  1. 权限要求：

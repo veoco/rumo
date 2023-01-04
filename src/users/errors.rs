@@ -79,7 +79,7 @@ impl IntoResponse for FieldError {
     fn into_response(self) -> Response {
         match self {
             FieldError::NotFound(field) => (
-                StatusCode::BAD_REQUEST,
+                StatusCode::NOT_FOUND,
                 Json(json!({ "msg": format!("{} not found", field) })),
             ),
             FieldError::AlreadyExist(field) => (

@@ -224,3 +224,47 @@ async fn create_then_delete_page_field_success() {
     let count = body.get("fields").unwrap().as_array().unwrap().len();
     assert!(count == 1);
 }
+
+#[tokio::test]
+async fn create_then_delete_page_success() {
+    let data = json!({
+        "title": "testPageDelete",
+        "slug": "test-page-delete",
+        "created": 1666666666,
+        "text": "testText",
+    })
+    .to_string();
+    let (status_code, _) = admin_post("/api/pages/", data).await;
+    assert_eq!(status_code, StatusCode::CREATED);
+
+    let (status_code, _) = get("/api/pages/test-page-delete").await;
+    assert_eq!(status_code, StatusCode::OK);
+
+    let data = json!({
+        "name": "test_str",
+        "type": "str",
+        "str_value": "test-str-feild",
+    })
+    .to_string();
+    let (status_code, _) = admin_post("/api/pages/test-page-delete/fields/", data).await;
+    assert_eq!(status_code, StatusCode::CREATED);
+
+    let data = json!({
+        "name": "test_str_2",
+        "type": "str",
+        "str_value": "test-str-feild-2",
+    })
+    .to_string();
+    let (status_code, _) = admin_post("/api/pages/test-page-delete/fields/", data).await;
+    assert_eq!(status_code, StatusCode::CREATED);
+
+
+    let (status_code, _) = admin_delete("/api/pages/test-page-delete").await;
+    assert_eq!(status_code, StatusCode::OK);
+
+    let (status_code, _) = get("/api/pages/test-page-delete").await;
+    assert_eq!(status_code, StatusCode::NOT_FOUND);
+
+    let (status_code, _) = get("/api/pages/test-page-delete/fields/test_str").await;
+    assert_eq!(status_code, StatusCode::NOT_FOUND);
+}
