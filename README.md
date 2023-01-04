@@ -272,6 +272,30 @@ WantedBy=multi-user.target
      - allowFeed：Option<bool>，默认 true
 </details>
 
+<details>
+<summary>POST /api/pages/:slug/fields/ ，新建指定 slug 页面的 field</summary>
+  
+ 1. 权限要求：
+    - PM4：禁止
+    - PM3：禁止
+    - PM2：禁止
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - 无
+
+  3. 查询参数：
+     - 无
+
+  4. 提交表单：
+     - name：String，1 <= 长度 <= 150
+     - type：String，1 <= 长度 <= 8
+     - str_value：Option<String>，仅当 type 为 str 时有效
+     - int_value：Option<i32>，仅当 type 为 int 时有效
+     - float_value：Option<f32>，仅当 type 为 float 时有效
+</details>
+
 ### 文章相关 API：
 <details>
 <summary>GET /api/posts/ ，获取所有文章列表</summary>

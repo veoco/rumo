@@ -74,3 +74,54 @@ async fn create_then_modify_page_by_slug_success() {
     let (status_code, _) = get("/api/pages/test-page-modified").await;
     assert_eq!(status_code, StatusCode::OK);
 }
+
+#[tokio::test]
+async fn create_then_get_page_field_success() {
+    let data = json!({
+        "title": "testPageField",
+        "slug": "test-page-field",
+        "created": 1666666666,
+        "text": "testText",
+    })
+    .to_string();
+    let (status_code, _) = admin_post("/api/pages/", data).await;
+    assert_eq!(status_code, StatusCode::CREATED);
+
+    let (status_code, body) = get("/api/pages/test-page-field").await;
+    assert_eq!(status_code, StatusCode::OK);
+
+    let body = body.unwrap();
+    let count = body.get("fields").unwrap().as_array().unwrap().len();
+    assert!(count == 0);
+
+    let data = json!({
+        "type": "str",
+        "str_value": "test-str_feild",
+    })
+    .to_string();
+    let (status_code, _) = admin_post("/api/pages/test-page-field", data).await;
+    assert_eq!(status_code, StatusCode::CREATED);
+
+    let data = json!({
+        "type": "int",
+        "int_value": 111,
+    })
+    .to_string();
+    let (status_code, _) = admin_post("/api/pages/test-page-field", data).await;
+    assert_eq!(status_code, StatusCode::CREATED);
+
+    let data = json!({
+        "type": "float",
+        "float_value": 111.111,
+    })
+    .to_string();
+    let (status_code, _) = admin_post("/api/pages/test-page-field", data).await;
+    assert_eq!(status_code, StatusCode::CREATED);
+
+    let (status_code, body) = get("/api/pages/test-page-field").await;
+    assert_eq!(status_code, StatusCode::OK);
+
+    let body = body.unwrap();
+    let count = body.get("fields").unwrap().as_array().unwrap().len();
+    assert!(count == 3);
+}

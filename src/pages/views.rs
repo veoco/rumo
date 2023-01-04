@@ -5,7 +5,7 @@ use serde_json::{json, Value};
 use std::sync::Arc;
 
 use super::db;
-use super::models::{PageCreate, PagesQuery};
+use super::models::{PageCreate, PagesQuery, FieldCreate};
 use crate::users::errors::FieldError;
 use crate::users::extractors::{PMEditor, PMVisitor, ValidatedJson, ValidatedQuery};
 use crate::AppState;
@@ -105,4 +105,20 @@ pub async fn get_page_by_slug(
     }else{
         Ok(Json(json!(page)))
     }
+}
+
+pub async fn create_page_field_by_slug(
+    State(state): State<Arc<AppState>>,
+    PMEditor(_): PMEditor,
+    Path(slug): Path<String>,
+    ValidatedJson(field_create): ValidatedJson<FieldCreate>,
+) -> Result<(StatusCode, Json<Value>), FieldError> {
+    let exist_page = db::get_page_by_slug(&state, &slug).await;
+    if exist_page.is_none() {
+        return Err(FieldError::AlreadyExist("slug".to_owned()));
+    }
+    let exist_page = exist_page.unwrap();
+
+    let row_id = db::create_field_by_cid_with_field_create(&state, exist_page.cid, &field_create).await?;
+    Ok((StatusCode::CREATED, Json(json!({ "id": row_id }))))
 }

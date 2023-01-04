@@ -1,6 +1,6 @@
 use std::time::SystemTime;
 
-use super::models::{Page, PageCreate, PageWithMeta};
+use super::models::{FieldCreate, Page, PageCreate, PageWithMeta};
 use crate::users::errors::FieldError;
 use crate::AppState;
 
@@ -103,23 +103,29 @@ pub async fn create_page_by_page_create_with_uid(
 pub async fn modify_page_by_page_modify_with_exist_page(
     state: &AppState,
     page_modify: &PageCreate,
-    exist_page: &Page
+    exist_page: &Page,
 ) -> Result<i64, FieldError> {
     let now = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap()
         .as_secs() as u32;
-    let now = if now > page_modify.created{
+    let now = if now > page_modify.created {
         now
-    }else{
+    } else {
         page_modify.created
     };
 
-    let status = match page_modify.publish.unwrap_or(exist_page.status == "publish") {
+    let status = match page_modify
+        .publish
+        .unwrap_or(exist_page.status == "publish")
+    {
         true => "publish",
         false => "hidden",
     };
-    let allow_comment = match page_modify.allowComment.unwrap_or(exist_page.allowComment == "1") {
+    let allow_comment = match page_modify
+        .allowComment
+        .unwrap_or(exist_page.allowComment == "1")
+    {
         true => "1",
         false => "0",
     };
@@ -241,5 +247,71 @@ pub async fn get_page_with_meta_by_slug(
     {
         Ok(page) => Ok(page),
         Err(_) => Err(FieldError::InvalidParams("slug".to_string())),
+    }
+}
+
+pub async fn create_field_by_cid_with_field_create(
+    state: &AppState,
+    cid: u32,
+    field_create: &FieldCreate,
+) -> Result<i64, FieldError> {
+    let str_value;
+    let int_value;
+    let float_value;
+    let field_type = match field_create.r#type.as_str() {
+        "str" => {
+            let value = field_create.str_value.clone();
+            if value.is_none() {
+                return Err(FieldError::InvalidParams("type and str_value".to_string()));
+            }
+            str_value = Some(value.unwrap());
+            int_value = 0;
+            float_value = 0f32;
+            "str"
+        }
+        "int" => {
+            let value = field_create.int_value.clone();
+            if value.is_none() {
+                return Err(FieldError::InvalidParams("type and int_value".to_string()));
+            }
+            str_value = None;
+            int_value = value.unwrap();
+            float_value = 0f32;
+            "int"
+        }
+        "float" => {
+            let value = field_create.float_value.clone();
+            if value.is_none() {
+                return Err(FieldError::InvalidParams(
+                    "type and float_value".to_string(),
+                ));
+            }
+            str_value = None;
+            int_value = 0;
+            float_value = value.unwrap();
+            "float"
+        }
+        _ => return Err(FieldError::InvalidParams("type".to_string())),
+    };
+
+    let insert_sql = format!(
+        r#"
+        INSERT INTO {fields_table} ("cid", "name", "type", "str_value", "int_value", "float_value")
+        VALUES (?1, ?2, ?3, ?4, ?5)
+        "#,
+        fields_table = &state.fields_table,
+    );
+    match sqlx::query(&insert_sql)
+        .bind(cid)
+        .bind(&field_create.name)
+        .bind(field_type)
+        .bind(str_value)
+        .bind(int_value)
+        .bind(float_value)
+        .execute(&state.pool)
+        .await
+    {
+        Ok(r) => Ok(r.last_insert_rowid()),
+        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
     }
 }
