@@ -36,12 +36,12 @@ pub async fn get_page_by_slug(state: &AppState, slug: &str) -> Option<Page> {
         "#,
         contents_table = &state.contents_table,
     );
-    if let Ok(tag) = sqlx::query_as::<_, Page>(&select_sql)
+    if let Ok(page) = sqlx::query_as::<_, Page>(&select_sql)
         .bind(slug)
         .fetch_one(&state.pool)
         .await
     {
-        Some(tag)
+        Some(page)
     } else {
         None
     }
