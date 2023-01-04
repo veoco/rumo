@@ -85,13 +85,14 @@ pub async fn create_page_by_page_create_with_uid(
     }
 }
 
-pub async fn get_pages_count(state: &AppState) -> i32 {
+pub async fn get_pages_count_with_private(state: &AppState, private_sql: &str) -> i32 {
     let all_sql = format!(
         r#"
         SELECT COUNT(*)
         FROM {contents_table}
-        WHERE {contents_table}.type == 'page'
+        WHERE {contents_table}.type == 'page'{}
         "#,
+        private_sql,
         contents_table = &state.contents_table,
     );
     let all_count = sqlx::query_scalar::<_, i32>(&all_sql)
@@ -101,8 +102,9 @@ pub async fn get_pages_count(state: &AppState) -> i32 {
     all_count
 }
 
-pub async fn get_pages_by_list_query(
+pub async fn get_pages_by_list_query_with_private(
     state: &AppState,
+    private_sql: &str,
     page_size: u32,
     offset: u32,
     order_by: &str,
@@ -114,10 +116,11 @@ pub async fn get_pages_by_list_query(
         SELECT *
         FROM {contents_table}
         LEFT OUTER JOIN fields_json ON {contents_table}."cid" == fields_json."cid"
-        WHERE {contents_table}."type" == 'page'
+        WHERE {contents_table}."type" == 'page'{}
         ORDER BY {}
         LIMIT ?1 OFFSET ?2
         "#,
+        private_sql,
         order_by,
         contents_table = &state.contents_table,
     );

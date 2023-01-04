@@ -7,7 +7,7 @@ use std::sync::Arc;
 use super::db;
 use super::models::{PageCreate, PagesQuery};
 use crate::users::errors::FieldError;
-use crate::users::extractors::{PMEditor, ValidatedJson, ValidatedQuery};
+use crate::users::extractors::{PMEditor, PMVisitor, ValidatedJson, ValidatedQuery};
 use crate::AppState;
 
 pub async fn create_page(
@@ -26,9 +26,25 @@ pub async fn create_page(
 
 pub async fn list_pages(
     State(state): State<Arc<AppState>>,
+    PMVisitor(user): PMVisitor,
     ValidatedQuery(q): ValidatedQuery<PagesQuery>,
 ) -> Result<Json<Value>, FieldError> {
-    let all_count = db::get_pages_count(&state).await;
+    let admin = user.group == "editor" || user.group == "administrator";
+    let private = q.private.unwrap_or(false);
+    if private && !admin {
+        return Err(FieldError::PermissionDeny);
+    }
+
+    let private_sql = if private {
+        String::from("")
+    } else {
+        format!(
+            r#" AND {contents_table}."status" == 'publish'"#,
+            contents_table = &state.contents_table,
+        )
+    };
+
+    let all_count = db::get_pages_count_with_private(&state, &private_sql).await;
 
     let page = q.page.unwrap_or(1);
     let page_size = q.page_size.unwrap_or(10);
@@ -40,10 +56,12 @@ pub async fn list_pages(
         "-cid" => "cid DESC",
         "slug" => "slug",
         "-slug" => "slug DESC",
+        "order" => "order",
+        "-order" => "order DESC",
         f => return Err(FieldError::InvalidParams(f.to_string())),
     };
 
-    let pages = db::get_pages_by_list_query(&state, page_size, offset, order_by).await?;
+    let pages = db::get_pages_by_list_query_with_private(&state, &private_sql, page_size, offset, order_by).await?;
     Ok(Json(json!({
         "page": page,
         "page_size": page_size,
@@ -55,8 +73,15 @@ pub async fn list_pages(
 
 pub async fn get_page_by_slug(
     State(state): State<Arc<AppState>>,
+    PMVisitor(user): PMVisitor,
     Path(slug): Path<String>,
 ) -> Result<Json<Value>, FieldError> {
     let page = db::get_page_with_meta_by_slug(&state, &slug).await?;
-    Ok(Json(json!(page)))
+    let admin = user.group == "editor" || user.group == "administrator";
+
+    if page.status == "hidden" && !admin{
+        Err(FieldError::PermissionDeny)
+    }else{
+        Ok(Json(json!(page)))
+    }
 }

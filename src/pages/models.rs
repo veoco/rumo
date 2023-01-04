@@ -56,6 +56,7 @@ pub struct PagesQuery {
     pub page_size: Option<u32>,
     #[validate(length(min = 1, max = 13, message = "order_by length must greater than 1"))]
     pub order_by: Option<String>,
+    pub private: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize, Validate)]
