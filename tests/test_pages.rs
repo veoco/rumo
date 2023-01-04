@@ -91,31 +91,34 @@ async fn create_then_get_page_field_success() {
     assert_eq!(status_code, StatusCode::OK);
 
     let body = body.unwrap();
-    let count = body.get("fields").unwrap().as_array().unwrap().len();
-    assert!(count == 0);
+    let fields = body.get("fields").unwrap().as_array();
+    assert!(fields.is_none());
 
     let data = json!({
+        "name": "test_str",
         "type": "str",
-        "str_value": "test-str_feild",
+        "str_value": "test-str-feild",
     })
     .to_string();
-    let (status_code, _) = admin_post("/api/pages/test-page-field", data).await;
+    let (status_code, _) = admin_post("/api/pages/test-page-field/fields/", data).await;
     assert_eq!(status_code, StatusCode::CREATED);
 
     let data = json!({
+        "name": "test_int",
         "type": "int",
         "int_value": 111,
     })
     .to_string();
-    let (status_code, _) = admin_post("/api/pages/test-page-field", data).await;
+    let (status_code, _) = admin_post("/api/pages/test-page-field/fields/", data).await;
     assert_eq!(status_code, StatusCode::CREATED);
 
     let data = json!({
+        "name": "test_float",
         "type": "float",
         "float_value": 111.111,
     })
     .to_string();
-    let (status_code, _) = admin_post("/api/pages/test-page-field", data).await;
+    let (status_code, _) = admin_post("/api/pages/test-page-field/fields/", data).await;
     assert_eq!(status_code, StatusCode::CREATED);
 
     let (status_code, body) = get("/api/pages/test-page-field").await;

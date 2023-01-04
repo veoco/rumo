@@ -18,7 +18,7 @@ pub fn get_with_sql(state: &AppState) -> String {
                 )) AS "fields"
             FROM {contents_table}
             JOIN {fields_table} ON {contents_table}."cid" == {fields_table}."cid"
-            WHERE {contents_table}."type" == 'post'
+            WHERE {contents_table}."type" == 'page'
             GROUP BY {contents_table}."cid"
         )
         "#,
@@ -297,7 +297,7 @@ pub async fn create_field_by_cid_with_field_create(
     let insert_sql = format!(
         r#"
         INSERT INTO {fields_table} ("cid", "name", "type", "str_value", "int_value", "float_value")
-        VALUES (?1, ?2, ?3, ?4, ?5)
+        VALUES (?1, ?2, ?3, ?4, ?5, ?6)
         "#,
         fields_table = &state.fields_table,
     );
