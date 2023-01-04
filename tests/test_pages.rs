@@ -2,7 +2,7 @@ use axum::http::StatusCode;
 use serde_json::json;
 
 mod common;
-use common::{admin_post, get};
+use common::{admin_post, admin_patch, get};
 
 #[tokio::test]
 async fn create_then_list_pages_success() {
@@ -43,5 +43,34 @@ async fn create_then_get_page_by_slug_success() {
     assert_eq!(status_code, StatusCode::CREATED);
 
     let (status_code, _) = get("/api/pages/test-page-create").await;
+    assert_eq!(status_code, StatusCode::OK);
+}
+
+#[tokio::test]
+async fn create_then_modify_page_by_slug_success() {
+    let data = json!({
+        "title": "testPageModify",
+        "slug": "test-page-modify",
+        "created": 1666666666,
+        "text": "testText",
+    })
+    .to_string();
+    let (status_code, _) = admin_post("/api/pages/", data).await;
+    assert_eq!(status_code, StatusCode::CREATED);
+
+    let (status_code, _) = get("/api/pages/test-page-modify").await;
+    assert_eq!(status_code, StatusCode::OK);
+
+    let data = json!({
+        "title": "testPageModified",
+        "slug": "test-page-modified",
+        "created": 1666666666,
+        "text": "testText",
+    })
+    .to_string();
+    let (status_code, _) = admin_patch("/api/pages/test-page-modify", data).await;
+    assert_eq!(status_code, StatusCode::OK);
+
+    let (status_code, _) = get("/api/pages/test-page-modified").await;
     assert_eq!(status_code, StatusCode::OK);
 }

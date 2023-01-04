@@ -24,6 +24,27 @@ pub async fn create_page(
     Ok((StatusCode::CREATED, Json(json!({ "id": row_id }))))
 }
 
+pub async fn modify_page_by_slug(
+    State(state): State<Arc<AppState>>,
+    PMEditor(_): PMEditor,
+    Path(slug): Path<String>,
+    ValidatedJson(page_modify): ValidatedJson<PageCreate>,
+)-> Result<Json<Value>, FieldError>{
+    let exist_page = db::get_page_by_slug(&state, &slug).await;
+    if exist_page.is_none() {
+        return Err(FieldError::NotFound("slug".to_owned()));
+    }
+    let exist_page = exist_page.unwrap();
+
+    let target_page = db::get_page_by_slug(&state, &page_modify.slug).await;
+    if target_page.is_some() {
+        return Err(FieldError::AlreadyExist("page slug".to_owned()));
+    }
+
+    let row_id = db::modify_page_by_page_modify_with_exist_page(&state, &page_modify, &exist_page).await?;
+    Ok(Json(json!({ "id": row_id })))
+}
+
 pub async fn list_pages(
     State(state): State<Arc<AppState>>,
     PMVisitor(user): PMVisitor,

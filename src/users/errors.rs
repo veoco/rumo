@@ -67,6 +67,7 @@ impl IntoResponse for AuthError {
 
 #[derive(Debug)]
 pub enum FieldError {
+    NotFound(String),
     AlreadyExist(String),
     PermissionDeny,
     PasswordRequired,
@@ -77,6 +78,10 @@ pub enum FieldError {
 impl IntoResponse for FieldError {
     fn into_response(self) -> Response {
         match self {
+            FieldError::NotFound(field) => (
+                StatusCode::BAD_REQUEST,
+                Json(json!({ "msg": format!("{} not found", field) })),
+            ),
             FieldError::AlreadyExist(field) => (
                 StatusCode::BAD_REQUEST,
                 Json(json!({ "msg": format!("{} already exist", field) })),

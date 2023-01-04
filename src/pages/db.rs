@@ -100,6 +100,75 @@ pub async fn create_page_by_page_create_with_uid(
     }
 }
 
+pub async fn modify_page_by_page_modify_with_exist_page(
+    state: &AppState,
+    page_modify: &PageCreate,
+    exist_page: &Page
+) -> Result<i64, FieldError> {
+    let now = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as u32;
+    let now = if now > page_modify.created{
+        now
+    }else{
+        page_modify.created
+    };
+
+    let status = match page_modify.publish.unwrap_or(exist_page.status == "publish") {
+        true => "publish",
+        false => "hidden",
+    };
+    let allow_comment = match page_modify.allowComment.unwrap_or(exist_page.allowComment == "1") {
+        true => "1",
+        false => "0",
+    };
+    let allow_ping = match page_modify.allowPing.unwrap_or(exist_page.allowPing == "1") {
+        true => "1",
+        false => "0",
+    };
+    let allow_feed = match page_modify.allowFeed.unwrap_or(exist_page.allowFeed == "1") {
+        true => "1",
+        false => "0",
+    };
+
+    let update_sql = format!(
+        r#"
+        UPDATE {contents_table}
+        SET "title" = ?1,
+            "slug" = ?2,
+            "created" = ?3,
+            "modified" = ?4,
+            "text" = ?5,
+            "template" = ?6,
+            "status" = ?7,
+            "allowComment" = ?8,
+            "allowPing" = ?9,
+            "allowFeed" = ?10
+        WHERE "cid" == ?11
+        "#,
+        contents_table = &state.contents_table,
+    );
+    match sqlx::query(&update_sql)
+        .bind(&page_modify.title)
+        .bind(&page_modify.slug)
+        .bind(&page_modify.created)
+        .bind(now)
+        .bind(&page_modify.text)
+        .bind(&page_modify.template)
+        .bind(status)
+        .bind(allow_comment)
+        .bind(allow_ping)
+        .bind(allow_feed)
+        .bind(exist_page.cid)
+        .execute(&state.pool)
+        .await
+    {
+        Ok(r) => Ok(r.last_insert_rowid()),
+        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
+    }
+}
+
 pub async fn get_pages_count_with_private(state: &AppState, private_sql: &str) -> i32 {
     let all_sql = format!(
         r#"

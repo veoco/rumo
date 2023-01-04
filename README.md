@@ -244,6 +244,34 @@ WantedBy=multi-user.target
      - 无
 </details>
 
+<details>
+<summary>PATCH /api/pages/:slug ，修改指定 slug 页面</summary>
+  
+ 1. 权限要求：
+    - PM4：禁止
+    - PM3：禁止
+    - PM2：禁止
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - 无
+
+  3. 查询参数：
+     - 无
+
+  4. 提交表单：
+     - title：String，1 <= 长度 <= 150
+     - slug：String，1 <= 长度 <= 150
+     - created：u32，unix 时间戳，精确到秒
+     - text：String
+     - template：Option<String>，1 <= 长度 <= 16
+     - publish：Option<bool>，默认 true
+     - allowComment：Option<bool>，默认 true
+     - allowPing：Option<bool>，默认 true
+     - allowFeed：Option<bool>，默认 true
+</details>
+
 ### 文章相关 API：
 <details>
 <summary>GET /api/posts/ ，获取所有文章列表</summary>
