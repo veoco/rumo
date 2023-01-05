@@ -546,6 +546,24 @@ WantedBy=multi-user.target
      - 无
 </details>
 
+<details>
+<summary>DELETE /api/categories/:slug/posts/:post_slug ，取消关联指定 slug 分类中的 post_slug 文章</summary>
+  
+ 1. 权限要求：
+    - PM4：禁止
+    - PM3：禁止
+    - PM2：禁止
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - slug：String
+     - post_slug: String
+
+  3. 查询参数：
+     - 无
+</details>
+
 ### 标签相关 API：
 <details>
 <summary>GET /api/tags/ ，获取所有标签列表</summary>

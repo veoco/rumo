@@ -128,6 +128,28 @@ pub async fn create_relationship_by_cid_and_mid(
     }
 }
 
+pub async fn delete_relationship_by_cid_and_mid(
+    state: &AppState,
+    cid: u32,
+    mid: u32,
+) -> Result<i64, FieldError> {
+    let delete_sql = format!(
+        r#"
+        DELETE FROM {relationships_table}
+        WHERE {relationships_table}."cid" == ?1 AND {relationships_table}."mid" == ?2"#,
+        relationships_table = &state.relationships_table,
+    );
+    match sqlx::query(&delete_sql)
+        .bind(cid)
+        .bind(mid)
+        .execute(&state.pool)
+        .await
+    {
+        Ok(r) => Ok(r.last_insert_rowid()),
+        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
+    }
+}
+
 pub async fn create_post_by_post_create_with_uid(
     state: &AppState,
     post_create: &PostCreate,

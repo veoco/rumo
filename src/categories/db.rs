@@ -97,11 +97,30 @@ pub async fn get_categories_by_list_query(
     }
 }
 
-pub async fn update_category_by_mid_for_count(state: &AppState, mid: u32) -> Result<u64, FieldError> {
+pub async fn update_meta_by_mid_for_increase_count(state: &AppState, mid: u32) -> Result<u64, FieldError> {
     let update_sql = format!(
         r#"
         UPDATE {metas_table}
         SET count=count+1
+        WHERE {metas_table}."mid" == ?1
+        "#,
+        metas_table = &state.metas_table,
+    );
+    match sqlx::query(&update_sql)
+        .bind(mid)
+        .execute(&state.pool)
+        .await
+    {
+        Ok(r) => Ok(r.rows_affected()),
+        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
+    }
+}
+
+pub async fn update_meta_by_mid_for_decrease_count(state: &AppState, mid: u32) -> Result<u64, FieldError> {
+    let update_sql = format!(
+        r#"
+        UPDATE {metas_table}
+        SET count=count-1
         WHERE {metas_table}."mid" == ?1
         "#,
         metas_table = &state.metas_table,
