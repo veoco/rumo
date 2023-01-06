@@ -423,12 +423,11 @@ WantedBy=multi-user.target
      - slug：String，1 <= 长度 <= 150
      - created：u32，unix 时间戳，精确到秒
      - text：String
-     - template：Option<String>，1 <= 长度 <= 16
      - status：String，1 <= 长度 <= 32
      - password：Option<String>，1 <= 长度 <= 32
-     - allowComment：String，长度 = 1
-     - allowPing：String，长度 = 1
-     - allowFeed：String，长度 = 1
+     - allowComment：Option<bool>，默认 true
+     - allowPing：Option<bool>，默认 true
+     - allowFeed：Option<bool>，默认 true
 </details>
 
 <details>
