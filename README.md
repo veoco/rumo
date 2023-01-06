@@ -496,6 +496,97 @@ WantedBy=multi-user.target
      - 无
 </details>
 
+<details>
+<summary>POST /api/posts/:slug/fields/ ，新建指定 slug 文章的 field</summary>
+  
+ 1. 权限要求：
+    - PM4：禁止
+    - PM3：禁止
+    - PM2：允许，仅当是用户是文章作者时允许
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - slug：String
+
+  3. 查询参数：
+     - 无
+
+  4. 提交表单：
+     - name：String，1 <= 长度 <= 150
+     - type：String，1 <= 长度 <= 8
+     - str_value：Option<String>，仅当 type 为 str 时有效
+     - int_value：Option<i32>，仅当 type 为 int 时有效
+     - float_value：Option<f32>，仅当 type 为 float 时有效
+</details>
+
+<details>
+<summary>GET /api/posts/:slug/fields/:name ，获取指定 slug 文章中指定 name 的 field</summary>
+  
+ 1. 权限要求：
+    - PM4：允许
+    - PM3：允许
+    - PM2：允许
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - slug：String
+     - name：String
+
+  3. 查询参数：
+     - 无
+
+  4. 提交表单：
+     - 无
+</details>
+
+<details>
+<summary>PATCH /api/posts/:slug/fields/:name ，修改指定 slug 文章中指定 name 的 field</summary>
+  
+ 1. 权限要求：
+    - PM4：禁止
+    - PM3：禁止
+    - PM2：允许，仅当是用户是文章作者时允许
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - slug：String
+     - name：String
+
+  3. 查询参数：
+     - 无
+
+  4. 提交表单：
+     - name：String，1 <= 长度 <= 150
+     - type：String，1 <= 长度 <= 8
+     - str_value：Option<String>，仅当 type 为 str 时有效
+     - int_value：Option<i32>，仅当 type 为 int 时有效
+     - float_value：Option<f32>，仅当 type 为 float 时有效
+</details>
+
+<details>
+<summary>DELETE /api/posts/:slug/fields/:name ，删除改指定 slug 文章中指定 name 的 field</summary>
+  
+ 1. 权限要求：
+    - PM4：禁止
+    - PM3：禁止
+    - PM2：允许，仅当是用户是文章作者时允许
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - slug：String
+     - name：String
+
+  3. 查询参数：
+     - 无
+
+  4. 提交表单：
+     - 无
+</details>
+
 ### 分类相关 API：
 <details>
 <summary>GET /api/categories/ ，获取所有分类列表</summary>

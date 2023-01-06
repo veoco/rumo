@@ -16,6 +16,22 @@ pub fn posts_routers(ro: bool) -> Router<Arc<AppState>> {
             .route("/api/posts/", post(views::create_post))
             .route("/api/posts/:slug", patch(views::modify_page_by_slug))
             .route("/api/posts/:slug", delete(views::delete_post_by_slug))
+            .route(
+                "/api/posts/:slug/fields/",
+                post(views::create_post_field_by_slug),
+            )
+            .route(
+                "/api/posts/:slug/fields/:name",
+                get(views::get_post_field_by_slug_and_name),
+            )
+            .route(
+                "/api/posts/:slug/fields/:name",
+                patch(views::modify_post_field_by_slug_and_name),
+            )
+            .route(
+                "/api/posts/:slug/fields/:name",
+                delete(views::delete_post_field_by_slug_and_name),
+            )
     } else {
         posts_route
     }

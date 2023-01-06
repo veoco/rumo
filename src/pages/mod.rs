@@ -1,5 +1,5 @@
 pub mod db;
-mod models;
+pub mod models;
 mod urls;
 mod views;
 
