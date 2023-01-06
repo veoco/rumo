@@ -1,5 +1,5 @@
 use axum::{
-    routing::{get, post},
+    routing::{get, post, delete},
     Router,
 };
 use std::sync::Arc;
@@ -16,6 +16,7 @@ pub fn tags_routers(ro: bool) -> Router<Arc<AppState>> {
         tags_route
             .route("/api/tags/", post(views::create_tag))
             .route("/api/tags/:slug/posts/", post(views::add_post_to_tag))
+            .route("/api/tags/:slug/posts/:post_slug", delete(views::delete_post_from_tag))
     } else {
         tags_route
     }

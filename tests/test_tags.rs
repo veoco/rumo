@@ -2,7 +2,7 @@ use axum::http::StatusCode;
 use serde_json::json;
 
 mod common;
-use common::{admin_post, get};
+use common::{admin_post, admin_delete, get};
 
 #[tokio::test]
 async fn create_then_list_tags_success() {
@@ -70,4 +70,46 @@ async fn create_then_list_tag_posts_success() {
     let body = body.unwrap();
     let new_count = body.get("count").unwrap().as_u64().unwrap();
     assert!(new_count > count);
+}
+
+#[tokio::test]
+async fn create_then_delete_tag_posts_success() {
+    let data = json!({"name": "testTagPostDelete", "slug": "test-tag-post-delete"}).to_string();
+    let (status_code, _) = admin_post("/api/tags/", data).await;
+    assert_eq!(status_code, StatusCode::CREATED);
+
+    let data = json!({
+        "title": "testPostTagDelete",
+        "slug": "test-post-tag-delete",
+        "created": 1666666666,
+        "text": "testText",
+        "status": "publish",
+        "allowComment": "1",
+        "allowPing": "1",
+        "allowFeed": "1",
+    })
+    .to_string();
+    let (status_code, _) = admin_post("/api/posts/", data).await;
+    assert_eq!(status_code, StatusCode::CREATED);
+
+    let data = json!({"slug": "test-post-tag-delete",}).to_string();
+    let (status_code, _) = admin_post("/api/tags/test-tag-post-delete/posts/", data).await;
+    assert_eq!(status_code, StatusCode::CREATED);
+
+    let (status_code, body) = get("/api/tags/test-tag-post-delete/posts/").await;
+    assert_eq!(status_code, StatusCode::OK);
+
+    let body = body.unwrap();
+    let count = body.get("count").unwrap().as_u64().unwrap();
+
+    let (status_code, _) = admin_delete("/api/tags/test-tag-post-delete/posts/test-post-tag-delete").await;
+    assert_eq!(status_code, StatusCode::OK);
+
+    let (status_code, body) = get("/api/tags/test-tag-post-delete/posts/").await;
+    assert_eq!(status_code, StatusCode::OK);
+
+    let body = body.unwrap();
+    let new_count = body.get("count").unwrap().as_u64().unwrap();
+
+    assert!(new_count < count);
 }

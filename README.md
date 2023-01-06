@@ -707,6 +707,24 @@ WantedBy=multi-user.target
      - private：bool，启用查询所有类型文章，仅 PM1 或更高权限可用
 </details>
 
+<details>
+<summary>DELETE /api/tags/:slug/posts/:post_slug ，取消关联指定 slug 标签的指定 post_slug 文章</summary>
+  
+ 1. 权限要求：
+    - PM4：禁止
+    - PM3：禁止
+    - PM2：禁止
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - slug：String
+     - post_slug: String
+
+  3. 查询参数：
+     - 无
+</details>
+
 ### 评论相关 API：
 <details>
 <summary>GET /api/comments/ ，获取所有评论列表</summary>

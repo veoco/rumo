@@ -8,6 +8,7 @@ use super::db::{self};
 use super::models::{TagCreate, TagPostAdd, TagsQuery};
 use crate::posts::db as post_db;
 use crate::posts::models::PostsQuery;
+use crate::categories::db as category_db;
 use crate::users::errors::FieldError;
 use crate::users::extractors::{PMEditor, PMVisitor, ValidatedJson, ValidatedQuery};
 use crate::AppState;
@@ -61,7 +62,7 @@ pub async fn get_tag_by_slug(
 ) -> Result<Json<Value>, FieldError> {
     match db::get_tag_by_slug(&state, &slug).await {
         Some(tag) => Ok(Json(json!(tag))),
-        None => Err(FieldError::InvalidParams("slug".to_string())),
+        None => Err(FieldError::NotFound("slug".to_string())),
     }
 }
 
@@ -87,6 +88,32 @@ pub async fn add_post_to_tag(
         let _ = post_db::create_relationship_by_cid_and_mid(&state, cid, mid).await?;
         let _ = db::update_tag_by_mid_for_count(&state, mid).await?;
         Ok((StatusCode::CREATED, Json(json!({"msg": "ok"}))))
+    } else {
+        Err(FieldError::AlreadyExist("slug".to_string()))
+    }
+}
+
+pub async fn delete_post_from_tag(
+    State(state): State<Arc<AppState>>,
+    PMEditor(_): PMEditor,
+    Path((slug, post_slug)): Path<(String, String)>,
+) -> Result<Json<Value>, FieldError> {
+    let mid = match db::get_tag_by_slug(&state, &slug).await {
+        Some(tag) => tag.mid,
+        None => return Err(FieldError::InvalidParams("slug".to_string())),
+    };
+
+    let cid = match post_db::get_post_by_slug(&state, &post_slug).await {
+        Some(post) => post.cid,
+        None => return Err(FieldError::InvalidParams("post slug".to_string())),
+    };
+
+    let exist = post_db::check_relationship_by_cid_and_mid(&state, cid, mid).await?;
+
+    if exist {
+        let _ = post_db::delete_relationship_by_cid_and_mid(&state, cid, mid).await?;
+        let _ = category_db::update_meta_by_mid_for_decrease_count(&state, mid).await?;
+        Ok(Json(json!({"msg": "ok"})))
     } else {
         Err(FieldError::AlreadyExist("slug".to_string()))
     }
