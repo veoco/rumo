@@ -117,5 +117,5 @@ pub async fn get_post_by_slug(
         return Err(FieldError::PermissionDeny);
     }
 
-    Err(FieldError::InvalidParams("slug".to_string()))
+    Err(FieldError::NotFound("slug".to_string()))
 }
