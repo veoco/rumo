@@ -24,6 +24,10 @@ pub fn categories_routers(ro: bool) -> Router<Arc<AppState>> {
                 patch(views::modify_category_by_slug),
             )
             .route(
+                "/api/categories/:slug",
+                delete(views::delete_category_by_slug),
+            )
+            .route(
                 "/api/categories/:slug/posts/",
                 post(views::add_post_to_category),
             )

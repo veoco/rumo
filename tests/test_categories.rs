@@ -53,6 +53,22 @@ async fn create_then_modify_category_by_slug_success() {
 }
 
 #[tokio::test]
+async fn create_then_delete_category_by_slug_success() {
+    let data = json!({"name": "testCategoryDelete", "slug": "test-category-delete"}).to_string();
+    let (status_code, _) = admin_post("/api/categories/", data).await;
+    assert_eq!(status_code, StatusCode::CREATED);
+
+    let (status_code, _) = get("/api/categories/test-category-delete").await;
+    assert_eq!(status_code, StatusCode::OK);
+
+    let (status_code, _) = admin_delete("/api/categories/test-category-delete").await;
+    assert_eq!(status_code, StatusCode::OK);
+
+    let (status_code, _) = get("/api/categories/test-category-delete").await;
+    assert_eq!(status_code, StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
 async fn create_then_list_category_posts_success() {
     let data = json!({"name": "testCategoryPost", "slug": "test-category-post"}).to_string();
     let (status_code, _) = admin_post("/api/categories/", data).await;

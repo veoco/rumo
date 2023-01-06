@@ -88,6 +88,22 @@ pub async fn modify_category_by_slug(
     Ok(Json(json!({ "id": row_id })))
 }
 
+pub async fn delete_category_by_slug(
+    State(state): State<Arc<AppState>>,
+    PMEditor(_): PMEditor,
+    Path(slug): Path<String>,
+) -> Result<Json<Value>, FieldError> {
+    let exist_cate = db::get_category_by_slug(&state, &slug).await;
+    if exist_cate.is_none() {
+        return Err(FieldError::InvalidParams("slug".to_owned()));
+    }
+    let exist_cate = exist_cate.unwrap();
+
+    let _ = db::delete_relationships_by_mid(&state, exist_cate.mid).await?;
+    let _ = db::delete_category_by_mid(&state, exist_cate.mid).await?;
+    Ok(Json(json!({ "msg": "ok" })))
+}
+
 pub async fn add_post_to_category(
     State(state): State<Arc<AppState>>,
     PMEditor(_): PMEditor,

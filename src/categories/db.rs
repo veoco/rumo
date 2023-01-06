@@ -115,6 +115,48 @@ pub async fn modify_category_by_mid_and_category_modify(
     }
 }
 
+pub async fn delete_relationships_by_mid(
+    state: &AppState,
+    mid: u32,
+) -> Result<u64, FieldError> {
+    let delete_sql = format!(
+        r#"
+        DELETE FROM {relationships_table}
+        WHERE {relationships_table}."mid" == ?1
+        "#,
+        relationships_table = &state.relationships_table
+    );
+    match sqlx::query(&delete_sql)
+        .bind(mid)
+        .execute(&state.pool)
+        .await
+    {
+        Ok(r) => Ok(r.rows_affected()),
+        Err(e) => Err(FieldError::DatabaseFailed(e.to_string()))
+    }
+}
+
+pub async fn delete_category_by_mid(
+    state: &AppState,
+    mid: u32,
+) -> Result<u64, FieldError> {
+    let update_sql = format!(
+        r#"
+        DELETE FROM {metas_table}
+        WHERE {metas_table}."mid" == ?1
+        "#,
+        metas_table = &state.metas_table
+    );
+    match sqlx::query(&update_sql)
+        .bind(mid)
+        .execute(&state.pool)
+        .await
+    {
+        Ok(r) => Ok(r.rows_affected()),
+        Err(e) => Err(FieldError::DatabaseFailed(e.to_string()))
+    }
+}
+
 pub async fn get_categories_count(state: &AppState) -> i32 {
     let all_sql = format!(
         r#"
