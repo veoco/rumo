@@ -2,7 +2,7 @@ use axum::http::StatusCode;
 use serde_json::json;
 
 mod common;
-use common::{admin_post, admin_patch, get};
+use common::{admin_post, admin_patch, admin_delete, get};
 
 #[tokio::test]
 async fn create_then_list_posts_success() {
@@ -78,4 +78,27 @@ async fn create_then_modify_post_by_slug_success() {
 
     let (status_code, _) = get("/api/posts/test-post-modified").await;
     assert_eq!(status_code, StatusCode::OK);
+}
+
+#[tokio::test]
+async fn create_then_delete_post_by_slug_success() {
+    let data = json!({
+        "title": "testPostDelete",
+        "slug": "test-post-delete",
+        "created": 1666666666,
+        "text": "testText",
+        "status": "publish",
+    })
+    .to_string();
+    let (status_code, _) = admin_post("/api/posts/", data).await;
+    assert_eq!(status_code, StatusCode::CREATED);
+
+    let (status_code, _) = get("/api/posts/test-post-delete").await;
+    assert_eq!(status_code, StatusCode::OK);
+
+    let (status_code, _) = admin_delete("/api/posts/test-post-delete").await;
+    assert_eq!(status_code, StatusCode::OK);
+
+    let (status_code, _) = get("/api/posts/test-post-delete").await;
+    assert_eq!(status_code, StatusCode::NOT_FOUND);
 }

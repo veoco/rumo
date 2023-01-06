@@ -6,6 +6,7 @@ use std::sync::Arc;
 
 use super::db;
 use super::models::{PostCreate, PostQuery, PostsQuery};
+use crate::pages::db as page_db;
 use crate::users::errors::FieldError;
 use crate::users::extractors::{PMContributor, PMVisitor, ValidatedJson, ValidatedQuery};
 use crate::AppState;
@@ -123,7 +124,9 @@ pub async fn get_post_by_slug(
         )
     };
 
-    let post = db::get_post_by_slug_and_private(&state, &slug, &private_sql).await?;
+    let post = db::get_post_by_slug_and_private(&state, &slug, &private_sql)
+        .await
+        .map_err(|_| FieldError::NotFound("slug".to_string()))?;
 
     let status = &post.status;
     if admin || status == "publish" || status == "hidden" || status == "password" {
@@ -144,4 +147,27 @@ pub async fn get_post_by_slug(
     }
 
     Err(FieldError::NotFound("slug".to_string()))
+}
+
+pub async fn delete_post_by_slug(
+    State(state): State<Arc<AppState>>,
+    PMContributor(user): PMContributor,
+    Path(slug): Path<String>,
+) -> Result<Json<Value>, FieldError> {
+    let post = db::get_post_by_slug(&state, &slug).await;
+
+    if post.is_none() {
+        return Err(FieldError::InvalidParams("slug".to_string()));
+    }
+    let post = post.unwrap();
+
+    let admin = user.group == "editor" || user.group == "administrator";
+    if post.authorId != user.uid && !admin {
+        return Err(FieldError::PermissionDeny);
+    }
+
+    let _ = page_db::delete_fields_by_cid(&state, post.cid).await?;
+
+    let row_id = page_db::delete_content_by_cid(&state, post.cid).await?;
+    Ok(Json(json!({ "id": row_id })))
 }

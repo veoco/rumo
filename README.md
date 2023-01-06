@@ -476,6 +476,26 @@ WantedBy=multi-user.target
      - allowFeed：Option<bool>，默认 true
 </details>
 
+<details>
+<summary>DELETE /api/posts/:slug ，删除指定 slug 的文章</summary>
+  
+ 1. 权限要求：
+    - PM4：禁止
+    - PM3：禁止
+    - PM2：允许
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - slug：String
+
+  3. 查询参数：
+     - 无
+
+  4. 提交表单：
+     - 无
+</details>
+
 ### 分类相关 API：
 <details>
 <summary>GET /api/categories/ ，获取所有分类列表</summary>
