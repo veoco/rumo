@@ -136,7 +136,7 @@ pub async fn delete_relationships_by_mid(
     }
 }
 
-pub async fn delete_category_by_mid(
+pub async fn delete_meta_by_mid(
     state: &AppState,
     mid: u32,
 ) -> Result<u64, FieldError> {

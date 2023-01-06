@@ -691,6 +691,26 @@ WantedBy=multi-user.target
 </details>
 
 <details>
+<summary>DELETE /api/tags/:slug ，删除指定 slug 标签</summary>
+  
+ 1. 权限要求：
+    - PM4：禁止
+    - PM3：禁止
+    - PM2：禁止
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - slug：String
+
+  3. 查询参数：
+     - 无
+
+  4. 提交表单：
+     - 无
+</details>
+
+<details>
 <summary>POST /api/tags/:slug/posts/ ，关联指定 slug 文章到指定 slug 标签</summary>
   
  1. 权限要求：

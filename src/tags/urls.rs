@@ -16,6 +16,7 @@ pub fn tags_routers(ro: bool) -> Router<Arc<AppState>> {
         tags_route
             .route("/api/tags/", post(views::create_tag))
             .route("/api/tags/:slug", patch(views::modify_tag_by_slug))
+            .route("/api/tags/:slug", delete(views::delete_tag_by_slug))
             .route("/api/tags/:slug/posts/", post(views::add_post_to_tag))
             .route(
                 "/api/tags/:slug/posts/:post_slug",

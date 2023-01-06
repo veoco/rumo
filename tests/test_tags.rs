@@ -53,6 +53,22 @@ async fn create_then_modify_tag_by_slug_success() {
 }
 
 #[tokio::test]
+async fn create_then_delete_tag_by_slug_success() {
+    let data = json!({"name": "testTagDelete", "slug": "test-tag-delete"}).to_string();
+    let (status_code, _) = admin_post("/api/tags/", data).await;
+    assert_eq!(status_code, StatusCode::CREATED);
+
+    let (status_code, _) = get("/api/tags/test-tag-delete").await;
+    assert_eq!(status_code, StatusCode::OK);
+
+    let (status_code, _) = admin_delete("/api/tags/test-tag-delete").await;
+    assert_eq!(status_code, StatusCode::OK);
+
+    let (status_code, _) = get("/api/tags/test-tag-delete").await;
+    assert_eq!(status_code, StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
 async fn create_then_list_tag_posts_success() {
     let data = json!({"name": "testTagPost", "slug": "test-tag-post"}).to_string();
     let (status_code, _) = admin_post("/api/tags/", data).await;

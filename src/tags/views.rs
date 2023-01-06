@@ -87,6 +87,22 @@ pub async fn modify_tag_by_slug(
     Ok(Json(json!({ "id": row_id })))
 }
 
+pub async fn delete_tag_by_slug(
+    State(state): State<Arc<AppState>>,
+    PMEditor(_): PMEditor,
+    Path(slug): Path<String>,
+) -> Result<Json<Value>, FieldError> {
+    let exist_tag = db::get_tag_by_slug(&state, &slug).await;
+    if exist_tag.is_none() {
+        return Err(FieldError::InvalidParams("slug".to_owned()));
+    }
+    let exist_tag = exist_tag.unwrap();
+
+    let _ = category_db::delete_relationships_by_mid(&state, exist_tag.mid).await?;
+    let _ = category_db::delete_meta_by_mid(&state, exist_tag.mid).await?;
+    Ok(Json(json!({ "msg": "ok" })))
+}
+
 pub async fn add_post_to_tag(
     State(state): State<Arc<AppState>>,
     PMEditor(_): PMEditor,

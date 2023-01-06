@@ -100,7 +100,7 @@ pub async fn delete_category_by_slug(
     let exist_cate = exist_cate.unwrap();
 
     let _ = db::delete_relationships_by_mid(&state, exist_cate.mid).await?;
-    let _ = db::delete_category_by_mid(&state, exist_cate.mid).await?;
+    let _ = db::delete_meta_by_mid(&state, exist_cate.mid).await?;
     Ok(Json(json!({ "msg": "ok" })))
 }
 
