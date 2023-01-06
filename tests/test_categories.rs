@@ -16,6 +16,14 @@ async fn create_then_list_categories_success() {
     let (status_code, _) = admin_post("/api/categories/", data).await;
     assert_eq!(status_code, StatusCode::CREATED);
 
+    let data = json!({"name": "testCategory2", "slug": "test-category-2"}).to_string();
+    let (status_code, _) = admin_post("/api/categories/", data).await;
+    assert_eq!(status_code, StatusCode::CREATED);
+
+    let data = json!({"name": "testCategory3", "slug": "test-category-3"}).to_string();
+    let (status_code, _) = admin_post("/api/categories/", data).await;
+    assert_eq!(status_code, StatusCode::CREATED);
+
     let (status_code, body) = get("/api/categories/").await;
     assert_eq!(status_code, StatusCode::OK);
 

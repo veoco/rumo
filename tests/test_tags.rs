@@ -16,6 +16,14 @@ async fn create_then_list_tags_success() {
     let (status_code, _) = admin_post("/api/tags/", data).await;
     assert_eq!(status_code, StatusCode::CREATED);
 
+    let data = json!({"name": "testTag2", "slug": "test-tag-2"}).to_string();
+    let (status_code, _) = admin_post("/api/tags/", data).await;
+    assert_eq!(status_code, StatusCode::CREATED);
+
+    let data = json!({"name": "testTag3", "slug": "test-tag-3"}).to_string();
+    let (status_code, _) = admin_post("/api/tags/", data).await;
+    assert_eq!(status_code, StatusCode::CREATED);
+
     let (status_code, body) = get("/api/tags/").await;
     assert_eq!(status_code, StatusCode::OK);
 

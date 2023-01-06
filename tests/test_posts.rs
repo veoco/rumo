@@ -23,6 +23,28 @@ async fn create_then_list_posts_success() {
     let (status_code, _) = admin_post("/api/posts/", data).await;
     assert_eq!(status_code, StatusCode::CREATED);
 
+    let data = json!({
+        "title": "testPost2",
+        "slug": "test-post-2",
+        "created": 1666666666,
+        "text": "testText",
+        "status": "publish",
+    })
+    .to_string();
+    let (status_code, _) = admin_post("/api/posts/", data).await;
+    assert_eq!(status_code, StatusCode::CREATED);
+
+    let data = json!({
+        "title": "testPost3",
+        "slug": "test-post-3",
+        "created": 1666666666,
+        "text": "testText",
+        "status": "publish",
+    })
+    .to_string();
+    let (status_code, _) = admin_post("/api/posts/", data).await;
+    assert_eq!(status_code, StatusCode::CREATED);
+
     let (status_code, body) = get("/api/posts/?page=1&page_size=10&order_by=-cid").await;
     assert_eq!(status_code, StatusCode::OK);
 
