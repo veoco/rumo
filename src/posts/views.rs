@@ -13,11 +13,15 @@ use crate::AppState;
 pub async fn create_post(
     State(state): State<Arc<AppState>>,
     PMContributor(user): PMContributor,
-    ValidatedJson(post_create): ValidatedJson<PostCreate>,
+    ValidatedJson(mut post_create): ValidatedJson<PostCreate>,
 ) -> Result<(StatusCode, Json<Value>), FieldError> {
     let exist_post = db::get_post_by_slug(&state, &post_create.slug).await;
     if exist_post.is_some() {
         return Err(FieldError::AlreadyExist("slug".to_owned()));
+    }
+    
+    if user.group == "contributor"{
+        post_create.status = String::from("waiting");
     }
 
     let row_id = db::create_post_by_post_create_with_uid(&state, &post_create, user.uid).await?;

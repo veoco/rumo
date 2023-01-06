@@ -159,11 +159,23 @@ pub async fn create_post_by_post_create_with_uid(
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap()
         .as_secs() as u32;
+    let allow_comment = match post_create.allowComment.unwrap_or(true) {
+        true => "1",
+        false => "0",
+    };
+    let allow_ping = match post_create.allowPing.unwrap_or(true) {
+        true => "1",
+        false => "0",
+    };
+    let allow_feed = match post_create.allowFeed.unwrap_or(true) {
+        true => "1",
+        false => "0",
+    };
 
     let insert_sql = format!(
         r#"
-        INSERT INTO {contents_table} ("type", "title", "slug", "created", "modified", "text", "authorId", "template", "status", "password", "allowComment", "allowPing", "allowFeed")
-        VALUES ('post', ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
+        INSERT INTO {contents_table} ("type", "title", "slug", "created", "modified", "text", "authorId", "status", "password", "allowComment", "allowPing", "allowFeed")
+        VALUES ('post', ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
         "#,
         contents_table = &state.contents_table,
     );
@@ -174,12 +186,11 @@ pub async fn create_post_by_post_create_with_uid(
         .bind(now)
         .bind(&post_create.text)
         .bind(uid)
-        .bind(&post_create.template)
         .bind(&post_create.status)
         .bind(&post_create.password)
-        .bind(&post_create.allowComment)
-        .bind(&post_create.allowPing)
-        .bind(&post_create.allowFeed)
+        .bind(allow_comment)
+        .bind(allow_ping)
+        .bind(allow_feed)
         .execute(&state.pool)
         .await
     {
