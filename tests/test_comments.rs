@@ -12,9 +12,6 @@ async fn create_then_list_comments_success() {
         "created": 1666666666,
         "text": "testText",
         "status": "publish",
-        "allowComment": "1",
-        "allowPing": "1",
-        "allowFeed": "1",
     })
     .to_string();
     let (status_code, _) = admin_post("/api/posts/", data).await;
