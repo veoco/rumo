@@ -2,7 +2,7 @@ use axum::http::StatusCode;
 use serde_json::json;
 
 mod common;
-use common::{admin_post, admin_delete, get};
+use common::{admin_post, admin_delete, admin_patch, get};
 
 #[tokio::test]
 async fn create_then_list_tags_success() {
@@ -31,6 +31,24 @@ async fn create_then_get_tag_by_slug_success() {
     assert_eq!(status_code, StatusCode::CREATED);
 
     let (status_code, _) = get("/api/tags/test-tag-create").await;
+    assert_eq!(status_code, StatusCode::OK);
+}
+
+#[tokio::test]
+async fn create_then_modify_tag_by_slug_success() {
+    let data = json!({"name": "testTagModify", "slug": "test-tag-modify"}).to_string();
+    let (status_code, _) = admin_post("/api/tags/", data).await;
+    assert_eq!(status_code, StatusCode::CREATED);
+
+    let (status_code, _) = get("/api/tags/test-tag-modify").await;
+    assert_eq!(status_code, StatusCode::OK);
+
+    let data =
+        json!({"name": "testTagModified", "slug": "test-tag-modified"}).to_string();
+    let (status_code, _) = admin_patch("/api/tags/test-tag-modify", data).await;
+    assert_eq!(status_code, StatusCode::OK);
+
+    let (status_code, _) = get("/api/tags/test-tag-modified").await;
     assert_eq!(status_code, StatusCode::OK);
 }
 

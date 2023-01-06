@@ -668,6 +668,29 @@ WantedBy=multi-user.target
 </details>
 
 <details>
+<summary>PATCH /api/tags/:slug ，修改指定 slug 标签</summary>
+  
+ 1. 权限要求：
+    - PM4：禁止
+    - PM3：禁止
+    - PM2：禁止
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - slug：String
+
+  3. 查询参数：
+     - 无
+
+  4. 提交表单：
+     - name：String，1 <= 长度 <= 150
+     - slug：String，1 <= 长度 <= 150
+     - description：Option<String>，1 <= 长度 <= 150
+     - parent：Option<u32>，> 0
+</details>
+
+<details>
 <summary>POST /api/tags/:slug/posts/ ，关联指定 slug 文章到指定 slug 标签</summary>
   
  1. 权限要求：

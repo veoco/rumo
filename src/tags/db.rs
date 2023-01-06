@@ -4,6 +4,26 @@ use crate::posts::models::PostWithMeta;
 use crate::users::errors::FieldError;
 use crate::AppState;
 
+pub async fn get_tag_by_mid(state: &AppState, mid: u32) -> Option<Tag> {
+    let select_sql = format!(
+        r#"
+        SELECT *
+        FROM {metas_table}
+        WHERE {metas_table}."type" == 'tag' AND {metas_table}."mid" == ?1
+        "#,
+        metas_table = &state.metas_table,
+    );
+    if let Ok(tag) = sqlx::query_as::<_, Tag>(&select_sql)
+        .bind(mid)
+        .fetch_one(&state.pool)
+        .await
+    {
+        Some(tag)
+    } else {
+        None
+    }
+} 
+
 pub async fn get_tag_by_slug(state: &AppState, slug: &str) -> Option<Tag> {
     let select_sql = format!(
         r#"
@@ -50,6 +70,43 @@ pub async fn create_tag_by_tag_create(
     {
         Ok(r) => Ok(r.last_insert_rowid()),
         Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
+    }
+}
+
+pub async fn modify_tag_by_mid_and_tag_modify(
+    state: &AppState,
+    mid: u32,
+    tag_modify: &TagCreate,
+) -> Result<i64, FieldError> {
+    let tag_parent = match tag_modify.parent {
+        Some(mid) => {
+            match get_tag_by_mid(&state, mid).await{
+                Some(_) => mid,
+                None => return Err(FieldError::InvalidParams("parent".to_string()))
+            }
+        },
+        _ => 0,
+    };
+
+    let update_sql = format!(
+        r#"
+        UPDATE {metas_table}
+        SET "name" = ?1, "slug" = ?2, "description" = ?3, "parent" = ?4
+        WHERE {metas_table}."mid" == ?5
+        "#,
+        metas_table = &state.metas_table
+    );
+    match sqlx::query(&update_sql)
+        .bind(&tag_modify.name)
+        .bind(&tag_modify.slug)
+        .bind(&tag_modify.description)
+        .bind(&tag_parent)
+        .bind(mid)
+        .execute(&state.pool)
+        .await
+    {
+        Ok(r) => Ok(r.last_insert_rowid()),
+        Err(e) => Err(FieldError::DatabaseFailed(e.to_string()))
     }
 }
 

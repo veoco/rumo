@@ -6,9 +6,9 @@ use std::sync::Arc;
 
 use super::db::{self};
 use super::models::{TagCreate, TagPostAdd, TagsQuery};
+use crate::categories::db as category_db;
 use crate::posts::db as post_db;
 use crate::posts::models::PostsQuery;
-use crate::categories::db as category_db;
 use crate::users::errors::FieldError;
 use crate::users::extractors::{PMEditor, PMVisitor, ValidatedJson, ValidatedQuery};
 use crate::AppState;
@@ -64,6 +64,27 @@ pub async fn get_tag_by_slug(
         Some(tag) => Ok(Json(json!(tag))),
         None => Err(FieldError::NotFound("slug".to_string())),
     }
+}
+
+pub async fn modify_tag_by_slug(
+    State(state): State<Arc<AppState>>,
+    PMEditor(_): PMEditor,
+    Path(slug): Path<String>,
+    ValidatedJson(tag_modify): ValidatedJson<TagCreate>,
+) -> Result<Json<Value>, FieldError> {
+    let exist_tag = db::get_tag_by_slug(&state, &slug).await;
+    if exist_tag.is_none() {
+        return Err(FieldError::InvalidParams("slug".to_owned()));
+    }
+    let exist_tag = exist_tag.unwrap();
+
+    let target_tag = db::get_tag_by_slug(&state, &tag_modify.slug).await;
+    if target_tag.is_some() {
+        return Err(FieldError::InvalidParams("category slug".to_owned()));
+    }
+
+    let row_id = db::modify_tag_by_mid_and_tag_modify(&state, exist_tag.mid, &tag_modify).await?;
+    Ok(Json(json!({ "id": row_id })))
 }
 
 pub async fn add_post_to_tag(
