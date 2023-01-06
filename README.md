@@ -448,6 +448,34 @@ WantedBy=multi-user.target
      - private：bool，启用查询所有类型文章，仅 PM1 或更高权限可用
 </details>
 
+<details>
+<summary>PATCH /api/posts/:slug ，修改指定 slug 的文章</summary>
+  
+ 1. 权限要求：
+    - PM4：禁止
+    - PM3：禁止
+    - PM2：允许
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - slug：String
+
+  3. 查询参数：
+     - 无
+
+  4. 提交表单：
+     - title：String，1 <= 长度 <= 150
+     - slug：String，1 <= 长度 <= 150
+     - created：u32，unix 时间戳，精确到秒
+     - text：String
+     - status：String，1 <= 长度 <= 32
+     - password：Option<String>，1 <= 长度 <= 32
+     - allowComment：Option<bool>，默认 true
+     - allowPing：Option<bool>，默认 true
+     - allowFeed：Option<bool>，默认 true
+</details>
+
 ### 分类相关 API：
 <details>
 <summary>GET /api/categories/ ，获取所有分类列表</summary>

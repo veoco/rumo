@@ -19,13 +19,39 @@ pub async fn create_post(
     if exist_post.is_some() {
         return Err(FieldError::AlreadyExist("slug".to_owned()));
     }
-    
-    if user.group == "contributor"{
+
+    if user.group == "contributor" {
         post_create.status = String::from("waiting");
     }
 
     let row_id = db::create_post_by_post_create_with_uid(&state, &post_create, user.uid).await?;
     Ok((StatusCode::CREATED, Json(json!({ "id": row_id }))))
+}
+
+pub async fn modify_page_by_slug(
+    State(state): State<Arc<AppState>>,
+    PMContributor(user): PMContributor,
+    Path(slug): Path<String>,
+    ValidatedJson(mut post_modify): ValidatedJson<PostCreate>,
+) -> Result<Json<Value>, FieldError> {
+    let exist_post = db::get_post_by_slug(&state, &slug).await;
+    if exist_post.is_none() {
+        return Err(FieldError::NotFound("slug".to_owned()));
+    }
+    let exist_post = exist_post.unwrap();
+
+    let target_post = db::get_post_by_slug(&state, &post_modify.slug).await;
+    if target_post.is_some() {
+        return Err(FieldError::AlreadyExist("post slug".to_owned()));
+    }
+
+    if user.group == "contributor" {
+        post_modify.status = String::from("waiting");
+    }
+
+    let row_id =
+        db::modify_post_by_post_create_with_exist_post(&state, &post_modify, &exist_post).await?;
+    Ok(Json(json!({ "id": row_id })))
 }
 
 pub async fn list_posts(

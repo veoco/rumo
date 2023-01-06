@@ -1,5 +1,5 @@
 use axum::{
-    routing::{get, post},
+    routing::{get, patch, post},
     Router,
 };
 use std::sync::Arc;
@@ -12,7 +12,9 @@ pub fn posts_routers(ro: bool) -> Router<Arc<AppState>> {
         .route("/api/posts/", get(views::list_posts))
         .route("/api/posts/:slug", get(views::get_post_by_slug));
     if !ro {
-        posts_route.route("/api/posts/", post(views::create_post))
+        posts_route
+            .route("/api/posts/", post(views::create_post))
+            .route("/api/posts/:slug", patch(views::modify_page_by_slug))
     } else {
         posts_route
     }

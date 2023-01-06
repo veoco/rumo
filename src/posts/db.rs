@@ -199,6 +199,80 @@ pub async fn create_post_by_post_create_with_uid(
     }
 }
 
+pub async fn modify_post_by_post_create_with_exist_post(
+    state: &AppState,
+    post_modify: &PostCreate,
+    exist_post: &Post,
+) -> Result<i64, FieldError> {
+    let now = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as u32;
+    let now = if now > post_modify.created {
+        now
+    } else {
+        post_modify.created
+    };
+
+    let allow_comment = match post_modify
+        .allowComment
+        .unwrap_or(exist_post.allowComment == "1")
+    {
+        true => "1",
+        false => "0",
+    };
+    let allow_ping = match post_modify
+        .allowPing
+        .unwrap_or(exist_post.allowPing == "1")
+    {
+        true => "1",
+        false => "0",
+    };
+    let allow_feed = match post_modify
+        .allowFeed
+        .unwrap_or(exist_post.allowFeed == "1")
+    {
+        true => "1",
+        false => "0",
+    };
+
+    let update_sql = format!(
+        r#"
+        UPDATE {contents_table}
+        SET "title" = ?1,
+            "slug" = ?2,
+            "created" = ?3,
+            "modified" = ?4,
+            "text" = ?5,
+            "status" = ?6,
+            "password" = ?7,
+            "allowComment" = ?8,
+            "allowPing" = ?9,
+            "allowFeed" = ?10
+        WHERE "cid" == ?11
+        "#,
+        contents_table = &state.contents_table,
+    );
+    match sqlx::query(&update_sql)
+        .bind(&post_modify.title)
+        .bind(&post_modify.slug)
+        .bind(&post_modify.created)
+        .bind(now)
+        .bind(&post_modify.text)
+        .bind(&post_modify.status)
+        .bind(&post_modify.password)
+        .bind(allow_comment)
+        .bind(allow_ping)
+        .bind(allow_feed)
+        .bind(exist_post.cid)
+        .execute(&state.pool)
+        .await
+    {
+        Ok(r) => Ok(r.last_insert_rowid()),
+        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
+    }
+}
+
 pub async fn get_posts_count_by_filter(state: &AppState, filter_sql: &str) -> i32 {
     let all_sql = format!(
         r#"
