@@ -1,5 +1,5 @@
 use axum::{
-    routing::{delete, get, post},
+    routing::{delete, get, patch, post},
     Router,
 };
 use std::sync::Arc;
@@ -19,6 +19,10 @@ pub fn categories_routers(ro: bool) -> Router<Arc<AppState>> {
     if !ro {
         categories_route
             .route("/api/categories/", post(views::create_category))
+            .route(
+                "/api/categories/:slug",
+                patch(views::modify_category_by_slug),
+            )
             .route(
                 "/api/categories/:slug/posts/",
                 post(views::add_post_to_category),

@@ -61,8 +61,31 @@ pub async fn get_category_by_slug(
 ) -> Result<Json<Value>, FieldError> {
     match db::get_category_by_slug(&state, &slug).await {
         Some(category) => Ok(Json(json!(category))),
-        None => Err(FieldError::InvalidParams("slug".to_string())),
+        None => Err(FieldError::NotFound("slug".to_string())),
     }
+}
+
+pub async fn modify_category_by_slug(
+    State(state): State<Arc<AppState>>,
+    PMEditor(_): PMEditor,
+    Path(slug): Path<String>,
+    ValidatedJson(category_modify): ValidatedJson<CategoryCreate>,
+) -> Result<Json<Value>, FieldError> {
+    let exist_cate = db::get_category_by_slug(&state, &slug).await;
+    if exist_cate.is_none() {
+        return Err(FieldError::InvalidParams("slug".to_owned()));
+    }
+    let exist_cate = exist_cate.unwrap();
+
+    let target_cate = db::get_category_by_slug(&state, &category_modify.slug).await;
+    if target_cate.is_some() {
+        return Err(FieldError::InvalidParams("category slug".to_owned()));
+    }
+
+    let row_id =
+        db::modify_category_by_mid_and_category_modify(&state, exist_cate.mid, &category_modify)
+            .await?;
+    Ok(Json(json!({ "id": row_id })))
 }
 
 pub async fn add_post_to_category(
@@ -96,7 +119,7 @@ pub async fn delete_post_from_category(
     State(state): State<Arc<AppState>>,
     PMEditor(_): PMEditor,
     Path((slug, post_slug)): Path<(String, String)>,
-) -> Result<Json<Value>, FieldError>  {
+) -> Result<Json<Value>, FieldError> {
     let mid = match db::get_category_by_slug(&state, &slug).await {
         Some(category) => category.mid,
         None => return Err(FieldError::InvalidParams("slug".to_string())),

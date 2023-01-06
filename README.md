@@ -451,7 +451,7 @@ WantedBy=multi-user.target
 
 ### 分类相关 API：
 <details>
-<summary>GET /api/categories/ ，获取所有分类目录列表</summary>
+<summary>GET /api/categories/ ，获取所有分类列表</summary>
   
  1. 权限要求：
     - PM4：允许
@@ -470,7 +470,7 @@ WantedBy=multi-user.target
 </details>
 
 <details>
-<summary>POST /api/categories/ ，新建分类目录</summary>
+<summary>POST /api/categories/ ，新建分类</summary>
   
  1. 权限要求：
     - PM4：禁止
@@ -493,7 +493,7 @@ WantedBy=multi-user.target
 </details>
 
 <details>
-<summary>GET /api/categories/:slug ，获取指定 slug 分类目录详情</summary>
+<summary>GET /api/categories/:slug ，获取指定 slug 分类详情</summary>
   
  1. 权限要求：
     - PM4：允许
@@ -510,7 +510,30 @@ WantedBy=multi-user.target
 </details>
 
 <details>
-<summary>POST /api/categories/:slug/posts/ ，关联指定 slug 文章到指定 slug 分类目录</summary>
+<summary>PATCH /api/categories/:slug ，修改指定 slug 分类</summary>
+  
+ 1. 权限要求：
+    - PM4：禁止
+    - PM3：禁止
+    - PM2：禁止
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - slug：String
+
+  3. 查询参数：
+     - 无
+
+  4. 提交表单：
+     - name：String，1 <= 长度 <= 150
+     - slug：String，1 <= 长度 <= 150
+     - description：Option<String>，1 <= 长度 <= 150
+     - parent：Option<u32>，> 0
+</details>
+
+<details>
+<summary>POST /api/categories/:slug/posts/ ，关联指定 slug 文章到指定 slug 分类</summary>
   
  1. 权限要求：
     - PM4：禁止
@@ -530,7 +553,7 @@ WantedBy=multi-user.target
 </details>
 
 <details>
-<summary>GET /api/categories/:slug/posts/ ，获取指定 slug 分类目录的所有文章列表</summary>
+<summary>GET /api/categories/:slug/posts/ ，获取指定 slug 分类的所有文章列表</summary>
   
  1. 权限要求：
     - PM4：允许
