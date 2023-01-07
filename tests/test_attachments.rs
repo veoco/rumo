@@ -40,6 +40,8 @@ async fn create_then_delete_attachments_success() {
     let body = body.unwrap();
     let cid = body.get("cid").unwrap().as_u64().unwrap();
 
+    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+
     let (status_code, body) = admin_get("/api/attachments/").await;
     assert_eq!(status_code, StatusCode::OK);
 

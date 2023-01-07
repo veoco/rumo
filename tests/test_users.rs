@@ -76,6 +76,8 @@ async fn create_then_delete_user_success() {
     let body = body.unwrap();
     let uid = body.get("id").unwrap().as_u64().unwrap();
 
+    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+
     let (status_code, body) = admin_get("/api/users/").await;
     assert_eq!(status_code, StatusCode::OK);
 
