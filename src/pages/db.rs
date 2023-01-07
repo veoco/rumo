@@ -1,8 +1,8 @@
 use std::time::SystemTime;
 
 use super::models::{FieldCreate, Page, PageCreate, PageWithMeta};
+use crate::common::errors::FieldError;
 use crate::posts::models::Field;
-use crate::users::errors::FieldError;
 use crate::AppState;
 
 pub fn get_with_sql(state: &AppState) -> String {
@@ -251,10 +251,7 @@ pub async fn get_page_with_meta_by_slug(
     }
 }
 
-pub async fn delete_content_by_cid(
-    state: &AppState,
-    cid: u32,
-) -> Result<u64, FieldError>{
+pub async fn delete_content_by_cid(state: &AppState, cid: u32) -> Result<u64, FieldError> {
     let delete_sql = format!(
         r#"
         DELETE FROM {contents_table}
@@ -366,10 +363,7 @@ pub async fn get_field_by_cid_and_name(state: &AppState, cid: u32, name: &str) -
     }
 }
 
-pub async fn delete_fields_by_cid(
-    state: &AppState,
-    cid: u32,
-) -> Result<u64, FieldError> {
+pub async fn delete_fields_by_cid(state: &AppState, cid: u32) -> Result<u64, FieldError> {
     let delete_sql = format!(
         r#"
         DELETE FROM {fields_table}

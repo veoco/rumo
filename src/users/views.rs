@@ -9,10 +9,10 @@ use std::sync::Arc;
 use std::time::SystemTime;
 
 use super::db;
-use super::errors::{AuthError, FieldError};
-use super::extractors::{PMAdministrator, PMSubscriber, ValidatedJson, ValidatedQuery};
 use super::models::{TokenData, UserLogin, UserModify, UserRegister, UsersQuery};
 use super::utils::{authenticate_user, hash};
+use crate::common::errors::{AuthError, FieldError};
+use crate::common::extractors::{PMAdministrator, PMSubscriber, ValidatedJson, ValidatedQuery};
 use crate::AppState;
 
 pub async fn login_for_access_token(
@@ -153,8 +153,8 @@ pub async fn delete_user_by_id(
 ) -> Result<Json<Value>, FieldError> {
     let uid_str = uid.to_string();
     let exist_user = db::get_user_by_uid(&state, &uid_str).await;
-    if exist_user.is_none(){
-        return Err(FieldError::InvalidParams("uid".to_string()))
+    if exist_user.is_none() {
+        return Err(FieldError::InvalidParams("uid".to_string()));
     }
 
     let _ = db::delete_user_by_uid(&state, uid).await?;

@@ -1,7 +1,7 @@
 use std::time::SystemTime;
 
+use super::users::{models::UserRegister, utils::hash};
 use super::AppState;
-use super::users::{UserRegister, hash};
 
 pub async fn init_db(state: &AppState) {
     sqlx::query(
@@ -100,13 +100,13 @@ pub async fn init_db(state: &AppState) {
 }
 
 pub async fn init_admin(state: &AppState, user_register: UserRegister) {
-  let now = SystemTime::now()
+    let now = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap()
         .as_secs() as u32;
-  let hashed_password = hash(&user_register.password);
+    let hashed_password = hash(&user_register.password);
 
-  sqlx::query(
+    sqlx::query(
     r#"
       INSERT INTO typecho_users (name, mail, url, screenName, password, created, "group") VALUES (?1, ?2, ?3, ?1, ?4, ?5, ?6)
       "#,

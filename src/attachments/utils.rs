@@ -7,7 +7,7 @@ use tokio::{
 };
 use tokio_util::io::StreamReader;
 
-use crate::users::errors::FieldError;
+use crate::common::errors::FieldError;
 
 pub fn filename_is_valid(filename: &str) -> bool {
     let path = std::path::Path::new(filename);
@@ -56,7 +56,7 @@ where
 
 pub async fn delete_file(base_dir: PathBuf, filepath: &str) -> bool {
     let filepath = filepath.strip_prefix("/");
-    if filepath.is_none(){
+    if filepath.is_none() {
         return false;
     }
     let filepath = filepath.unwrap();

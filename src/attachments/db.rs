@@ -1,5 +1,5 @@
 use super::models::Attachment;
-use crate::users::errors::FieldError;
+use crate::common::errors::FieldError;
 use crate::AppState;
 
 pub async fn create_attachment_with_params(
@@ -56,11 +56,7 @@ pub async fn delete_attachment_by_cid(state: &AppState, cid: u32) -> Result<i64,
         "#,
         contents_table = &state.contents_table,
     );
-    match sqlx::query(&sql)
-        .bind(cid)
-        .execute(&state.pool)
-        .await
-    {
+    match sqlx::query(&sql).bind(cid).execute(&state.pool).await {
         Ok(r) => Ok(r.last_insert_rowid()),
         Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
     }

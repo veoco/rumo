@@ -7,10 +7,10 @@ use std::sync::Arc;
 use super::db::{self};
 use super::models::{TagCreate, TagPostAdd, TagsQuery};
 use crate::categories::db as category_db;
+use crate::common::errors::FieldError;
+use crate::common::extractors::{PMEditor, PMVisitor, ValidatedJson, ValidatedQuery};
 use crate::posts::db as post_db;
 use crate::posts::models::PostsQuery;
-use crate::users::errors::FieldError;
-use crate::users::extractors::{PMEditor, PMVisitor, ValidatedJson, ValidatedQuery};
 use crate::AppState;
 
 pub async fn create_tag(

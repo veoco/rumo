@@ -1,7 +1,7 @@
 use std::time::SystemTime;
 
 use super::models::{Post, PostCreate, PostWithMeta};
-use crate::users::errors::FieldError;
+use crate::common::errors::FieldError;
 use crate::AppState;
 
 pub fn get_with_sql(state: &AppState) -> String {
@@ -221,17 +221,11 @@ pub async fn modify_post_by_post_create_with_exist_post(
         true => "1",
         false => "0",
     };
-    let allow_ping = match post_modify
-        .allowPing
-        .unwrap_or(exist_post.allowPing == "1")
-    {
+    let allow_ping = match post_modify.allowPing.unwrap_or(exist_post.allowPing == "1") {
         true => "1",
         false => "0",
     };
-    let allow_feed = match post_modify
-        .allowFeed
-        .unwrap_or(exist_post.allowFeed == "1")
-    {
+    let allow_feed = match post_modify.allowFeed.unwrap_or(exist_post.allowFeed == "1") {
         true => "1",
         false => "0",
     };

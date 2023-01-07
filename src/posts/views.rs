@@ -6,10 +6,10 @@ use std::sync::Arc;
 
 use super::db;
 use super::models::{PostCreate, PostQuery, PostsQuery};
+use crate::common::errors::FieldError;
+use crate::common::extractors::{PMContributor, PMVisitor, ValidatedJson, ValidatedQuery};
 use crate::pages::db as page_db;
 use crate::pages::models::FieldCreate;
-use crate::users::errors::FieldError;
-use crate::users::extractors::{PMContributor, PMVisitor, ValidatedJson, ValidatedQuery};
 use crate::AppState;
 
 pub async fn create_post(
@@ -184,14 +184,15 @@ pub async fn create_post_field_by_slug(
         return Err(FieldError::AlreadyExist("slug".to_owned()));
     }
     let exist_post = exist_post.unwrap();
-    
+
     let admin = user.group == "editor" || user.group == "administrator";
     if exist_post.authorId != user.uid && !admin {
         return Err(FieldError::PermissionDeny);
     }
 
     let row_id =
-        page_db::create_field_by_cid_with_field_create(&state, exist_post.cid, &field_create).await?;
+        page_db::create_field_by_cid_with_field_create(&state, exist_post.cid, &field_create)
+            .await?;
     Ok((StatusCode::CREATED, Json(json!({ "id": row_id }))))
 }
 
@@ -266,5 +267,5 @@ pub async fn delete_post_field_by_slug_and_name(
     }
 
     let row_id = page_db::delete_field_by_cid_and_name(&state, exist_post.cid, &name).await?;
-    Ok(Json(json!({"id": row_id})))
+    Ok(Json(json!({ "id": row_id })))
 }

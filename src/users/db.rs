@@ -1,8 +1,8 @@
 use std::time::SystemTime;
 
-use super::errors::FieldError;
 use super::models::{User, UserModify, UserRegister};
 use super::utils::hash;
+use crate::common::errors::FieldError;
 use crate::AppState;
 
 pub async fn get_user_by_mail(state: &AppState, mail: &str) -> Option<User> {

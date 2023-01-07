@@ -101,7 +101,7 @@ impl IntoResponse for FieldError {
             FieldError::DatabaseFailed(s) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({ "msg": format!("{}", s) })),
-            )
+            ),
         }
         .into_response()
     }

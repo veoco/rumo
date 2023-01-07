@@ -9,8 +9,8 @@ use std::sync::Arc;
 use validator::Validate;
 
 use super::errors::{AuthError, ValidateRequestError};
-use super::models::User;
-use super::utils::get_user;
+use crate::users::models::User;
+use crate::users::utils::get_user;
 use crate::AppState;
 
 #[derive(Debug, Clone, Copy, Default)]

@@ -11,8 +11,8 @@ use rand::Rng;
 use sha2::Sha256;
 
 use super::db::{get_user_by_mail, get_user_by_uid};
-use super::errors::AuthError;
 use super::models::{TokenData, User, UserLogin};
+use crate::common::errors::AuthError;
 use crate::AppState;
 
 const ITOA64: [&str; 64] = [

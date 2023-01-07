@@ -1,7 +1,7 @@
 use super::models::{Category, CategoryCreate};
+use crate::common::errors::FieldError;
 use crate::posts::db as post_db;
 use crate::posts::models::PostWithMeta;
-use crate::users::errors::FieldError;
 use crate::AppState;
 
 pub async fn get_category_by_mid(state: &AppState, mid: u32) -> Option<Category> {
@@ -22,7 +22,7 @@ pub async fn get_category_by_mid(state: &AppState, mid: u32) -> Option<Category>
     } else {
         None
     }
-} 
+}
 
 pub async fn get_category_by_slug(state: &AppState, slug: &str) -> Option<Category> {
     let select_sql = format!(
@@ -49,11 +49,9 @@ pub async fn create_category_by_category_create(
     category_create: &CategoryCreate,
 ) -> Result<i64, FieldError> {
     let category_parent = match category_create.parent {
-        Some(mid) => {
-            match get_category_by_mid(&state, mid).await{
-                Some(_) => mid,
-                None => return Err(FieldError::InvalidParams("parent".to_string()))
-            }
+        Some(mid) => match get_category_by_mid(&state, mid).await {
+            Some(_) => mid,
+            None => return Err(FieldError::InvalidParams("parent".to_string())),
         },
         _ => 0,
     };
@@ -74,7 +72,7 @@ pub async fn create_category_by_category_create(
         .await
     {
         Ok(r) => Ok(r.last_insert_rowid()),
-        Err(e) => Err(FieldError::DatabaseFailed(e.to_string()))
+        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
     }
 }
 
@@ -84,11 +82,9 @@ pub async fn modify_category_by_mid_and_category_modify(
     category_modify: &CategoryCreate,
 ) -> Result<i64, FieldError> {
     let category_parent = match category_modify.parent {
-        Some(mid) => {
-            match get_category_by_mid(&state, mid).await{
-                Some(_) => mid,
-                None => return Err(FieldError::InvalidParams("parent".to_string()))
-            }
+        Some(mid) => match get_category_by_mid(&state, mid).await {
+            Some(_) => mid,
+            None => return Err(FieldError::InvalidParams("parent".to_string())),
         },
         _ => 0,
     };
@@ -111,14 +107,11 @@ pub async fn modify_category_by_mid_and_category_modify(
         .await
     {
         Ok(r) => Ok(r.last_insert_rowid()),
-        Err(e) => Err(FieldError::DatabaseFailed(e.to_string()))
+        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
     }
 }
 
-pub async fn delete_relationships_by_mid(
-    state: &AppState,
-    mid: u32,
-) -> Result<u64, FieldError> {
+pub async fn delete_relationships_by_mid(state: &AppState, mid: u32) -> Result<u64, FieldError> {
     let delete_sql = format!(
         r#"
         DELETE FROM {relationships_table}
@@ -132,14 +125,11 @@ pub async fn delete_relationships_by_mid(
         .await
     {
         Ok(r) => Ok(r.rows_affected()),
-        Err(e) => Err(FieldError::DatabaseFailed(e.to_string()))
+        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
     }
 }
 
-pub async fn delete_meta_by_mid(
-    state: &AppState,
-    mid: u32,
-) -> Result<u64, FieldError> {
+pub async fn delete_meta_by_mid(state: &AppState, mid: u32) -> Result<u64, FieldError> {
     let update_sql = format!(
         r#"
         DELETE FROM {metas_table}
@@ -153,7 +143,7 @@ pub async fn delete_meta_by_mid(
         .await
     {
         Ok(r) => Ok(r.rows_affected()),
-        Err(e) => Err(FieldError::DatabaseFailed(e.to_string()))
+        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
     }
 }
 
@@ -201,7 +191,10 @@ pub async fn get_categories_by_list_query(
     }
 }
 
-pub async fn update_meta_by_mid_for_increase_count(state: &AppState, mid: u32) -> Result<u64, FieldError> {
+pub async fn update_meta_by_mid_for_increase_count(
+    state: &AppState,
+    mid: u32,
+) -> Result<u64, FieldError> {
     let update_sql = format!(
         r#"
         UPDATE {metas_table}
@@ -220,7 +213,10 @@ pub async fn update_meta_by_mid_for_increase_count(state: &AppState, mid: u32) -
     }
 }
 
-pub async fn update_meta_by_mid_for_decrease_count(state: &AppState, mid: u32) -> Result<u64, FieldError> {
+pub async fn update_meta_by_mid_for_decrease_count(
+    state: &AppState,
+    mid: u32,
+) -> Result<u64, FieldError> {
     let update_sql = format!(
         r#"
         UPDATE {metas_table}

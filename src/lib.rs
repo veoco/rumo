@@ -8,6 +8,7 @@ use tracing::info;
 mod attachments;
 mod categories;
 mod comments;
+mod common;
 mod db;
 mod pages;
 mod posts;
@@ -19,7 +20,7 @@ use comments::comments_routers;
 use pages::pages_routers;
 use posts::posts_routers;
 use tags::tags_routers;
-use users::{users_routers, UserRegister};
+use users::{models::UserRegister, users_routers};
 
 #[derive(Clone)]
 pub struct AppState {

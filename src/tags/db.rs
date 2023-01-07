@@ -1,7 +1,7 @@
 use super::models::{Tag, TagCreate};
+use crate::common::errors::FieldError;
 use crate::posts::db as post_db;
 use crate::posts::models::PostWithMeta;
-use crate::users::errors::FieldError;
 use crate::AppState;
 
 pub async fn get_tag_by_mid(state: &AppState, mid: u32) -> Option<Tag> {
@@ -22,7 +22,7 @@ pub async fn get_tag_by_mid(state: &AppState, mid: u32) -> Option<Tag> {
     } else {
         None
     }
-} 
+}
 
 pub async fn get_tag_by_slug(state: &AppState, slug: &str) -> Option<Tag> {
     let select_sql = format!(
@@ -79,11 +79,9 @@ pub async fn modify_tag_by_mid_and_tag_modify(
     tag_modify: &TagCreate,
 ) -> Result<i64, FieldError> {
     let tag_parent = match tag_modify.parent {
-        Some(mid) => {
-            match get_tag_by_mid(&state, mid).await{
-                Some(_) => mid,
-                None => return Err(FieldError::InvalidParams("parent".to_string()))
-            }
+        Some(mid) => match get_tag_by_mid(&state, mid).await {
+            Some(_) => mid,
+            None => return Err(FieldError::InvalidParams("parent".to_string())),
         },
         _ => 0,
     };
@@ -106,7 +104,7 @@ pub async fn modify_tag_by_mid_and_tag_modify(
         .await
     {
         Ok(r) => Ok(r.last_insert_rowid()),
-        Err(e) => Err(FieldError::DatabaseFailed(e.to_string()))
+        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
     }
 }
 

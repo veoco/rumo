@@ -6,8 +6,8 @@ use std::sync::Arc;
 
 use super::db;
 use super::models::{FieldCreate, PageCreate, PagesQuery};
-use crate::users::errors::FieldError;
-use crate::users::extractors::{PMEditor, PMVisitor, ValidatedJson, ValidatedQuery};
+use crate::common::errors::FieldError;
+use crate::common::extractors::{PMEditor, PMVisitor, ValidatedJson, ValidatedQuery};
 use crate::AppState;
 
 pub async fn create_page(
@@ -100,7 +100,9 @@ pub async fn get_page_by_slug(
     PMVisitor(user): PMVisitor,
     Path(slug): Path<String>,
 ) -> Result<Json<Value>, FieldError> {
-    let page = db::get_page_with_meta_by_slug(&state, &slug).await.map_err(|_|FieldError::NotFound("slug".to_string()))?;
+    let page = db::get_page_with_meta_by_slug(&state, &slug)
+        .await
+        .map_err(|_| FieldError::NotFound("slug".to_string()))?;
     let admin = user.group == "editor" || user.group == "administrator";
 
     if page.status == "hidden" && !admin {
@@ -117,7 +119,7 @@ pub async fn delete_page_by_slug(
 ) -> Result<Json<Value>, FieldError> {
     let page = db::get_page_by_slug(&state, &slug).await;
 
-    if page.is_none(){
+    if page.is_none() {
         return Err(FieldError::InvalidParams("slug".to_string()));
     }
     let page = page.unwrap();
@@ -179,7 +181,7 @@ pub async fn delete_page_field_by_slug_and_name(
     }
 
     let row_id = db::delete_field_by_cid_and_name(&state, exist_page.cid, &name).await?;
-    Ok(Json(json!({"id": row_id})))
+    Ok(Json(json!({ "id": row_id })))
 }
 
 pub async fn modify_page_field_by_slug_and_name(

@@ -1,7 +1,7 @@
 use std::time::SystemTime;
 
 use super::models::Comment;
-use crate::users::errors::FieldError;
+use crate::common::errors::FieldError;
 use crate::AppState;
 
 pub async fn get_comment_by_coid(state: &AppState, coid: u32) -> Option<Comment> {

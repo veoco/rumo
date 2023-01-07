@@ -11,8 +11,8 @@ use super::de::from_str;
 use super::models::{AttachmentInfo, AttachmentText, AttachmentsQuery};
 use super::ser::to_string;
 use super::utils::{delete_file, stream_to_file};
-use crate::users::errors::FieldError;
-use crate::users::extractors::{PMContributor, ValidatedQuery};
+use crate::common::errors::FieldError;
+use crate::common::extractors::{PMContributor, ValidatedQuery};
 use crate::AppState;
 
 pub async fn create_attachment(
