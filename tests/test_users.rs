@@ -2,7 +2,7 @@ use axum::http::StatusCode;
 use serde_json::json;
 
 mod common;
-use common::{admin_get, admin_patch, get, post};
+use common::{admin_get, admin_patch, admin_delete, get, post};
 
 #[tokio::test]
 async fn index() {
@@ -57,4 +57,40 @@ async fn normal_user_change_success() {
 async fn list_users_success() {
     let (status_code, _) = admin_get("/api/users/").await;
     assert_eq!(status_code, StatusCode::OK);
+}
+
+#[tokio::test]
+async fn create_then_delete_user_success() {
+    let data = json!({"name": "delete_test","mail": "delete_test@test.local", "url": "http://127.0.0.1", "password": "password"}).to_string();
+    let (status_code, _) = post("/api/users", data).await;
+    assert_eq!(status_code, StatusCode::CREATED);
+
+    let data = json!({"name": "delete_test2","mail": "delete2_test@test.local", "url": "http://127.0.0.1", "password": "password"}).to_string();
+    let (status_code, _) = post("/api/users", data).await;
+    assert_eq!(status_code, StatusCode::CREATED);
+
+    let data = json!({"name": "delete_test3","mail": "delete3_test@test.local", "url": "http://127.0.0.1", "password": "password"}).to_string();
+    let (status_code, body) = post("/api/users", data).await;
+    assert_eq!(status_code, StatusCode::CREATED);
+
+    let body = body.unwrap();
+    let uid = body.get("id").unwrap().as_u64().unwrap();
+
+    let (status_code, body) = admin_get("/api/users/").await;
+    assert_eq!(status_code, StatusCode::OK);
+
+    let body = body.unwrap();
+    let count = body.get("count").unwrap().as_u64().unwrap();
+
+    let url = format!("/api/users/{uid}");
+    let (status_code, _) = admin_delete(&url).await;
+    assert_eq!(status_code, StatusCode::OK);
+
+    
+    let (status_code, body) = admin_get("/api/users/").await;
+    assert_eq!(status_code, StatusCode::OK);
+
+    let body = body.unwrap();
+    let new_count = body.get("count").unwrap().as_u64().unwrap();
+    assert!(new_count < count);
 }

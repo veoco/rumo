@@ -135,6 +135,26 @@ WantedBy=multi-user.target
 </details>
 
 <details>
+<summary>DELETE /api/users/:uid ，删除指定 uid 用户</summary>
+  
+ 1. 权限要求：
+    - PM4：禁止
+    - PM3：禁止
+    - PM2：禁止
+    - PM1：禁止
+    - PM0：允许
+
+  2. 路径参数：
+     - uid：u32
+
+  3. 查询参数：
+     - 无
+
+  4. 提交表单：
+     - 无
+</details>
+
+<details>
 <summary>POST /api/users/token ，用户登录以获取 jwt 密钥</summary>
   
  1. 权限要求：

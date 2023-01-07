@@ -145,3 +145,18 @@ pub async fn modify_user_by_id(
         Err(FieldError::PermissionDeny)
     }
 }
+
+pub async fn delete_user_by_id(
+    State(state): State<Arc<AppState>>,
+    PMAdministrator(_): PMAdministrator,
+    Path(uid): Path<u32>,
+) -> Result<Json<Value>, FieldError> {
+    let uid_str = uid.to_string();
+    let exist_user = db::get_user_by_uid(&state, &uid_str).await;
+    if exist_user.is_none(){
+        return Err(FieldError::InvalidParams("uid".to_string()))
+    }
+
+    let _ = db::delete_user_by_uid(&state, uid).await?;
+    Ok(Json(json!({"msg": "ok"})))
+}

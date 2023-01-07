@@ -1,5 +1,5 @@
 use axum::{
-    routing::{get, patch, post},
+    routing::{delete, get, patch, post},
     Router,
 };
 use std::sync::Arc;
@@ -14,6 +14,7 @@ pub fn users_routers(ro: bool) -> Router<Arc<AppState>> {
     if !ro {
         users_route
             .route("/api/users/:uid", patch(views::modify_user_by_id))
+            .route("/api/users/:uid", delete(views::delete_user_by_id))
             .route("/api/users/token", post(views::login_for_access_token))
             .route("/api/users", post(views::register))
     } else {

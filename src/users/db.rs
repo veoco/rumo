@@ -45,6 +45,20 @@ pub async fn get_user_by_uid(state: &AppState, uid: &str) -> Option<User> {
     }
 }
 
+pub async fn delete_user_by_uid(state: &AppState, uid: u32) -> Result<i64, FieldError> {
+    let sql = format!(
+        r#"
+        DELETE FROM {users_table}
+        WHERE "uid" == ?1
+        "#,
+        users_table = &state.users_table
+    );
+    match sqlx::query(&sql).bind(uid).execute(&state.pool).await {
+        Ok(r) => Ok(r.last_insert_rowid()),
+        Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
+    }
+}
+
 pub async fn update_user_by_uid_for_activity(state: &AppState, uid: u32, now: u32) {
     let update_sql = format!(
         r#"
