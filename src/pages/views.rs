@@ -5,9 +5,12 @@ use serde_json::{json, Value};
 use std::sync::Arc;
 
 use super::db;
-use super::models::{FieldCreate, PageCreate, PagesQuery};
+use super::forms::PageCreate;
+use crate::common::db as common_db;
 use crate::common::errors::FieldError;
 use crate::common::extractors::{PMEditor, PMVisitor, ValidatedJson, ValidatedQuery};
+use crate::common::forms::FieldCreate;
+use crate::common::forms::ListQueryWithPrivate;
 use crate::AppState;
 
 pub async fn create_page(
@@ -15,7 +18,7 @@ pub async fn create_page(
     PMEditor(user): PMEditor,
     ValidatedJson(page_create): ValidatedJson<PageCreate>,
 ) -> Result<(StatusCode, Json<Value>), FieldError> {
-    let exist_page = db::get_page_by_slug(&state, &page_create.slug).await;
+    let exist_page = common_db::get_content_by_slug(&state, &page_create.slug).await;
     if exist_page.is_some() {
         return Err(FieldError::AlreadyExist("slug".to_owned()));
     }
@@ -30,13 +33,13 @@ pub async fn modify_page_by_slug(
     Path(slug): Path<String>,
     ValidatedJson(page_modify): ValidatedJson<PageCreate>,
 ) -> Result<Json<Value>, FieldError> {
-    let exist_page = db::get_page_by_slug(&state, &slug).await;
+    let exist_page = common_db::get_content_by_slug(&state, &slug).await;
     if exist_page.is_none() {
         return Err(FieldError::NotFound("slug".to_owned()));
     }
     let exist_page = exist_page.unwrap();
 
-    let target_page = db::get_page_by_slug(&state, &page_modify.slug).await;
+    let target_page = common_db::get_content_by_slug(&state, &page_modify.slug).await;
     if target_page.is_some() {
         return Err(FieldError::AlreadyExist("page slug".to_owned()));
     }
@@ -49,7 +52,7 @@ pub async fn modify_page_by_slug(
 pub async fn list_pages(
     State(state): State<Arc<AppState>>,
     PMVisitor(user): PMVisitor,
-    ValidatedQuery(q): ValidatedQuery<PagesQuery>,
+    ValidatedQuery(q): ValidatedQuery<ListQueryWithPrivate>,
 ) -> Result<Json<Value>, FieldError> {
     let admin = user.group == "editor" || user.group == "administrator";
     let private = q.private.unwrap_or(false);
@@ -66,7 +69,7 @@ pub async fn list_pages(
         )
     };
 
-    let all_count = db::get_pages_count_with_private(&state, &private_sql).await;
+    let all_count = common_db::get_contents_count_with_private(&state, &private_sql, "page").await;
 
     let page = q.page.unwrap_or(1);
     let page_size = q.page_size.unwrap_or(10);
@@ -83,9 +86,15 @@ pub async fn list_pages(
         f => return Err(FieldError::InvalidParams(f.to_string())),
     };
 
-    let pages =
-        db::get_pages_by_list_query_with_private(&state, &private_sql, page_size, offset, order_by)
-            .await?;
+    let pages = db::get_contents_with_fields_by_list_query_with_private(
+        &state,
+        &private_sql,
+        page_size,
+        offset,
+        order_by,
+        false,
+    )
+    .await?;
     Ok(Json(json!({
         "page": page,
         "page_size": page_size,
@@ -100,7 +109,7 @@ pub async fn get_page_by_slug(
     PMVisitor(user): PMVisitor,
     Path(slug): Path<String>,
 ) -> Result<Json<Value>, FieldError> {
-    let page = db::get_page_with_meta_by_slug(&state, &slug)
+    let page = db::get_content_with_fields_by_slug(&state, &slug)
         .await
         .map_err(|_| FieldError::NotFound("slug".to_string()))?;
     let admin = user.group == "editor" || user.group == "administrator";
@@ -117,17 +126,17 @@ pub async fn delete_page_by_slug(
     PMEditor(_): PMEditor,
     Path(slug): Path<String>,
 ) -> Result<Json<Value>, FieldError> {
-    let page = db::get_page_by_slug(&state, &slug).await;
+    let page = common_db::get_content_by_slug(&state, &slug).await;
 
     if page.is_none() {
         return Err(FieldError::InvalidParams("slug".to_string()));
     }
     let page = page.unwrap();
 
-    let _ = db::delete_fields_by_cid(&state, page.cid).await?;
+    let _ = common_db::delete_fields_by_cid(&state, page.cid).await?;
 
-    let row_id = db::delete_content_by_cid(&state, page.cid).await?;
-    Ok(Json(json!({ "id": row_id })))
+    let _ = common_db::delete_content_by_cid(&state, page.cid).await?;
+    Ok(Json(json!({ "msg": "ok" })))
 }
 
 pub async fn create_page_field_by_slug(
@@ -136,14 +145,15 @@ pub async fn create_page_field_by_slug(
     Path(slug): Path<String>,
     ValidatedJson(field_create): ValidatedJson<FieldCreate>,
 ) -> Result<(StatusCode, Json<Value>), FieldError> {
-    let exist_page = db::get_page_by_slug(&state, &slug).await;
+    let exist_page = common_db::get_content_by_slug(&state, &slug).await;
     if exist_page.is_none() {
         return Err(FieldError::AlreadyExist("slug".to_owned()));
     }
     let exist_page = exist_page.unwrap();
 
     let row_id =
-        db::create_field_by_cid_with_field_create(&state, exist_page.cid, &field_create).await?;
+        common_db::create_field_by_cid_with_field_create(&state, exist_page.cid, &field_create)
+            .await?;
     Ok((StatusCode::CREATED, Json(json!({ "id": row_id }))))
 }
 
@@ -151,13 +161,13 @@ pub async fn get_page_field_by_slug_and_name(
     State(state): State<Arc<AppState>>,
     Path((slug, name)): Path<(String, String)>,
 ) -> Result<Json<Value>, FieldError> {
-    let exist_page = db::get_page_by_slug(&state, &slug).await;
+    let exist_page = common_db::get_content_by_slug(&state, &slug).await;
     if exist_page.is_none() {
         return Err(FieldError::NotFound("slug".to_owned()));
     }
     let exist_page = exist_page.unwrap();
 
-    let field = db::get_field_by_cid_and_name(&state, exist_page.cid, &name).await;
+    let field = common_db::get_field_by_cid_and_name(&state, exist_page.cid, &name).await;
     if field.is_none() {
         return Err(FieldError::NotFound("name".to_owned()));
     }
@@ -169,19 +179,19 @@ pub async fn delete_page_field_by_slug_and_name(
     PMEditor(_): PMEditor,
     Path((slug, name)): Path<(String, String)>,
 ) -> Result<Json<Value>, FieldError> {
-    let exist_page = db::get_page_by_slug(&state, &slug).await;
+    let exist_page = common_db::get_content_by_slug(&state, &slug).await;
     if exist_page.is_none() {
         return Err(FieldError::InvalidParams("slug".to_owned()));
     }
     let exist_page = exist_page.unwrap();
 
-    let field = db::get_field_by_cid_and_name(&state, exist_page.cid, &name).await;
+    let field = common_db::get_field_by_cid_and_name(&state, exist_page.cid, &name).await;
     if field.is_none() {
         return Err(FieldError::InvalidParams("name".to_owned()));
     }
 
-    let row_id = db::delete_field_by_cid_and_name(&state, exist_page.cid, &name).await?;
-    Ok(Json(json!({ "id": row_id })))
+    let _ = common_db::delete_field_by_cid_and_name(&state, exist_page.cid, &name).await?;
+    Ok(Json(json!({ "msg": "ok" })))
 }
 
 pub async fn modify_page_field_by_slug_and_name(
@@ -190,18 +200,18 @@ pub async fn modify_page_field_by_slug_and_name(
     Path((slug, name)): Path<(String, String)>,
     ValidatedJson(field_create): ValidatedJson<FieldCreate>,
 ) -> Result<Json<Value>, FieldError> {
-    let exist_page = db::get_page_by_slug(&state, &slug).await;
+    let exist_page = common_db::get_content_by_slug(&state, &slug).await;
     if exist_page.is_none() {
         return Err(FieldError::InvalidParams("slug".to_owned()));
     }
     let exist_page = exist_page.unwrap();
 
-    let exist_field = db::get_field_by_cid_and_name(&state, exist_page.cid, &name).await;
+    let exist_field = common_db::get_field_by_cid_and_name(&state, exist_page.cid, &name).await;
     if exist_field.is_none() {
         return Err(FieldError::InvalidParams("name".to_owned()));
     }
 
-    let row_id = db::modify_field_by_cid_and_name_with_field_create(
+    let row_id = common_db::modify_field_by_cid_and_name_with_field_create(
         &state,
         exist_page.cid,
         &name,

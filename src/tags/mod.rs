@@ -1,4 +1,4 @@
-pub mod models;
+pub mod forms;
 mod urls;
 mod views;
 mod db;

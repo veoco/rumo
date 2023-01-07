@@ -142,8 +142,8 @@ async fn create_then_get_post_field_success() {
     assert_eq!(status_code, StatusCode::OK);
 
     let body = body.unwrap();
-    let fields = body.get("fields").unwrap().as_array();
-    assert!(fields.is_none());
+    let fields = body.get("fields").unwrap().as_array().unwrap();
+    assert!(fields.len() == 0);
 
     let data = json!({
         "name": "test_str",

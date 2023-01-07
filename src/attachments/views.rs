@@ -11,6 +11,7 @@ use super::de::from_str;
 use super::models::{AttachmentInfo, AttachmentText, AttachmentsQuery};
 use super::ser::to_string;
 use super::utils::{delete_file, stream_to_file};
+use crate::common::db as common_db;
 use crate::common::errors::FieldError;
 use crate::common::extractors::{PMContributor, ValidatedQuery};
 use crate::AppState;
@@ -82,7 +83,7 @@ pub async fn delete_attachment_by_cid(
     PMContributor(user): PMContributor,
     Path(cid): Path<u32>,
 ) -> Result<Json<Value>, FieldError> {
-    let attachment = db::get_attachment_by_cid(&state, cid).await;
+    let attachment = common_db::get_content_by_cid(&state, cid).await;
     if attachment.is_none() {
         return Err(FieldError::InvalidParams("cid".to_string()));
     }
@@ -99,8 +100,8 @@ pub async fn delete_attachment_by_cid(
     let filepath = text.path;
     let _ = delete_file(base_dir.to_path_buf(), &filepath).await;
 
-    let row_id = db::delete_attachment_by_cid(&state, cid).await?;
-    Ok(Json(json!({ "id": row_id })))
+    let _ = common_db::delete_content_by_cid(&state, cid).await?;
+    Ok(Json(json!({ "msg": "ok" })))
 }
 
 pub async fn list_attachments(
@@ -121,7 +122,7 @@ pub async fn list_attachments(
         )
     };
 
-    let all_count = db::get_attachments_count_with_private(&state, &private_sql).await;
+    let all_count = common_db::get_contents_count_with_private(&state, &private_sql, "attachment").await;
 
     let page = q.page.unwrap_or(1);
     let page_size = q.page_size.unwrap_or(10);

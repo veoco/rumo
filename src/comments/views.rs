@@ -11,8 +11,7 @@ use super::db;
 use super::models::{Comment, CommentCreate, CommentModify, CommentsQuery};
 use crate::common::errors::FieldError;
 use crate::common::extractors::{PMEditor, PMVisitor, ValidatedJson, ValidatedQuery};
-use crate::pages::db as page_db;
-use crate::posts::db as post_db;
+use crate::common::db as common_db;
 use crate::AppState;
 
 pub async fn create_page_comment(
@@ -23,7 +22,7 @@ pub async fn create_page_comment(
     Path(slug): Path<String>,
     ValidatedJson(comment_create): ValidatedJson<CommentCreate>,
 ) -> Result<(StatusCode, Json<Value>), FieldError> {
-    let page = match page_db::get_page_by_slug(&state, &slug).await {
+    let page = match common_db::get_content_by_slug(&state, &slug).await {
         Some(p) => {
             if p.allowComment == "0" {
                 return Err(FieldError::InvalidParams("slug".to_string()));
@@ -98,7 +97,7 @@ pub async fn create_post_comment(
     Path(slug): Path<String>,
     ValidatedJson(comment_create): ValidatedJson<CommentCreate>,
 ) -> Result<(StatusCode, Json<Value>), FieldError> {
-    let post = match post_db::get_post_by_slug(&state, &slug).await {
+    let post = match common_db::get_content_by_slug(&state, &slug).await {
         Some(p) => {
             if p.allowComment == "0" {
                 return Err(FieldError::InvalidParams("slug".to_string()));
@@ -210,7 +209,7 @@ pub async fn list_page_comments_by_slug(
         )
     };
 
-    let target_page = match page_db::get_page_by_slug(&state, &slug).await {
+    let target_page = match common_db::get_content_by_slug(&state, &slug).await {
         Some(p) => p,
         None => return Err(FieldError::InvalidParams("slug".to_string())),
     };
@@ -279,7 +278,7 @@ pub async fn list_post_comments_by_slug(
         )
     };
 
-    let target_post = match post_db::get_post_by_slug(&state, &slug).await {
+    let target_post = match common_db::get_content_by_slug(&state, &slug).await {
         Some(p) => p,
         None => return Err(FieldError::InvalidParams("slug".to_string())),
     };

@@ -5,11 +5,11 @@ use serde_json::{json, Value};
 use std::sync::Arc;
 
 use super::db;
-use super::models::{PostCreate, PostQuery, PostsQuery};
+use super::forms::{PostCreate, PostQuery, PostsQuery};
+use crate::common::db as common_db;
 use crate::common::errors::FieldError;
 use crate::common::extractors::{PMContributor, PMVisitor, ValidatedJson, ValidatedQuery};
-use crate::pages::db as page_db;
-use crate::pages::models::FieldCreate;
+use crate::common::forms::FieldCreate;
 use crate::AppState;
 
 pub async fn create_post(
@@ -17,7 +17,7 @@ pub async fn create_post(
     PMContributor(user): PMContributor,
     ValidatedJson(mut post_create): ValidatedJson<PostCreate>,
 ) -> Result<(StatusCode, Json<Value>), FieldError> {
-    let exist_post = db::get_post_by_slug(&state, &post_create.slug).await;
+    let exist_post = common_db::get_content_by_slug(&state, &post_create.slug).await;
     if exist_post.is_some() {
         return Err(FieldError::AlreadyExist("slug".to_owned()));
     }
@@ -36,13 +36,13 @@ pub async fn modify_page_by_slug(
     Path(slug): Path<String>,
     ValidatedJson(mut post_modify): ValidatedJson<PostCreate>,
 ) -> Result<Json<Value>, FieldError> {
-    let exist_post = db::get_post_by_slug(&state, &slug).await;
+    let exist_post = common_db::get_content_by_slug(&state, &slug).await;
     if exist_post.is_none() {
         return Err(FieldError::NotFound("slug".to_owned()));
     }
     let exist_post = exist_post.unwrap();
 
-    let target_post = db::get_post_by_slug(&state, &post_modify.slug).await;
+    let target_post = common_db::get_content_by_slug(&state, &post_modify.slug).await;
     if target_post.is_some() {
         return Err(FieldError::AlreadyExist("post slug".to_owned()));
     }
@@ -80,7 +80,7 @@ pub async fn list_posts(
         )
     };
 
-    let all_count = db::get_posts_count_by_filter(&state, &filter_sql).await;
+    let all_count = common_db::get_contents_count_with_private(&state, &filter_sql, "post").await;
 
     let page = q.page.unwrap_or(1);
     let page_size = q.page_size.unwrap_or(10);
@@ -95,9 +95,15 @@ pub async fn list_posts(
         f => return Err(FieldError::InvalidParams(f.to_string())),
     };
 
-    let posts =
-        db::get_posts_by_filter_and_list_query(&state, &filter_sql, page_size, offset, order_by)
-            .await?;
+    let posts = db::get_contents_with_metas_user_and_fields_by_filter_and_list_query(
+        &state,
+        &filter_sql,
+        page_size,
+        offset,
+        order_by,
+        true,
+    )
+    .await?;
     Ok(Json(json!({
         "page": page,
         "page_size": page_size,
@@ -125,9 +131,10 @@ pub async fn get_post_by_slug(
         )
     };
 
-    let post = db::get_post_by_slug_and_private(&state, &slug, &private_sql)
-        .await
-        .map_err(|_| FieldError::NotFound("slug".to_string()))?;
+    let post =
+        db::get_content_with_metas_user_fields_by_slug_and_private(&state, &slug, &private_sql)
+            .await
+            .map_err(|_| FieldError::NotFound("slug".to_string()))?;
 
     let status = &post.status;
     if admin || status == "publish" || status == "hidden" || status == "password" {
@@ -155,7 +162,7 @@ pub async fn delete_post_by_slug(
     PMContributor(user): PMContributor,
     Path(slug): Path<String>,
 ) -> Result<Json<Value>, FieldError> {
-    let post = db::get_post_by_slug(&state, &slug).await;
+    let post = common_db::get_content_by_slug(&state, &slug).await;
 
     if post.is_none() {
         return Err(FieldError::InvalidParams("slug".to_string()));
@@ -167,10 +174,10 @@ pub async fn delete_post_by_slug(
         return Err(FieldError::PermissionDeny);
     }
 
-    let _ = page_db::delete_fields_by_cid(&state, post.cid).await?;
+    let _ = common_db::delete_fields_by_cid(&state, post.cid).await?;
 
-    let row_id = page_db::delete_content_by_cid(&state, post.cid).await?;
-    Ok(Json(json!({ "id": row_id })))
+    let _ = common_db::delete_content_by_cid(&state, post.cid).await?;
+    Ok(Json(json!({ "msg": "ok" })))
 }
 
 pub async fn create_post_field_by_slug(
@@ -179,7 +186,7 @@ pub async fn create_post_field_by_slug(
     Path(slug): Path<String>,
     ValidatedJson(field_create): ValidatedJson<FieldCreate>,
 ) -> Result<(StatusCode, Json<Value>), FieldError> {
-    let exist_post = db::get_post_by_slug(&state, &slug).await;
+    let exist_post = common_db::get_content_by_slug(&state, &slug).await;
     if exist_post.is_none() {
         return Err(FieldError::AlreadyExist("slug".to_owned()));
     }
@@ -191,7 +198,7 @@ pub async fn create_post_field_by_slug(
     }
 
     let row_id =
-        page_db::create_field_by_cid_with_field_create(&state, exist_post.cid, &field_create)
+        common_db::create_field_by_cid_with_field_create(&state, exist_post.cid, &field_create)
             .await?;
     Ok((StatusCode::CREATED, Json(json!({ "id": row_id }))))
 }
@@ -200,13 +207,13 @@ pub async fn get_post_field_by_slug_and_name(
     State(state): State<Arc<AppState>>,
     Path((slug, name)): Path<(String, String)>,
 ) -> Result<Json<Value>, FieldError> {
-    let exist_post = db::get_post_by_slug(&state, &slug).await;
+    let exist_post = common_db::get_content_by_slug(&state, &slug).await;
     if exist_post.is_none() {
         return Err(FieldError::NotFound("slug".to_owned()));
     }
     let exist_post = exist_post.unwrap();
 
-    let field = page_db::get_field_by_cid_and_name(&state, exist_post.cid, &name).await;
+    let field = common_db::get_field_by_cid_and_name(&state, exist_post.cid, &name).await;
     if field.is_none() {
         return Err(FieldError::NotFound("name".to_owned()));
     }
@@ -219,7 +226,7 @@ pub async fn modify_post_field_by_slug_and_name(
     Path((slug, name)): Path<(String, String)>,
     ValidatedJson(field_create): ValidatedJson<FieldCreate>,
 ) -> Result<Json<Value>, FieldError> {
-    let exist_post = db::get_post_by_slug(&state, &slug).await;
+    let exist_post = common_db::get_content_by_slug(&state, &slug).await;
     if exist_post.is_none() {
         return Err(FieldError::InvalidParams("slug".to_owned()));
     }
@@ -230,12 +237,12 @@ pub async fn modify_post_field_by_slug_and_name(
         return Err(FieldError::PermissionDeny);
     }
 
-    let exist_field = page_db::get_field_by_cid_and_name(&state, exist_post.cid, &name).await;
+    let exist_field = common_db::get_field_by_cid_and_name(&state, exist_post.cid, &name).await;
     if exist_field.is_none() {
         return Err(FieldError::InvalidParams("name".to_owned()));
     }
 
-    let row_id = page_db::modify_field_by_cid_and_name_with_field_create(
+    let row_id = common_db::modify_field_by_cid_and_name_with_field_create(
         &state,
         exist_post.cid,
         &name,
@@ -250,7 +257,7 @@ pub async fn delete_post_field_by_slug_and_name(
     PMContributor(user): PMContributor,
     Path((slug, name)): Path<(String, String)>,
 ) -> Result<Json<Value>, FieldError> {
-    let exist_post = db::get_post_by_slug(&state, &slug).await;
+    let exist_post = common_db::get_content_by_slug(&state, &slug).await;
     if exist_post.is_none() {
         return Err(FieldError::InvalidParams("slug".to_owned()));
     }
@@ -261,11 +268,11 @@ pub async fn delete_post_field_by_slug_and_name(
         return Err(FieldError::PermissionDeny);
     }
 
-    let field = page_db::get_field_by_cid_and_name(&state, exist_post.cid, &name).await;
+    let field = common_db::get_field_by_cid_and_name(&state, exist_post.cid, &name).await;
     if field.is_none() {
         return Err(FieldError::InvalidParams("name".to_owned()));
     }
 
-    let row_id = page_db::delete_field_by_cid_and_name(&state, exist_post.cid, &name).await?;
-    Ok(Json(json!({ "id": row_id })))
+    let _ = common_db::delete_field_by_cid_and_name(&state, exist_post.cid, &name).await?;
+    Ok(Json(json!({ "msg": "ok" })))
 }

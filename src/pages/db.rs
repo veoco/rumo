@@ -1,52 +1,10 @@
 use std::time::SystemTime;
 
-use super::models::{FieldCreate, Page, PageCreate, PageWithMeta};
+use super::forms::PageCreate;
+use crate::common::db as common_db;
 use crate::common::errors::FieldError;
-use crate::posts::models::Field;
+use crate::common::models::{Content, ContentWithFields};
 use crate::AppState;
-
-pub fn get_with_sql(state: &AppState) -> String {
-    format!(
-        r#"
-        WITH fields_json AS (
-            SELECT {contents_table}."cid",
-                json_group_array(json_object(
-                    'name', {fields_table}."name",
-                    'type', {fields_table}."type",
-                    'str_value', {fields_table}."str_value",
-                    'int_value', {fields_table}."int_value",
-                    'float_value', {fields_table}."float_value"
-                )) AS "fields"
-            FROM {contents_table}
-            JOIN {fields_table} ON {contents_table}."cid" == {fields_table}."cid"
-            WHERE {contents_table}."type" == 'page'
-            GROUP BY {contents_table}."cid"
-        )
-        "#,
-        contents_table = &state.contents_table,
-        fields_table = &state.fields_table,
-    )
-}
-
-pub async fn get_page_by_slug(state: &AppState, slug: &str) -> Option<Page> {
-    let select_sql = format!(
-        r#"
-        SELECT *
-        FROM {contents_table}
-        WHERE {contents_table}."type" == 'page' AND {contents_table}."slug" == ?1
-        "#,
-        contents_table = &state.contents_table,
-    );
-    if let Ok(page) = sqlx::query_as::<_, Page>(&select_sql)
-        .bind(slug)
-        .fetch_one(&state.pool)
-        .await
-    {
-        Some(page)
-    } else {
-        None
-    }
-}
 
 pub async fn create_page_by_page_create_with_uid(
     state: &AppState,
@@ -104,7 +62,7 @@ pub async fn create_page_by_page_create_with_uid(
 pub async fn modify_page_by_page_modify_with_exist_page(
     state: &AppState,
     page_modify: &PageCreate,
-    exist_page: &Page,
+    exist_page: &Content,
 ) -> Result<i64, FieldError> {
     let now = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
@@ -176,266 +134,69 @@ pub async fn modify_page_by_page_modify_with_exist_page(
     }
 }
 
-pub async fn get_pages_count_with_private(state: &AppState, private_sql: &str) -> i32 {
-    let all_sql = format!(
+pub async fn get_content_with_fields_by_slug(
+    state: &AppState,
+    slug: &str,
+) -> Result<ContentWithFields, FieldError> {
+    let select_sql = format!(
         r#"
-        SELECT COUNT(*)
+        SELECT *
         FROM {contents_table}
-        WHERE {contents_table}.type == 'page'{}
+        WHERE "slug" == ?1
         "#,
-        private_sql,
         contents_table = &state.contents_table,
     );
-    let all_count = sqlx::query_scalar::<_, i32>(&all_sql)
+    match sqlx::query_as::<_, Content>(&select_sql)
+        .bind(slug)
         .fetch_one(&state.pool)
         .await
-        .unwrap_or(0);
-    all_count
+    {
+        Ok(content) => {
+            let fields = common_db::get_fields_by_cid(state, content.cid).await;
+            let mut content_with_fields = ContentWithFields::from(content);
+            content_with_fields.fields = fields;
+            Ok(content_with_fields)
+        }
+        Err(_) => Err(FieldError::InvalidParams("slug".to_string())),
+    }
 }
 
-pub async fn get_pages_by_list_query_with_private(
+pub async fn get_contents_with_fields_by_list_query_with_private(
     state: &AppState,
     private_sql: &str,
     page_size: u32,
     offset: u32,
     order_by: &str,
-) -> Result<Vec<PageWithMeta>, FieldError> {
-    let with_sql = get_with_sql(state);
+    post: bool,
+) -> Result<Vec<ContentWithFields>, FieldError> {
+    let content_type = if post { "post" } else { "page" };
+
     let sql = format!(
         r#"
-        {with_sql}
         SELECT *
         FROM {contents_table}
-        LEFT OUTER JOIN fields_json ON {contents_table}."cid" == fields_json."cid"
-        WHERE {contents_table}."type" == 'page'{}
-        ORDER BY {}
+        WHERE "type" == '{content_type}'{private_sql}
+        ORDER BY {order_by}
         LIMIT ?1 OFFSET ?2
         "#,
-        private_sql,
-        order_by,
         contents_table = &state.contents_table,
     );
-    match sqlx::query_as::<_, PageWithMeta>(&sql)
+    match sqlx::query_as::<_, Content>(&sql)
         .bind(page_size)
         .bind(offset)
         .fetch_all(&state.pool)
         .await
     {
-        Ok(pages) => Ok(pages),
-        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
-    }
-}
-
-pub async fn get_page_with_meta_by_slug(
-    state: &AppState,
-    slug: &str,
-) -> Result<PageWithMeta, FieldError> {
-    let with_sql = get_with_sql(state);
-    let select_sql = format!(
-        r#"
-        {with_sql}
-        SELECT *
-        FROM {contents_table}
-        LEFT OUTER JOIN fields_json ON {contents_table}."cid" == fields_json."cid"
-        WHERE {contents_table}."type" == 'page' AND {contents_table}."slug" == ?1
-        "#,
-        contents_table = &state.contents_table,
-    );
-    match sqlx::query_as::<_, PageWithMeta>(&select_sql)
-        .bind(slug)
-        .fetch_one(&state.pool)
-        .await
-    {
-        Ok(page) => Ok(page),
-        Err(_) => Err(FieldError::InvalidParams("slug".to_string())),
-    }
-}
-
-pub async fn delete_content_by_cid(state: &AppState, cid: u32) -> Result<u64, FieldError> {
-    let delete_sql = format!(
-        r#"
-        DELETE FROM {contents_table}
-        WHERE {contents_table}."cid" == ?1
-        "#,
-        contents_table = &state.contents_table,
-    );
-    match sqlx::query(&delete_sql)
-        .bind(cid)
-        .execute(&state.pool)
-        .await
-    {
-        Ok(r) => Ok(r.rows_affected()),
-        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
-    }
-}
-
-fn get_field_params(
-    field_create: &FieldCreate,
-) -> Result<(String, Option<String>, i32, f32), FieldError> {
-    let str_value;
-    let int_value;
-    let float_value;
-    let field_type = match field_create.r#type.as_str() {
-        "str" => {
-            let value = field_create.str_value.clone();
-            if value.is_none() {
-                return Err(FieldError::InvalidParams("type and str_value".to_string()));
+        Ok(contents) => {
+            let mut res = vec![];
+            for c in contents {
+                let fields = common_db::get_fields_by_cid(state, c.cid).await;
+                let mut content_with_fields = ContentWithFields::from(c);
+                content_with_fields.fields = fields;
+                res.push(content_with_fields);
             }
-            str_value = Some(value.unwrap());
-            int_value = 0;
-            float_value = 0f32;
-            "str"
+            Ok(res)
         }
-        "int" => {
-            let value = field_create.int_value.clone();
-            if value.is_none() {
-                return Err(FieldError::InvalidParams("type and int_value".to_string()));
-            }
-            str_value = None;
-            int_value = value.unwrap();
-            float_value = 0f32;
-            "int"
-        }
-        "float" => {
-            let value = field_create.float_value.clone();
-            if value.is_none() {
-                return Err(FieldError::InvalidParams(
-                    "type and float_value".to_string(),
-                ));
-            }
-            str_value = None;
-            int_value = 0;
-            float_value = value.unwrap();
-            "float"
-        }
-        _ => return Err(FieldError::InvalidParams("type".to_string())),
-    };
-    Ok((field_type.to_string(), str_value, int_value, float_value))
-}
-
-pub async fn create_field_by_cid_with_field_create(
-    state: &AppState,
-    cid: u32,
-    field_create: &FieldCreate,
-) -> Result<i64, FieldError> {
-    let (field_type, str_value, int_value, float_value) = get_field_params(&field_create)?;
-
-    let insert_sql = format!(
-        r#"
-        INSERT INTO {fields_table} ("cid", "name", "type", "str_value", "int_value", "float_value")
-        VALUES (?1, ?2, ?3, ?4, ?5, ?6)
-        "#,
-        fields_table = &state.fields_table,
-    );
-    match sqlx::query(&insert_sql)
-        .bind(cid)
-        .bind(&field_create.name)
-        .bind(&field_type)
-        .bind(str_value)
-        .bind(int_value)
-        .bind(float_value)
-        .execute(&state.pool)
-        .await
-    {
-        Ok(r) => Ok(r.last_insert_rowid()),
-        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
-    }
-}
-
-pub async fn get_field_by_cid_and_name(state: &AppState, cid: u32, name: &str) -> Option<Field> {
-    let select_sql = format!(
-        r#"
-        SELECT *
-        FROM {fields_table}
-        WHERE {fields_table}."cid" == ?1 AND {fields_table}."name" == ?2
-        "#,
-        fields_table = &state.fields_table,
-    );
-    if let Ok(field) = sqlx::query_as::<_, Field>(&select_sql)
-        .bind(cid)
-        .bind(name)
-        .fetch_one(&state.pool)
-        .await
-    {
-        Some(field)
-    } else {
-        None
-    }
-}
-
-pub async fn delete_fields_by_cid(state: &AppState, cid: u32) -> Result<u64, FieldError> {
-    let delete_sql = format!(
-        r#"
-        DELETE FROM {fields_table}
-        WHERE {fields_table}."cid" == ?1
-        "#,
-        fields_table = &state.fields_table,
-    );
-    match sqlx::query(&delete_sql)
-        .bind(cid)
-        .execute(&state.pool)
-        .await
-    {
-        Ok(r) => Ok(r.rows_affected()),
-        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
-    }
-}
-
-pub async fn delete_field_by_cid_and_name(
-    state: &AppState,
-    cid: u32,
-    name: &str,
-) -> Result<u64, FieldError> {
-    let delete_sql = format!(
-        r#"
-        DELETE FROM {fields_table}
-        WHERE {fields_table}."cid" == ?1 AND {fields_table}."name" == ?2
-        "#,
-        fields_table = &state.fields_table,
-    );
-    match sqlx::query(&delete_sql)
-        .bind(cid)
-        .bind(name)
-        .execute(&state.pool)
-        .await
-    {
-        Ok(r) => Ok(r.rows_affected()),
-        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
-    }
-}
-
-pub async fn modify_field_by_cid_and_name_with_field_create(
-    state: &AppState,
-    cid: u32,
-    name: &str,
-    field_create: &FieldCreate,
-) -> Result<i64, FieldError> {
-    let (field_type, str_value, int_value, float_value) = get_field_params(&field_create)?;
-
-    let insert_sql = format!(
-        r#"
-        UPDATE {fields_table}
-        SET "name" = ?1,
-            "type" = ?2,
-            "str_value" = ?3,
-            "int_value" = ?4,
-            "float_value" = ?5
-        WHERE "cid" == ?6 and "name" = ?7
-        "#,
-        fields_table = &state.fields_table,
-    );
-    match sqlx::query(&insert_sql)
-        .bind(&field_create.name)
-        .bind(&field_type)
-        .bind(str_value)
-        .bind(int_value)
-        .bind(float_value)
-        .bind(cid)
-        .bind(name)
-        .execute(&state.pool)
-        .await
-    {
-        Ok(r) => Ok(r.last_insert_rowid()),
         Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
     }
 }

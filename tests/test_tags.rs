@@ -104,6 +104,7 @@ async fn create_then_list_tag_posts_success() {
     assert_eq!(status_code, StatusCode::CREATED);
 
     let (status_code, body) = get("/api/tags/test-tag-post/posts/").await;
+    println!("{:?}", body);
     assert_eq!(status_code, StatusCode::OK);
 
     let body = body.unwrap();
