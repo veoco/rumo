@@ -70,6 +70,97 @@ pub async fn create_comment_with_params(
     }
 }
 
+pub async fn update_content_count_increase_by_cid(
+    state: &AppState,
+    cid: u32,
+) -> Result<i64, FieldError> {
+    let sql = format!(
+        r#"
+        UPDATE {contents_table}
+        SET commentsNum=commentsNum+1
+        WHERE "coid" == ?3
+        "#,
+        contents_table = &state.contents_table
+    );
+    match sqlx::query(&sql)
+        .bind(cid)
+        .execute(&state.pool)
+        .await
+    {
+        Ok(r) => Ok(r.last_insert_rowid()),
+        Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
+    }
+}
+
+pub async fn update_content_count_decrease_by_cid(
+    state: &AppState,
+    cid: u32,
+) -> Result<i64, FieldError> {
+    let sql = format!(
+        r#"
+        UPDATE {contents_table}
+        SET commentsNum=commentsNum-1
+        WHERE "coid" == ?3
+        "#,
+        contents_table = &state.contents_table
+    );
+    match sqlx::query(&sql)
+        .bind(cid)
+        .execute(&state.pool)
+        .await
+    {
+        Ok(r) => Ok(r.last_insert_rowid()),
+        Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
+    }
+}
+
+pub async fn modify_comment_with_params(
+    state: &AppState,
+    coid: u32,
+    text: &str,
+    status: &str,
+) -> Result<i64, FieldError> {
+    let sql = format!(
+        r#"
+        UPDATE {comments_table}
+        SET "text" = ?1, "status" = ?2
+        WHERE "coid" == ?3
+        "#,
+        comments_table = &state.comments_table
+    );
+    match sqlx::query(&sql)
+        .bind(text)
+        .bind(status)
+        .bind(coid)
+        .execute(&state.pool)
+        .await
+    {
+        Ok(r) => Ok(r.last_insert_rowid()),
+        Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
+    }
+}
+
+pub async fn delete_comment_by_coid(
+    state: &AppState,
+    coid: u32,
+) -> Result<i64, FieldError> {
+    let sql = format!(
+        r#"
+        DELETE FROM {comments_table}
+        WHERE "coid" == ?1
+        "#,
+        comments_table = &state.comments_table
+    );
+    match sqlx::query(&sql)
+        .bind(coid)
+        .execute(&state.pool)
+        .await
+    {
+        Ok(r) => Ok(r.last_insert_rowid()),
+        Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
+    }
+}
+
 pub async fn get_comments_count(state: &AppState) -> i32 {
     let all_sql = format!(
         r#"

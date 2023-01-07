@@ -927,6 +927,61 @@ WantedBy=multi-user.target
 </details>
 
 <details>
+<summary>GET /api/comments/:coid ，获取指定 coid 评论</summary>
+  
+ 1. 权限要求：
+    - PM4：禁止
+    - PM3：禁止
+    - PM2：禁止
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - coid：u32
+
+  3. 查询参数：
+     - 无
+</details>
+
+<details>
+<summary>PATCH /api/comments/:coid ，修改指定 coid 评论</summary>
+  
+ 1. 权限要求：
+    - PM4：禁止
+    - PM3：禁止
+    - PM2：禁止
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - coid：u32
+
+  3. 查询参数：
+     - 无
+   
+  4. 提交表单：
+     - text：String
+     - status：String，1 <= 长度 <= 16
+</details>
+
+<details>
+<summary>DELETE /api/comments/:coid ，删除指定 coid 评论</summary>
+  
+ 1. 权限要求：
+    - PM4：禁止
+    - PM3：禁止
+    - PM2：禁止
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - coid：u32
+
+  3. 查询参数：
+     - 无
+</details>
+
+<details>
 <summary>GET /api/pages/:slug/comments/ ，获取指定 slug 页面的评论列表</summary>
   
  1. 权限要求：

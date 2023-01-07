@@ -8,7 +8,7 @@ use serde_json::{json, Value};
 use std::sync::Arc;
 
 use super::db;
-use super::models::{Comment, CommentCreate, CommentsQuery};
+use super::models::{Comment, CommentCreate, CommentsQuery, CommentModify};
 use crate::pages::db as page_db;
 use crate::posts::db as post_db;
 use crate::users::errors::FieldError;
@@ -86,6 +86,7 @@ pub async fn create_page_comment(
         parent,
     )
     .await?;
+    let _ = db::update_content_count_increase_by_cid(&state, page.cid).await?;
     Ok((StatusCode::CREATED, Json(json!({ "id": row_id }))))
 }
 
@@ -160,6 +161,7 @@ pub async fn create_post_comment(
         parent,
     )
     .await?;
+    let _ = db::update_content_count_increase_by_cid(&state, post.cid).await?;
     Ok((StatusCode::CREATED, Json(json!({ "id": row_id }))))
 }
 
@@ -327,4 +329,54 @@ pub async fn list_post_comments_by_slug(
         "count": hashed_comments.len(),
         "results": hashed_comments
     })));
+}
+
+pub async fn get_comment_by_coid(
+    State(state): State<Arc<AppState>>,
+    PMEditor(_): PMEditor,
+    Path(coid): Path<u32>,
+) -> Result<Json<Value>, FieldError> {
+    match db::get_comment_by_coid(&state, coid).await {
+        Some(comment) => Ok(Json(json!(comment))),
+        None => Err(FieldError::NotFound("coid".to_string()))
+    }
+}
+
+pub async fn modify_comment_by_coid(
+    State(state): State<Arc<AppState>>,
+    PMEditor(_): PMEditor,
+    Path(coid): Path<u32>,
+    ValidatedJson(comment_modify): ValidatedJson<CommentModify>,
+) -> Result<Json<Value>, FieldError> {
+    let comment = db::get_comment_by_coid(&state, coid).await;
+    if comment.is_none(){
+        return Err(FieldError::InvalidParams("coid".to_string()))
+    }
+
+    let status = match comment_modify.status.as_str(){
+        "approved" => "approved",
+        "waiting" => "waiting",
+        "spam" => "spam",
+        _ => return Err(FieldError::InvalidParams("status".to_string()))
+    };
+
+    let row_id = db::modify_comment_with_params(&state, coid, &comment_modify.text, &status).await?;
+    Ok(Json(json!({"id": row_id})))
+}
+
+pub async fn delete_comment_by_coid(
+    State(state): State<Arc<AppState>>,
+    PMEditor(_): PMEditor,
+    Path(coid): Path<u32>,
+) -> Result<Json<Value>, FieldError> {
+    let comment = db::get_comment_by_coid(&state, coid).await;
+    if comment.is_none(){
+        return Err(FieldError::InvalidParams("coid".to_string()))
+    }
+    let comment = comment.unwrap();
+    let cid = comment.cid;
+    let _ = db::update_content_count_decrease_by_cid(&state, cid).await?;
+
+    let row_id = db::delete_comment_by_coid(&state, coid).await?;
+    Ok(Json(json!({"id": row_id})))
 }

@@ -35,6 +35,13 @@ pub struct CommentCreate {
 }
 
 #[derive(Serialize, Deserialize, Validate)]
+pub struct CommentModify {
+    pub text: String,
+    #[validate(length(min = 1, max = 16, message = "status can not be longer than 16"))]
+    pub status: String,
+}
+
+#[derive(Serialize, Deserialize, Validate)]
 pub struct CommentsQuery {
     #[validate(range(min = 1, message = "page must greater than 1"))]
     pub page: Option<u32>,
