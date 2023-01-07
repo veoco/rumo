@@ -2,7 +2,7 @@ use axum::{body::Bytes, BoxError};
 use futures::{Stream, TryStreamExt};
 use std::{io, path::PathBuf};
 use tokio::{
-    fs::{create_dir_all, File},
+    fs::{create_dir_all, remove_file, File},
     io::BufWriter,
 };
 use tokio_util::io::StreamReader;
@@ -52,4 +52,15 @@ where
     }
     .await
     .map_err(|_| FieldError::InvalidParams("files".to_string()))
+}
+
+pub async fn delete_file(base_dir: PathBuf, filepath: &str) -> bool {
+    let filepath = filepath.strip_prefix("/");
+    if filepath.is_none(){
+        return false;
+    }
+    let filepath = filepath.unwrap();
+    let path = base_dir.join(filepath);
+    let _ = remove_file(path).await;
+    true
 }

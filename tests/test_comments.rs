@@ -121,6 +121,6 @@ async fn create_then_delete_comments_success() {
     let (status_code, _) = admin_delete(&url).await;
     assert_eq!(status_code, StatusCode::OK);
 
-    let (status_code, body) = admin_get(&url).await;
+    let (status_code, _) = admin_get(&url).await;
     assert_eq!(status_code, StatusCode::NOT_FOUND);
 }

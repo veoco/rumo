@@ -1109,3 +1109,23 @@ WantedBy=multi-user.target
   4. 提交表单：
      - file：multipart，multipart/form-data 单个文件，可用 `<input type="file" name="file">`
 </details>
+
+<details>
+<summary>DELETE /api/attachments/:cid ，删除指定 cid 的附件</summary>
+  
+ 1. 权限要求：
+    - PM4：禁止
+    - PM3：禁止
+    - PM2：允许
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - cid：u32
+
+  3. 查询参数：
+     - 无
+
+  4. 提交表单：
+     - 无
+</details>

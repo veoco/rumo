@@ -1,4 +1,4 @@
-use axum::extract::{Multipart, State};
+use axum::extract::{Multipart, Path, State};
 use axum::http::StatusCode;
 use axum::response::Json;
 use chrono::prelude::*;
@@ -7,9 +7,10 @@ use serde_json::{json, Value};
 use std::sync::Arc;
 
 use super::db;
+use super::de::from_str;
 use super::models::{AttachmentInfo, AttachmentText, AttachmentsQuery};
 use super::ser::to_string;
-use super::utils::stream_to_file;
+use super::utils::{delete_file, stream_to_file};
 use crate::users::errors::FieldError;
 use crate::users::extractors::{PMContributor, ValidatedQuery};
 use crate::AppState;
@@ -45,11 +46,11 @@ pub async fn create_attachment(
     let rand_name: u64 = rand::thread_rng().gen_range(1_000_000_000..9_999_999_999);
     let name = format!("{rand_name}.{ext}");
 
-    let path = format!("usr/uploads/{}/{}/{}", now.year(), now.month(), name);
-    let base_dir = std::path::Path::new(&state.upload_root).join(&path);
+    let filedir = format!("usr/uploads/{}/{}", now.year(), now.month());
+    let base_dir = std::path::Path::new(&state.upload_root).join(&filedir);
     let size = stream_to_file(base_dir, &name, field).await?;
 
-    let path = format!("/{path}");
+    let path = format!("/{filedir}/{name}");
     let text = AttachmentText {
         name: file_name,
         path,
@@ -73,7 +74,33 @@ pub async fn create_attachment(
     .await?;
     let res =
         AttachmentInfo::from_attachment_text(text, row_id as u32, now_timestamp, now_timestamp);
-    Ok((StatusCode::CREATED, Json(json!({ "msg": res }))))
+    Ok((StatusCode::CREATED, Json(json!(res))))
+}
+
+pub async fn delete_attachment_by_cid(
+    State(state): State<Arc<AppState>>,
+    PMContributor(user): PMContributor,
+    Path(cid): Path<u32>,
+) -> Result<Json<Value>, FieldError> {
+    let attachment = db::get_attachment_by_cid(&state, cid).await;
+    if attachment.is_none() {
+        return Err(FieldError::InvalidParams("cid".to_string()));
+    }
+    let attachment = attachment.unwrap();
+    let admin = user.group == "editor" || user.group == "administrator";
+    if user.uid != attachment.authorId && !admin {
+        return Err(FieldError::PermissionDeny);
+    }
+
+    let text = from_str::<AttachmentText>(&attachment.text)
+        .map_err(|_| FieldError::DatabaseFailed("attachment decode error".to_string()))?;
+
+    let base_dir = std::path::Path::new(&state.upload_root);
+    let filepath = text.path;
+    let _ = delete_file(base_dir.to_path_buf(), &filepath).await;
+
+    let row_id = db::delete_attachment_by_cid(&state, cid).await?;
+    Ok(Json(json!({ "id": row_id })))
 }
 
 pub async fn list_attachments(
