@@ -9,7 +9,7 @@ mod attachments;
 mod categories;
 mod comments;
 mod common;
-mod db;
+mod init;
 mod pages;
 mod posts;
 mod tags;
@@ -116,8 +116,8 @@ pub async fn init(name: String, mail: String, password: String) {
         url: "http://127.0.0.1".to_owned(),
     };
 
-    db::init_db(&state).await;
+    init::init_table(&state).await;
     info!("schema created");
-    db::init_admin(&state, user_register).await;
+    init::init_admin(&state, user_register).await;
     info!("admin user created");
 }
