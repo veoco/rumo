@@ -26,6 +26,18 @@ jobs:
           --health-retries 5
         ports:
           - 5432:5432
+      mysql:
+        image: mysql
+        env:
+          MYSQL_ROOT_PASSWORD: mysqlpassword
+          MYSQL_DATABASE: testdb
+        options: >-
+          --health-cmd "mysqladmin ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 3
+        ports:
+          - 3306:3306
     steps:
     - uses: actions/checkout@v3
     - name: Build
@@ -39,6 +51,12 @@ jobs:
     - name: Test Postgresql
       env:
         DATABASE_URL: postgres://postgres:postgres@localhost/postgres
+      run: |
+        cargo run -- init
+        cargo test --verbose
+    - name: Test Mysql
+      env:
+        DATABASE_URL: mysql://root:mysqlpassword@localhost/testdb
       run: |
         cargo run -- init
         cargo test --verbose
