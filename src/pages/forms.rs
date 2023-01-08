@@ -8,7 +8,7 @@ pub struct PageCreate {
     pub title: String,
     #[validate(length(min = 1, max = 150, message = "slug length must greater than 1"))]
     pub slug: String,
-    pub created: u32,
+    pub created: i32,
     pub text: String,
     #[validate(length(min = 1, max = 32, message = "template length must greater than 1"))]
     pub template: Option<String>,

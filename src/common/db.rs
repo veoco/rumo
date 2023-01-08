@@ -5,7 +5,7 @@ use crate::common::models::{Content, ContentWithMetasUsersFields, Field, Meta};
 use crate::users::db as user_db;
 use crate::AppState;
 
-pub async fn get_content_by_cid(state: &AppState, cid: u32) -> Option<Content> {
+pub async fn get_content_by_cid(state: &AppState, cid: i32) -> Option<Content> {
     let sql = format!(
         r#"
         SELECT *
@@ -99,10 +99,10 @@ pub async fn get_content_with_metas_user_from_content(
 
 pub async fn get_contents_with_metas_user_and_fields_by_mid_list_query_and_private(
     state: &AppState,
-    mid: u32,
+    mid: i32,
     private_sql: &str,
-    page_size: u32,
-    offset: u32,
+    page_size: i32,
+    offset: i32,
     order_by: &str,
     post: bool,
 ) -> Result<Vec<ContentWithMetasUsersFields>, FieldError> {
@@ -139,7 +139,7 @@ pub async fn get_contents_with_metas_user_and_fields_by_mid_list_query_and_priva
     }
 }
 
-pub async fn delete_content_by_cid(state: &AppState, cid: u32) -> Result<u64, FieldError> {
+pub async fn delete_content_by_cid(state: &AppState, cid: i32) -> Result<u64, FieldError> {
     let sql = format!(
         r#"
         DELETE FROM {contents_table}
@@ -155,8 +155,8 @@ pub async fn delete_content_by_cid(state: &AppState, cid: u32) -> Result<u64, Fi
 
 pub async fn check_relationship_by_cid_and_mid(
     state: &AppState,
-    cid: u32,
-    mid: u32,
+    cid: i32,
+    mid: i32,
 ) -> Result<bool, FieldError> {
     let sql = format!(
         r#"
@@ -181,9 +181,9 @@ pub async fn check_relationship_by_cid_and_mid(
 
 pub async fn create_relationship_by_cid_and_mid(
     state: &AppState,
-    cid: u32,
-    mid: u32,
-) -> Result<i64, FieldError> {
+    cid: i32,
+    mid: i32,
+) -> Result<u64, FieldError> {
     let sql = format!(
         r#"INSERT INTO {relationships_table} ("cid", "mid") VALUES (?1, ?2)"#,
         relationships_table = &state.relationships_table,
@@ -194,15 +194,15 @@ pub async fn create_relationship_by_cid_and_mid(
         .execute(&state.pool)
         .await
     {
-        Ok(r) => Ok(r.last_insert_rowid()),
+        Ok(r) => Ok(r.rows_affected()),
         Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
     }
 }
 
 pub async fn delete_relationship_by_cid_and_mid(
     state: &AppState,
-    cid: u32,
-    mid: u32,
+    cid: i32,
+    mid: i32,
 ) -> Result<u64, FieldError> {
     let sql = format!(
         r#"
@@ -221,7 +221,7 @@ pub async fn delete_relationship_by_cid_and_mid(
     }
 }
 
-pub async fn delete_relationships_by_mid(state: &AppState, mid: u32) -> Result<u64, FieldError> {
+pub async fn delete_relationships_by_mid(state: &AppState, mid: i32) -> Result<u64, FieldError> {
     let sql = format!(
         r#"
         DELETE FROM {relationships_table}
@@ -235,7 +235,7 @@ pub async fn delete_relationships_by_mid(state: &AppState, mid: u32) -> Result<u
     }
 }
 
-pub async fn get_field_by_cid_and_name(state: &AppState, cid: u32, name: &str) -> Option<Field> {
+pub async fn get_field_by_cid_and_name(state: &AppState, cid: i32, name: &str) -> Option<Field> {
     let sql = format!(
         r#"
         SELECT *
@@ -256,7 +256,7 @@ pub async fn get_field_by_cid_and_name(state: &AppState, cid: u32, name: &str) -
     }
 }
 
-pub async fn get_fields_by_cid(state: &AppState, cid: u32) -> Vec<Field> {
+pub async fn get_fields_by_cid(state: &AppState, cid: i32) -> Vec<Field> {
     let sql = format!(
         r#"
         SELECT *
@@ -277,9 +277,9 @@ pub async fn get_fields_by_cid(state: &AppState, cid: u32) -> Vec<Field> {
 
 pub async fn create_field_by_cid_with_field_create(
     state: &AppState,
-    cid: u32,
+    cid: i32,
     field_create: &FieldCreate,
-) -> Result<i64, FieldError> {
+) -> Result<u64, FieldError> {
     let (field_type, str_value, int_value, float_value) = get_field_params(&field_create)?;
 
     let sql = format!(
@@ -299,17 +299,17 @@ pub async fn create_field_by_cid_with_field_create(
         .execute(&state.pool)
         .await
     {
-        Ok(r) => Ok(r.last_insert_rowid()),
+        Ok(r) => Ok(r.rows_affected()),
         Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
     }
 }
 
 pub async fn modify_field_by_cid_and_name_with_field_create(
     state: &AppState,
-    cid: u32,
+    cid: i32,
     name: &str,
     field_create: &FieldCreate,
-) -> Result<i64, FieldError> {
+) -> Result<u64, FieldError> {
     let (field_type, str_value, int_value, float_value) = get_field_params(&field_create)?;
 
     let sql = format!(
@@ -335,14 +335,14 @@ pub async fn modify_field_by_cid_and_name_with_field_create(
         .execute(&state.pool)
         .await
     {
-        Ok(r) => Ok(r.last_insert_rowid()),
+        Ok(r) => Ok(r.rows_affected()),
         Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
     }
 }
 
 pub async fn delete_field_by_cid_and_name(
     state: &AppState,
-    cid: u32,
+    cid: i32,
     name: &str,
 ) -> Result<u64, FieldError> {
     let sql = format!(
@@ -363,7 +363,7 @@ pub async fn delete_field_by_cid_and_name(
     }
 }
 
-pub async fn delete_fields_by_cid(state: &AppState, cid: u32) -> Result<u64, FieldError> {
+pub async fn delete_fields_by_cid(state: &AppState, cid: i32) -> Result<u64, FieldError> {
     let sql = format!(
         r#"
         DELETE FROM {fields_table}
@@ -377,7 +377,7 @@ pub async fn delete_fields_by_cid(state: &AppState, cid: u32) -> Result<u64, Fie
     }
 }
 
-pub async fn get_meta_by_mid(state: &AppState, mid: u32) -> Option<Meta> {
+pub async fn get_meta_by_mid(state: &AppState, mid: i32) -> Option<Meta> {
     let sql = format!(
         r#"
         SELECT *
@@ -418,7 +418,7 @@ pub async fn get_meta_by_slug(state: &AppState, slug: &str, tag: bool) -> Option
     }
 }
 
-pub async fn get_metas_by_cid(state: &AppState, cid: u32) -> Vec<Meta> {
+pub async fn get_metas_by_cid(state: &AppState, cid: i32) -> Vec<Meta> {
     let sql = format!(
         r#"
         SELECT *
@@ -441,8 +441,8 @@ pub async fn get_metas_by_cid(state: &AppState, cid: u32) -> Vec<Meta> {
 
 pub async fn get_metas_by_list_query(
     state: &AppState,
-    page_size: u32,
-    offset: u32,
+    page_size: i32,
+    offset: i32,
     order_by: &str,
     tag: bool,
 ) -> Result<Vec<Meta>, FieldError> {
@@ -489,7 +489,7 @@ pub async fn get_metas_count(state: &AppState, tag: bool) -> i32 {
 
 pub async fn get_meta_posts_count_by_mid_with_private(
     state: &AppState,
-    mid: u32,
+    mid: i32,
     private_sql: &str,
 ) -> i32 {
     let sql = format!(
@@ -512,7 +512,7 @@ pub async fn get_meta_posts_count_by_mid_with_private(
 
 pub async fn update_meta_by_mid_for_increase_count(
     state: &AppState,
-    mid: u32,
+    mid: i32,
 ) -> Result<u64, FieldError> {
     let sql = format!(
         r#"
@@ -530,7 +530,7 @@ pub async fn update_meta_by_mid_for_increase_count(
 
 pub async fn update_meta_by_mid_for_decrease_count(
     state: &AppState,
-    mid: u32,
+    mid: i32,
 ) -> Result<u64, FieldError> {
     let sql = format!(
         r#"
@@ -546,7 +546,7 @@ pub async fn update_meta_by_mid_for_decrease_count(
     }
 }
 
-pub async fn delete_meta_by_mid(state: &AppState, mid: u32) -> Result<u64, FieldError> {
+pub async fn delete_meta_by_mid(state: &AppState, mid: i32) -> Result<u64, FieldError> {
     let sql = format!(
         r#"
         DELETE FROM {metas_table}

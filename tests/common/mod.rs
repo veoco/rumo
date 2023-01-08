@@ -5,14 +5,14 @@ use axum::{
 };
 use hyper::body::to_bytes;
 use serde_json::{json, Value};
-use sqlx::sqlite::SqlitePool;
+use sqlx::AnyPool;
 use std::env;
 use tower::ServiceExt;
 
 use rumo::{app, AppState};
 
 async fn setup_state() -> AppState {
-    let pool = SqlitePool::connect(&env::var("DATABASE_URL").unwrap())
+    let pool = AnyPool::connect(&env::var("DATABASE_URL").unwrap())
         .await
         .unwrap();
 

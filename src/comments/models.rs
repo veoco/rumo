@@ -5,12 +5,12 @@ use validator::Validate;
 
 #[derive(Serialize, Deserialize, FromRow)]
 pub struct Comment {
-    pub coid: u32,
-    pub cid: u32,
-    pub created: u32,
+    pub coid: i32,
+    pub cid: i32,
+    pub created: i32,
     pub author: Option<String>,
-    pub authorId: u32,
-    pub ownerId: u32,
+    pub authorId: i32,
+    pub ownerId: i32,
     pub mail: Option<String>,
     pub url: Option<String>,
     pub ip: Option<String>,
@@ -18,7 +18,7 @@ pub struct Comment {
     pub text: String,
     pub r#type: String,
     pub status: String,
-    pub parent: u32,
+    pub parent: i32,
 }
 
 #[derive(Serialize, Deserialize, Validate)]
@@ -31,7 +31,7 @@ pub struct CommentCreate {
     pub url: Option<String>,
     pub text: String,
     #[validate(range(min = 0, message = "parent must greater than 0"))]
-    pub parent: Option<u32>,
+    pub parent: Option<i32>,
 }
 
 #[derive(Serialize, Deserialize, Validate)]
@@ -44,9 +44,9 @@ pub struct CommentModify {
 #[derive(Serialize, Deserialize, Validate)]
 pub struct CommentsQuery {
     #[validate(range(min = 1, message = "page must greater than 1"))]
-    pub page: Option<u32>,
+    pub page: Option<i32>,
     #[validate(range(min = 1, message = "page_size must greater than 1"))]
-    pub page_size: Option<u32>,
+    pub page_size: Option<i32>,
     #[validate(length(min = 1, max = 13, message = "order_by length must greater than 1"))]
     pub order_by: Option<String>,
     pub private: Option<bool>,

@@ -11,7 +11,7 @@ pub struct CategoryCreate {
     #[validate(length(max = 150, message = "description can not be longer than 150"))]
     pub description: Option<String>,
     #[validate(range(min = 0, message = "parent must greater than 0"))]
-    pub parent: Option<u32>,
+    pub parent: Option<i32>,
 }
 
 #[derive(Serialize, Deserialize, Validate)]

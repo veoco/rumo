@@ -6,7 +6,7 @@ use crate::AppState;
 pub async fn create_category_by_category_create(
     state: &AppState,
     category_create: &CategoryCreate,
-) -> Result<i64, FieldError> {
+) -> Result<u64, FieldError> {
     let category_parent = match category_create.parent {
         Some(mid) => match common_db::get_meta_by_mid(&state, mid).await {
             Some(_) => mid,
@@ -30,16 +30,16 @@ pub async fn create_category_by_category_create(
         .execute(&state.pool)
         .await
     {
-        Ok(r) => Ok(r.last_insert_rowid()),
+        Ok(r) => Ok(r.rows_affected()),
         Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
     }
 }
 
 pub async fn modify_category_by_mid_and_category_modify(
     state: &AppState,
-    mid: u32,
+    mid: i32,
     category_modify: &CategoryCreate,
-) -> Result<i64, FieldError> {
+) -> Result<u64, FieldError> {
     let category_parent = match category_modify.parent {
         Some(mid) => match common_db::get_meta_by_mid(&state, mid).await {
             Some(_) => mid,
@@ -65,7 +65,7 @@ pub async fn modify_category_by_mid_and_category_modify(
         .execute(&state.pool)
         .await
     {
-        Ok(r) => Ok(r.last_insert_rowid()),
+        Ok(r) => Ok(r.rows_affected()),
         Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
     }
 }

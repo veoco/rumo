@@ -70,7 +70,7 @@ pub async fn create_page_comment(
     let ua = user_agent.to_string();
     let status = "approved";
 
-    let row_id = db::create_comment_with_params(
+    let _ = db::create_comment_with_params(
         &state,
         page.cid,
         &author,
@@ -86,7 +86,7 @@ pub async fn create_page_comment(
     )
     .await?;
     let _ = db::update_content_count_increase_by_cid(&state, page.cid).await?;
-    Ok((StatusCode::CREATED, Json(json!({ "id": row_id }))))
+    Ok((StatusCode::CREATED, Json(json!({ "msg": "ok" }))))
 }
 
 pub async fn create_post_comment(
@@ -145,7 +145,7 @@ pub async fn create_post_comment(
     let ua = user_agent.to_string();
     let status = "approved";
 
-    let row_id = db::create_comment_with_params(
+    let _ = db::create_comment_with_params(
         &state,
         post.cid,
         &author,
@@ -161,7 +161,7 @@ pub async fn create_post_comment(
     )
     .await?;
     let _ = db::update_content_count_increase_by_cid(&state, post.cid).await?;
-    Ok((StatusCode::CREATED, Json(json!({ "id": row_id }))))
+    Ok((StatusCode::CREATED, Json(json!({ "msg": "ok" }))))
 }
 
 pub async fn list_comments(
@@ -333,7 +333,7 @@ pub async fn list_post_comments_by_slug(
 pub async fn get_comment_by_coid(
     State(state): State<Arc<AppState>>,
     PMEditor(_): PMEditor,
-    Path(coid): Path<u32>,
+    Path(coid): Path<i32>,
 ) -> Result<Json<Value>, FieldError> {
     match db::get_comment_by_coid(&state, coid).await {
         Some(comment) => Ok(Json(json!(comment))),
@@ -344,7 +344,7 @@ pub async fn get_comment_by_coid(
 pub async fn modify_comment_by_coid(
     State(state): State<Arc<AppState>>,
     PMEditor(_): PMEditor,
-    Path(coid): Path<u32>,
+    Path(coid): Path<i32>,
     ValidatedJson(comment_modify): ValidatedJson<CommentModify>,
 ) -> Result<Json<Value>, FieldError> {
     let comment = db::get_comment_by_coid(&state, coid).await;
@@ -359,15 +359,15 @@ pub async fn modify_comment_by_coid(
         _ => return Err(FieldError::InvalidParams("status".to_string())),
     };
 
-    let row_id =
+    let _ =
         db::modify_comment_with_params(&state, coid, &comment_modify.text, &status).await?;
-    Ok(Json(json!({ "id": row_id })))
+    Ok(Json(json!({ "msg": "ok" })))
 }
 
 pub async fn delete_comment_by_coid(
     State(state): State<Arc<AppState>>,
     PMEditor(_): PMEditor,
-    Path(coid): Path<u32>,
+    Path(coid): Path<i32>,
 ) -> Result<Json<Value>, FieldError> {
     let comment = db::get_comment_by_coid(&state, coid).await;
     if comment.is_none() {
@@ -377,6 +377,6 @@ pub async fn delete_comment_by_coid(
     let cid = comment.cid;
     let _ = db::update_content_count_decrease_by_cid(&state, cid).await?;
 
-    let row_id = db::delete_comment_by_coid(&state, coid).await?;
-    Ok(Json(json!({ "id": row_id })))
+    let _ = db::delete_comment_by_coid(&state, coid).await?;
+    Ok(Json(json!({ "msg": "ok" })))
 }

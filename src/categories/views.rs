@@ -23,8 +23,8 @@ pub async fn create_category(
         return Err(FieldError::AlreadyExist("slug".to_owned()));
     }
 
-    let row_id = db::create_category_by_category_create(&state, &category_create).await?;
-    Ok((StatusCode::CREATED, Json(json!({ "id": row_id }))))
+    let _ = db::create_category_by_category_create(&state, &category_create).await?;
+    Ok((StatusCode::CREATED, Json(json!({ "msg": "ok" }))))
 }
 
 pub async fn list_categories(
@@ -84,10 +84,10 @@ pub async fn modify_category_by_slug(
         return Err(FieldError::InvalidParams("category slug".to_owned()));
     }
 
-    let row_id =
+    let _ =
         db::modify_category_by_mid_and_category_modify(&state, exist_cate.mid, &category_modify)
             .await?;
-    Ok(Json(json!({ "id": row_id })))
+    Ok(Json(json!({ "msg": "ok" })))
 }
 
 pub async fn delete_category_by_slug(

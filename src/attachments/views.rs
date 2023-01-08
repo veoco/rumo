@@ -63,9 +63,9 @@ pub async fn create_attachment(
         Ok(t) => t,
         Err(_) => return Err(FieldError::InvalidParams("file".to_string())),
     };
-    let now_timestamp = now.timestamp() as u32;
+    let now_timestamp = now.timestamp() as i32;
 
-    let row_id = db::create_attachment_with_params(
+    let _ = db::create_attachment_with_params(
         &state,
         &text.name,
         now_timestamp,
@@ -73,15 +73,14 @@ pub async fn create_attachment(
         user.uid,
     )
     .await?;
-    let res =
-        AttachmentInfo::from_attachment_text(text, row_id as u32, now_timestamp, now_timestamp);
+    let res = AttachmentInfo::from_attachment_text(text, now_timestamp, now_timestamp);
     Ok((StatusCode::CREATED, Json(json!(res))))
 }
 
 pub async fn delete_attachment_by_cid(
     State(state): State<Arc<AppState>>,
     PMContributor(user): PMContributor,
-    Path(cid): Path<u32>,
+    Path(cid): Path<i32>,
 ) -> Result<Json<Value>, FieldError> {
     let attachment = common_db::get_content_by_cid(&state, cid).await;
     if attachment.is_none() {
@@ -122,7 +121,8 @@ pub async fn list_attachments(
         )
     };
 
-    let all_count = common_db::get_contents_count_with_private(&state, &private_sql, "attachment").await;
+    let all_count =
+        common_db::get_contents_count_with_private(&state, &private_sql, "attachment").await;
 
     let page = q.page.unwrap_or(1);
     let page_size = q.page_size.unwrap_or(10);

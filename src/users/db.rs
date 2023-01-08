@@ -45,7 +45,7 @@ pub async fn get_user_by_uid(state: &AppState, uid: &str) -> Option<User> {
     }
 }
 
-pub async fn delete_user_by_uid(state: &AppState, uid: u32) -> Result<i64, FieldError> {
+pub async fn delete_user_by_uid(state: &AppState, uid: i32) -> Result<u64, FieldError> {
     let sql = format!(
         r#"
         DELETE FROM {users_table}
@@ -54,12 +54,12 @@ pub async fn delete_user_by_uid(state: &AppState, uid: u32) -> Result<i64, Field
         users_table = &state.users_table
     );
     match sqlx::query(&sql).bind(uid).execute(&state.pool).await {
-        Ok(r) => Ok(r.last_insert_rowid()),
+        Ok(r) => Ok(r.rows_affected()),
         Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
     }
 }
 
-pub async fn update_user_by_uid_for_activity(state: &AppState, uid: u32, now: u32) {
+pub async fn update_user_by_uid_for_activity(state: &AppState, uid: i32, now: i32) {
     let update_sql = format!(
         r#"
         UPDATE {users_table}
@@ -130,11 +130,11 @@ pub async fn update_user_by_uid_for_password(
 pub async fn create_user_with_user_register(
     state: &AppState,
     user_register: &UserRegister,
-) -> Result<i64, FieldError> {
+) -> Result<u64, FieldError> {
     let now = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap()
-        .as_secs() as u32;
+        .as_secs() as i32;
     let hashed_password = hash(&user_register.password);
 
     let insert_sql = format!(
@@ -153,7 +153,7 @@ pub async fn create_user_with_user_register(
         .execute(&state.pool)
         .await
     {
-        Ok(r.last_insert_rowid())
+        Ok(r.rows_affected())
     } else {
         Err(FieldError::AlreadyExist("name or mail".to_owned()))
     }
@@ -176,8 +176,8 @@ pub async fn get_users_count(state: &AppState) -> i32 {
 
 pub async fn get_users_by_list_query(
     state: &AppState,
-    page_size: u32,
-    offset: u32,
+    page_size: i32,
+    offset: i32,
     order_by: &str,
 ) -> Result<Vec<User>, FieldError> {
     let sql = format!(

@@ -6,7 +6,7 @@ use crate::AppState;
 pub async fn create_tag_by_tag_create(
     state: &AppState,
     tag_create: &TagCreate,
-) -> Result<i64, FieldError> {
+) -> Result<u64, FieldError> {
     let tag_parent = match tag_create.parent {
         Some(p) => p,
         _ => 0,
@@ -27,16 +27,16 @@ pub async fn create_tag_by_tag_create(
         .execute(&state.pool)
         .await
     {
-        Ok(r) => Ok(r.last_insert_rowid()),
+        Ok(r) => Ok(r.rows_affected()),
         Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
     }
 }
 
 pub async fn modify_tag_by_mid_and_tag_modify(
     state: &AppState,
-    mid: u32,
+    mid: i32,
     tag_modify: &TagCreate,
-) -> Result<i64, FieldError> {
+) -> Result<u64, FieldError> {
     let tag_parent = match tag_modify.parent {
         Some(mid) => match common_db::get_meta_by_mid(&state, mid).await {
             Some(_) => mid,
@@ -62,7 +62,7 @@ pub async fn modify_tag_by_mid_and_tag_modify(
         .execute(&state.pool)
         .await
     {
-        Ok(r) => Ok(r.last_insert_rowid()),
+        Ok(r) => Ok(r.rows_affected()),
         Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
     }
 }

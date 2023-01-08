@@ -103,7 +103,7 @@ pub async fn init_admin(state: &AppState, user_register: UserRegister) {
     let now = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap()
-        .as_secs() as u32;
+        .as_secs() as i32;
     let hashed_password = hash(&user_register.password);
 
     sqlx::query(

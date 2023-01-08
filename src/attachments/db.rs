@@ -5,10 +5,10 @@ use crate::AppState;
 pub async fn create_attachment_with_params(
     state: &AppState,
     name: &str,
-    now: u32,
+    now: i32,
     text: &str,
-    uid: u32,
-) -> Result<i64, FieldError> {
+    uid: i32,
+) -> Result<u64, FieldError> {
     let insert_sql = format!(
         r#"
         INSERT INTO {contents_table} ("type", "title", "slug", "created", "modified", "text", "authorId")
@@ -24,7 +24,7 @@ pub async fn create_attachment_with_params(
         .execute(&state.pool)
         .await
     {
-        Ok(r) => Ok(r.last_insert_rowid()),
+        Ok(r) => Ok(r.rows_affected()),
         Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
     }
 }
@@ -32,8 +32,8 @@ pub async fn create_attachment_with_params(
 pub async fn get_attachments_count_by_list_query(
     state: &AppState,
     private_sql: &str,
-    page_size: u32,
-    offset: u32,
+    page_size: i32,
+    offset: i32,
     order_by: &str,
 ) -> Result<Vec<Attachment>, FieldError> {
     let sql = format!(

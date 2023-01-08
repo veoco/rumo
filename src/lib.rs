@@ -1,5 +1,5 @@
 use axum::Router;
-use sqlx::sqlite::SqlitePool;
+use sqlx::AnyPool;
 use std::env;
 use std::sync::Arc;
 use tower_http::trace::TraceLayer;
@@ -24,7 +24,7 @@ use users::{models::UserRegister, users_routers};
 
 #[derive(Clone)]
 pub struct AppState {
-    pub pool: SqlitePool,
+    pub pool: AnyPool,
     pub secret_key: String,
     pub access_token_expire_secondes: u64,
     pub upload_root: String,
@@ -44,7 +44,7 @@ async fn get_state(app_state: Option<AppState>) -> AppState {
         Some(s) => s,
         None => {
             let pool =
-                SqlitePool::connect(&env::var("DATABASE_URL").expect("DATABASE_URL is required"))
+                AnyPool::connect(&env::var("DATABASE_URL").expect("DATABASE_URL is required"))
                     .await
                     .expect("Database connect failed");
             let secret_key = env::var("SECRET_KEY").expect("SECRET_KEY is required");

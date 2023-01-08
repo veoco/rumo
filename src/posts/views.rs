@@ -26,8 +26,8 @@ pub async fn create_post(
         post_create.status = String::from("waiting");
     }
 
-    let row_id = db::create_post_by_post_create_with_uid(&state, &post_create, user.uid).await?;
-    Ok((StatusCode::CREATED, Json(json!({ "id": row_id }))))
+    let _ = db::create_post_by_post_create_with_uid(&state, &post_create, user.uid).await?;
+    Ok((StatusCode::CREATED, Json(json!({ "msg": "ok" }))))
 }
 
 pub async fn modify_page_by_slug(
@@ -51,9 +51,9 @@ pub async fn modify_page_by_slug(
         post_modify.status = String::from("waiting");
     }
 
-    let row_id =
+    let _ =
         db::modify_post_by_post_create_with_exist_post(&state, &post_modify, &exist_post).await?;
-    Ok(Json(json!({ "id": row_id })))
+    Ok(Json(json!({ "msg": "ok" })))
 }
 
 pub async fn list_posts(
@@ -197,10 +197,9 @@ pub async fn create_post_field_by_slug(
         return Err(FieldError::PermissionDeny);
     }
 
-    let row_id =
-        common_db::create_field_by_cid_with_field_create(&state, exist_post.cid, &field_create)
-            .await?;
-    Ok((StatusCode::CREATED, Json(json!({ "id": row_id }))))
+    let _ = common_db::create_field_by_cid_with_field_create(&state, exist_post.cid, &field_create)
+        .await?;
+    Ok((StatusCode::CREATED, Json(json!({ "msg": "ok" }))))
 }
 
 pub async fn get_post_field_by_slug_and_name(
@@ -242,14 +241,14 @@ pub async fn modify_post_field_by_slug_and_name(
         return Err(FieldError::InvalidParams("name".to_owned()));
     }
 
-    let row_id = common_db::modify_field_by_cid_and_name_with_field_create(
+    let _ = common_db::modify_field_by_cid_and_name_with_field_create(
         &state,
         exist_post.cid,
         &name,
         &field_create,
     )
     .await?;
-    Ok(Json(json!({ "id": row_id })))
+    Ok(Json(json!({ "msg": "ok" })))
 }
 
 pub async fn delete_post_field_by_slug_and_name(

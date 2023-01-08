@@ -9,12 +9,12 @@ use crate::AppState;
 pub async fn create_page_by_page_create_with_uid(
     state: &AppState,
     page_create: &PageCreate,
-    uid: u32,
-) -> Result<i64, FieldError> {
+    uid: i32,
+) -> Result<u64, FieldError> {
     let now = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap()
-        .as_secs() as u32;
+        .as_secs() as i32;
     let status = match page_create.publish.unwrap_or(true) {
         true => "publish",
         false => "hidden",
@@ -54,7 +54,7 @@ pub async fn create_page_by_page_create_with_uid(
         .execute(&state.pool)
         .await
     {
-        Ok(r) => Ok(r.last_insert_rowid()),
+        Ok(r) => Ok(r.rows_affected()),
         Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
     }
 }
@@ -63,11 +63,11 @@ pub async fn modify_page_by_page_modify_with_exist_page(
     state: &AppState,
     page_modify: &PageCreate,
     exist_page: &Content,
-) -> Result<i64, FieldError> {
+) -> Result<u64, FieldError> {
     let now = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap()
-        .as_secs() as u32;
+        .as_secs() as i32;
     let now = if now > page_modify.created {
         now
     } else {
@@ -129,7 +129,7 @@ pub async fn modify_page_by_page_modify_with_exist_page(
         .execute(&state.pool)
         .await
     {
-        Ok(r) => Ok(r.last_insert_rowid()),
+        Ok(r) => Ok(r.rows_affected()),
         Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
     }
 }
@@ -164,8 +164,8 @@ pub async fn get_content_with_fields_by_slug(
 pub async fn get_contents_with_fields_by_list_query_with_private(
     state: &AppState,
     private_sql: &str,
-    page_size: u32,
-    offset: u32,
+    page_size: i32,
+    offset: i32,
     order_by: &str,
     post: bool,
 ) -> Result<Vec<ContentWithFields>, FieldError> {

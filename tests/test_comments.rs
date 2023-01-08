@@ -62,11 +62,15 @@ async fn create_then_modify_comments_success() {
         "text": "test comment modify",
     })
     .to_string();
-    let (status_code, body) = post("/api/posts/test-comment-post-modify/comments/", data).await;
+    let (status_code, _) = post("/api/posts/test-comment-post-modify/comments/", data).await;
     assert_eq!(status_code, StatusCode::CREATED);
 
+    let (status_code, body) = get("/api/posts/test-comment-post-modify/comments/").await;
+    assert_eq!(status_code, StatusCode::OK);
+
     let body = body.unwrap();
-    let coid = body.get("id").unwrap().as_u64().unwrap();
+    let comments = body.get("results").unwrap().as_array().unwrap();
+    let coid = comments[0].get("coid").unwrap().as_u64().unwrap();
 
     let url = format!("/api/comments/{}", coid);
     let (status_code, _) = admin_get(&url).await;
@@ -108,11 +112,15 @@ async fn create_then_delete_comments_success() {
         "text": "test comment delete",
     })
     .to_string();
-    let (status_code, body) = post("/api/posts/test-comment-post-delete/comments/", data).await;
+    let (status_code, _) = post("/api/posts/test-comment-post-delete/comments/", data).await;
     assert_eq!(status_code, StatusCode::CREATED);
 
+    let (status_code, body) = get("/api/posts/test-comment-post-delete/comments/").await;
+    assert_eq!(status_code, StatusCode::OK);
+
     let body = body.unwrap();
-    let coid = body.get("id").unwrap().as_u64().unwrap();
+    let comments = body.get("results").unwrap().as_array().unwrap();
+    let coid = comments[0].get("coid").unwrap().as_u64().unwrap();
 
     let url = format!("/api/comments/{}", coid);
     let (status_code, _) = admin_get(&url).await;

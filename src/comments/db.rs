@@ -4,7 +4,7 @@ use super::models::Comment;
 use crate::common::errors::FieldError;
 use crate::AppState;
 
-pub async fn get_comment_by_coid(state: &AppState, coid: u32) -> Option<Comment> {
+pub async fn get_comment_by_coid(state: &AppState, coid: i32) -> Option<Comment> {
     let sql = format!(
         r#"
         SELECT *
@@ -25,18 +25,18 @@ pub async fn get_comment_by_coid(state: &AppState, coid: u32) -> Option<Comment>
 
 pub async fn create_comment_with_params(
     state: &AppState,
-    cid: u32,
+    cid: i32,
     author: &str,
-    author_id: u32,
-    owner_id: u32,
+    author_id: i32,
+    owner_id: i32,
     mail: &str,
     url: Option<String>,
     ip: &str,
     ua: &str,
     text: &str,
     status: &str,
-    parent: u32,
-) -> Result<i64, FieldError> {
+    parent: i32,
+) -> Result<u64, FieldError> {
     let now = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap()
@@ -51,7 +51,7 @@ pub async fn create_comment_with_params(
     );
     match sqlx::query(&insert_sql)
         .bind(cid)
-        .bind(now as u32)
+        .bind(now as i32)
         .bind(author)
         .bind(author_id)
         .bind(owner_id)
@@ -65,15 +65,15 @@ pub async fn create_comment_with_params(
         .execute(&state.pool)
         .await
     {
-        Ok(r) => Ok(r.last_insert_rowid()),
+        Ok(r) => Ok(r.rows_affected()),
         Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
     }
 }
 
 pub async fn update_content_count_increase_by_cid(
     state: &AppState,
-    cid: u32,
-) -> Result<i64, FieldError> {
+    cid: i32,
+) -> Result<u64, FieldError> {
     let sql = format!(
         r#"
         UPDATE {contents_table}
@@ -87,15 +87,15 @@ pub async fn update_content_count_increase_by_cid(
         .execute(&state.pool)
         .await
     {
-        Ok(r) => Ok(r.last_insert_rowid()),
+        Ok(r) => Ok(r.rows_affected()),
         Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
     }
 }
 
 pub async fn update_content_count_decrease_by_cid(
     state: &AppState,
-    cid: u32,
-) -> Result<i64, FieldError> {
+    cid: i32,
+) -> Result<u64, FieldError> {
     let sql = format!(
         r#"
         UPDATE {contents_table}
@@ -109,17 +109,17 @@ pub async fn update_content_count_decrease_by_cid(
         .execute(&state.pool)
         .await
     {
-        Ok(r) => Ok(r.last_insert_rowid()),
+        Ok(r) => Ok(r.rows_affected()),
         Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
     }
 }
 
 pub async fn modify_comment_with_params(
     state: &AppState,
-    coid: u32,
+    coid: i32,
     text: &str,
     status: &str,
-) -> Result<i64, FieldError> {
+) -> Result<u64, FieldError> {
     let sql = format!(
         r#"
         UPDATE {comments_table}
@@ -135,15 +135,15 @@ pub async fn modify_comment_with_params(
         .execute(&state.pool)
         .await
     {
-        Ok(r) => Ok(r.last_insert_rowid()),
+        Ok(r) => Ok(r.rows_affected()),
         Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
     }
 }
 
 pub async fn delete_comment_by_coid(
     state: &AppState,
-    coid: u32,
-) -> Result<i64, FieldError> {
+    coid: i32,
+) -> Result<u64, FieldError> {
     let sql = format!(
         r#"
         DELETE FROM {comments_table}
@@ -156,7 +156,7 @@ pub async fn delete_comment_by_coid(
         .execute(&state.pool)
         .await
     {
-        Ok(r) => Ok(r.last_insert_rowid()),
+        Ok(r) => Ok(r.rows_affected()),
         Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
     }
 }
@@ -179,8 +179,8 @@ pub async fn get_comments_count(state: &AppState) -> i32 {
 
 pub async fn get_comments_by_list_query(
     state: &AppState,
-    page_size: u32,
-    offset: u32,
+    page_size: i32,
+    offset: i32,
     order_by: &str,
 ) -> Result<Vec<Comment>, FieldError> {
     let sql = format!(
@@ -223,10 +223,10 @@ pub async fn get_comments_count_with_private(state: &AppState, private_sql: &str
 
 pub async fn get_comments_by_cid_and_list_query_with_private(
     state: &AppState,
-    cid: u32,
+    cid: i32,
     private_sql: &str,
-    page_size: u32,
-    offset: u32,
+    page_size: i32,
+    offset: i32,
     order_by: &str,
 ) -> Result<Vec<Comment>, FieldError> {
     let sql = format!(

@@ -23,8 +23,8 @@ pub async fn create_page(
         return Err(FieldError::AlreadyExist("slug".to_owned()));
     }
 
-    let row_id = db::create_page_by_page_create_with_uid(&state, &page_create, user.uid).await?;
-    Ok((StatusCode::CREATED, Json(json!({ "id": row_id }))))
+    let _ = db::create_page_by_page_create_with_uid(&state, &page_create, user.uid).await?;
+    Ok((StatusCode::CREATED, Json(json!({ "msg": "ok" }))))
 }
 
 pub async fn modify_page_by_slug(
@@ -44,9 +44,9 @@ pub async fn modify_page_by_slug(
         return Err(FieldError::AlreadyExist("page slug".to_owned()));
     }
 
-    let row_id =
+    let _ =
         db::modify_page_by_page_modify_with_exist_page(&state, &page_modify, &exist_page).await?;
-    Ok(Json(json!({ "id": row_id })))
+    Ok(Json(json!({ "msg": "ok" })))
 }
 
 pub async fn list_pages(
@@ -151,10 +151,10 @@ pub async fn create_page_field_by_slug(
     }
     let exist_page = exist_page.unwrap();
 
-    let row_id =
+    let _ =
         common_db::create_field_by_cid_with_field_create(&state, exist_page.cid, &field_create)
             .await?;
-    Ok((StatusCode::CREATED, Json(json!({ "id": row_id }))))
+    Ok((StatusCode::CREATED, Json(json!({ "msg": "ok" }))))
 }
 
 pub async fn get_page_field_by_slug_and_name(
@@ -211,12 +211,12 @@ pub async fn modify_page_field_by_slug_and_name(
         return Err(FieldError::InvalidParams("name".to_owned()));
     }
 
-    let row_id = common_db::modify_field_by_cid_and_name_with_field_create(
+    let _ = common_db::modify_field_by_cid_and_name_with_field_create(
         &state,
         exist_page.cid,
         &name,
         &field_create,
     )
     .await?;
-    Ok(Json(json!({ "id": row_id })))
+    Ok(Json(json!({ "msg": "ok" })))
 }

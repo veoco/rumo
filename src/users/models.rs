@@ -10,15 +10,15 @@ pub struct TokenData {
 
 #[derive(Serialize, Deserialize, sqlx::FromRow)]
 pub struct User {
-    pub uid: u32,
+    pub uid: i32,
     pub name: Option<String>,
     pub password: Option<String>,
     pub mail: Option<String>,
     pub url: Option<String>,
     pub screenName: Option<String>,
-    pub created: u32,
-    pub activated: u32,
-    pub logged: u32,
+    pub created: i32,
+    pub activated: i32,
+    pub logged: i32,
     pub group: String,
     pub authCode: Option<String>,
 }
@@ -62,9 +62,9 @@ pub struct UserModify {
 #[derive(Serialize, Deserialize, Validate)]
 pub struct UsersQuery {
     #[validate(range(min = 1, message = "page must greater than 1"))]
-    pub page: Option<u32>,
+    pub page: Option<i32>,
     #[validate(range(min = 1, message = "page_size must greater than 1"))]
-    pub page_size: Option<u32>,
+    pub page_size: Option<i32>,
     #[validate(length(min = 1, max = 13, message = "order_by length must greater than 1"))]
     pub order_by: Option<String>,
 }

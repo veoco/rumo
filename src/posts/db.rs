@@ -9,12 +9,12 @@ use crate::AppState;
 pub async fn create_post_by_post_create_with_uid(
     state: &AppState,
     post_create: &PostCreate,
-    uid: u32,
-) -> Result<i64, FieldError> {
+    uid: i32,
+) -> Result<u64, FieldError> {
     let now = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap()
-        .as_secs() as u32;
+        .as_secs() as i32;
     let allow_comment = match post_create.allowComment.unwrap_or(true) {
         true => "1",
         false => "0",
@@ -50,7 +50,7 @@ pub async fn create_post_by_post_create_with_uid(
         .execute(&state.pool)
         .await
     {
-        Ok(r) => Ok(r.last_insert_rowid()),
+        Ok(r) => Ok(r.rows_affected()),
         Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
     }
 }
@@ -59,11 +59,11 @@ pub async fn modify_post_by_post_create_with_exist_post(
     state: &AppState,
     post_modify: &PostCreate,
     exist_post: &Content,
-) -> Result<i64, FieldError> {
+) -> Result<u64, FieldError> {
     let now = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap()
-        .as_secs() as u32;
+        .as_secs() as i32;
     let now = if now > post_modify.created {
         now
     } else {
@@ -118,7 +118,7 @@ pub async fn modify_post_by_post_create_with_exist_post(
         .execute(&state.pool)
         .await
     {
-        Ok(r) => Ok(r.last_insert_rowid()),
+        Ok(r) => Ok(r.rows_affected()),
         Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
     }
 }
@@ -126,8 +126,8 @@ pub async fn modify_post_by_post_create_with_exist_post(
 pub async fn get_contents_with_metas_user_and_fields_by_filter_and_list_query(
     state: &AppState,
     filter_sql: &str,
-    page_size: u32,
-    offset: u32,
+    page_size: i32,
+    offset: i32,
     order_by: &str,
     post: bool,
 ) -> Result<Vec<ContentWithMetasUsersFields>, FieldError> {

@@ -23,8 +23,8 @@ pub async fn create_tag(
         return Err(FieldError::AlreadyExist("slug".to_owned()));
     }
 
-    let row_id = db::create_tag_by_tag_create(&state, &tag_create).await?;
-    Ok((StatusCode::CREATED, Json(json!({ "id": row_id }))))
+    let _ = db::create_tag_by_tag_create(&state, &tag_create).await?;
+    Ok((StatusCode::CREATED, Json(json!({ "msg": "ok" }))))
 }
 
 pub async fn list_tags(
@@ -83,8 +83,8 @@ pub async fn modify_tag_by_slug(
         return Err(FieldError::InvalidParams("category slug".to_owned()));
     }
 
-    let row_id = db::modify_tag_by_mid_and_tag_modify(&state, exist_tag.mid, &tag_modify).await?;
-    Ok(Json(json!({ "id": row_id })))
+    let _ = db::modify_tag_by_mid_and_tag_modify(&state, exist_tag.mid, &tag_modify).await?;
+    Ok(Json(json!({ "msg": "ok" })))
 }
 
 pub async fn delete_tag_by_slug(
