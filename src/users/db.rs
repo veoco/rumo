@@ -12,7 +12,7 @@ pub async fn get_user_by_mail(state: &AppState, mail: &str) -> Option<User> {
             r#"
             SELECT *
             FROM {users_table}
-            WHERE {users_table}."mail" = $1
+            WHERE "mail" = $1
             "#,
             users_table = &state.users_table
         ),
@@ -20,7 +20,7 @@ pub async fn get_user_by_mail(state: &AppState, mail: &str) -> Option<User> {
             r#"
             SELECT *
             FROM {users_table}
-            WHERE {users_table}."mail" = ?
+            WHERE "mail" = ?
             "#,
             users_table = &state.users_table
         ),
@@ -42,7 +42,7 @@ pub async fn get_user_by_uid(state: &AppState, uid: &str) -> Option<User> {
             r#"
             SELECT *
             FROM {users_table}
-            WHERE {users_table}."uid" = $1
+            WHERE "uid" = $1
             "#,
             users_table = &state.users_table
         ),
@@ -50,7 +50,7 @@ pub async fn get_user_by_uid(state: &AppState, uid: &str) -> Option<User> {
             r#"
             SELECT *
             FROM {users_table}
-            WHERE {users_table}."uid" = ?
+            WHERE "uid" = ?
             "#,
             users_table = &state.users_table
         ),
@@ -95,7 +95,7 @@ pub async fn update_user_by_uid_for_activity(state: &AppState, uid: i32, now: i3
             r#"
             UPDATE {users_table}
             SET "activated" = $1, "logged" = $2
-            WHERE {users_table}."uid" = $3
+            WHERE "uid" = $3
             "#,
             users_table = &state.users_table
         ),
@@ -103,7 +103,7 @@ pub async fn update_user_by_uid_for_activity(state: &AppState, uid: i32, now: i3
             r#"
             UPDATE {users_table}
             SET "activated" = ?, "logged" = ?
-            WHERE {users_table}."uid" = ?
+            WHERE "uid" = ?
             "#,
             users_table = &state.users_table
         ),
@@ -126,7 +126,7 @@ pub async fn update_user_by_uid_with_user_modify_for_data_without_password(
             r#"
             UPDATE {users_table}
             SET "name" = $1, "mail" = $2, "url" = $3, "screenName" = $4, "group" = $5
-            WHERE {users_table}."uid" = $6
+            WHERE "uid" = $6
             "#,
             users_table = &state.users_table
         ),
@@ -134,7 +134,7 @@ pub async fn update_user_by_uid_with_user_modify_for_data_without_password(
             r#"
             UPDATE {users_table}
             SET "name" = ?, "mail" = ?, "url" = ?, "screenName" = ?, "group" = ?
-            WHERE {users_table}."uid" = ?
+            WHERE "uid" = ?
             "#,
             users_table = &state.users_table
         ),
@@ -163,16 +163,16 @@ pub async fn update_user_by_uid_for_password(
         AnyKind::Postgres => format!(
             r#"
             UPDATE {users_table}
-            SET {users_table}."password" = $1
-            WHERE {users_table}."uid" = $2
+            SET "password" = $1
+            WHERE "uid" = $2
             "#,
             users_table = &state.users_table
         ),
         _ => format!(
             r#"
             UPDATE {users_table}
-            SET {users_table}."password" = ?
-            WHERE {users_table}."uid" = ?
+            SET "password" = ?
+            WHERE "uid" = ?
             "#,
             users_table = &state.users_table
         ),
@@ -258,7 +258,7 @@ pub async fn get_users_by_list_query(
             r#"
             SELECT *
             FROM {users_table}
-            ORDER BY {users_table}.{}
+            ORDER BY {}
             LIMIT $1 OFFSET $2"#,
             order_by,
             users_table = &state.users_table
@@ -267,7 +267,7 @@ pub async fn get_users_by_list_query(
             r#"
             SELECT *
             FROM {users_table}
-            ORDER BY {users_table}.{}
+            ORDER BY {}
             LIMIT ? OFFSET ?"#,
             order_by,
             users_table = &state.users_table
