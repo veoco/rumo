@@ -36,7 +36,7 @@ pub async fn get_user_by_mail(state: &AppState, mail: &str) -> Option<User> {
     }
 }
 
-pub async fn get_user_by_uid(state: &AppState, uid: &str) -> Option<User> {
+pub async fn get_user_by_uid(state: &AppState, uid: i32) -> Option<User> {
     let sql = match state.pool.any_kind() {
         AnyKind::Postgres => format!(
             r#"
@@ -118,7 +118,7 @@ pub async fn update_user_by_uid_for_activity(state: &AppState, uid: i32, now: i3
 
 pub async fn update_user_by_uid_with_user_modify_for_data_without_password(
     state: &AppState,
-    uid: &str,
+    uid: i32,
     user_modify: &UserModify,
 ) -> Result<u64, FieldError> {
     let sql = match state.pool.any_kind() {
@@ -156,7 +156,7 @@ pub async fn update_user_by_uid_with_user_modify_for_data_without_password(
 
 pub async fn update_user_by_uid_for_password(
     state: &AppState,
-    uid: &str,
+    uid: i32,
     hashed_password: &str,
 ) -> Result<u64, FieldError> {
     let sql = match state.pool.any_kind() {

@@ -92,8 +92,7 @@ pub async fn get_content_with_metas_user_from_content(
     state: &AppState,
     content: Content,
 ) -> Result<ContentWithMetasUsersFields, FieldError> {
-    let uid_str = content.authorId.to_string();
-    let user = user_db::get_user_by_uid(state, &uid_str).await;
+    let user = user_db::get_user_by_uid(state, content.authorId).await;
     if user.is_none() {
         return Err(FieldError::DatabaseFailed("Invalid user".to_string()));
     }

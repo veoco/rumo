@@ -90,8 +90,7 @@ pub async fn get_user_by_id(
     }
 
     if user.group == "administrator" {
-        let uid = uid.to_string();
-        if let Some(mut target_user) = db::get_user_by_uid(&state, &uid).await {
+        if let Some(mut target_user) = db::get_user_by_uid(&state, uid).await {
             target_user.password = None;
             Ok(Json(json!(target_user)))
         } else {
@@ -114,14 +113,13 @@ pub async fn modify_user_by_id(
             _ => return Err(FieldError::InvalidParams("group".to_string())),
         }
 
-        let uid = uid.to_string();
-        let exist_user = db::get_user_by_uid(&state, &uid).await;
+        let exist_user = db::get_user_by_uid(&state, uid).await;
 
         if exist_user.is_some() {
             if user_modify.password.is_none() {
                 let row_id = db::update_user_by_uid_with_user_modify_for_data_without_password(
                     &state,
-                    &uid,
+                    uid,
                     &user_modify,
                 )
                 .await?;
@@ -133,7 +131,7 @@ pub async fn modify_user_by_id(
                 let hashed_password = hash(&password);
 
                 let row_id =
-                    db::update_user_by_uid_for_password(&state, &uid, &hashed_password).await?;
+                    db::update_user_by_uid_for_password(&state, uid, &hashed_password).await?;
                 Ok(Json(json!({
                     "msg": format!("{} password changed", row_id)
                 })))
@@ -151,8 +149,7 @@ pub async fn delete_user_by_id(
     PMAdministrator(_): PMAdministrator,
     Path(uid): Path<i32>,
 ) -> Result<Json<Value>, FieldError> {
-    let uid_str = uid.to_string();
-    let exist_user = db::get_user_by_uid(&state, &uid_str).await;
+    let exist_user = db::get_user_by_uid(&state, uid).await;
     if exist_user.is_none() {
         return Err(FieldError::InvalidParams("uid".to_string()));
     }

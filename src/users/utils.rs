@@ -119,8 +119,11 @@ pub async fn get_user(parts: &mut Parts, state: AppState) -> Result<User, AuthEr
         .verify_with_key(&key)
         .map_err(|_| AuthError::InvalidToken)?;
 
-    let user_id = token_data.sub;
-    if let Some(user) = get_user_by_uid(&state, &user_id).await {
+    let user_id = token_data
+        .sub
+        .parse::<i32>()
+        .map_err(|_| AuthError::InvalidToken)?;
+    if let Some(user) = get_user_by_uid(&state, user_id).await {
         return Ok(user);
     }
     Err(AuthError::InvalidToken)
