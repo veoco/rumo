@@ -1,4 +1,5 @@
 use sqlx::any::AnyKind;
+use sqlx::Executor;
 use std::time::SystemTime;
 
 use super::users::{models::UserRegister, utils::hash};
@@ -9,7 +10,6 @@ pub async fn init_table(state: &AppState) {
         AnyKind::Postgres => {
             r#"
             CREATE SEQUENCE "typecho_comments_seq";
-
             CREATE TABLE "typecho_comments" (
                 "coid" INT NOT NULL DEFAULT nextval('typecho_comments_seq'),
                 "cid" INT NULL DEFAULT '0',
@@ -311,10 +311,8 @@ pub async fn init_table(state: &AppState) {
             "#
         }
     };
-    sqlx::query(sql)
-        .execute(&state.pool)
-        .await
-        .expect("database already exists");
+    let mut conn = state.pool.acquire().await.expect("open database failed");
+    let _ = conn.execute(sql).await.expect("database already exists");
 }
 
 pub async fn init_admin(state: &AppState, user_register: UserRegister) {
@@ -327,14 +325,14 @@ pub async fn init_admin(state: &AppState, user_register: UserRegister) {
     let sql = match state.pool.any_kind() {
         AnyKind::Postgres => format!(
             r#"
-            INSERT INTO {users_table} (name, mail, url, screenName, password, created, "group")
+            INSERT INTO {users_table} ("name", "mail", "url", "screenName", "password", "created", "group")
             VALUES ($1, $2, $3, $4, $5, $6, $7)
             "#,
             users_table = &state.users_table,
         ),
         _ => format!(
             r#"
-            INSERT INTO {users_table} (name, mail, url, screenName, password, created, "group")
+            INSERT INTO {users_table} ("name", "mail", "url", "screenName", "password", "created", "group")
             VALUES (?, ?, ?, ?, ?, ?, ?)
             "#,
             users_table = &state.users_table,
