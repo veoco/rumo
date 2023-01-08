@@ -10,16 +10,35 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
     env:
-      DATABASE_URL: sqlite:db.sqlite3?mode=rwc
       SECRET_KEY: fake-key
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
     steps:
     - uses: actions/checkout@v3
     - name: Build
       run: cargo build --verbose
-    - name: Init
-      run: cargo run -- init
-    - name: Run tests
-      run: cargo test --verbose
+    - name: Test Sqlite
+      env:
+        DATABASE_URL: sqlite:db.sqlite3?mode=rwc
+      run: |
+        cargo run -- init
+        cargo test --verbose
+    - name: Test Postgresql
+      env:
+        DATABASE_URL: postgres://postgres:postgres@localhost/postgres
+      run: |
+        cargo run -- init
+        cargo test --verbose
