@@ -1,3 +1,5 @@
+use sqlx::any::AnyKind;
+
 use super::forms::CategoryCreate;
 use crate::common::db as common_db;
 use crate::common::errors::FieldError;
@@ -15,14 +17,23 @@ pub async fn create_category_by_category_create(
         _ => 0,
     };
 
-    let insert_sql = format!(
-        r#"
-        INSERT INTO {metas_table} ("type", "name", "slug", "description", "parent")
-        VALUES ('category', ?1, ?2, ?3, ?4)
-        "#,
-        metas_table = &state.metas_table
-    );
-    match sqlx::query(&insert_sql)
+    let sql = match state.pool.any_kind() {
+        AnyKind::Postgres => format!(
+            r#"
+            INSERT INTO {metas_table} ("type", "name", "slug", "description", "parent")
+            VALUES ('category', $1, $2, $3, $4)
+            "#,
+            metas_table = &state.metas_table
+        ),
+        _ => format!(
+            r#"
+            INSERT INTO {metas_table} ("type", "name", "slug", "description", "parent")
+            VALUES ('category', ?, ?, ?, ?)
+            "#,
+            metas_table = &state.metas_table
+        ),
+    };
+    match sqlx::query(&sql)
         .bind(&category_create.name)
         .bind(&category_create.slug)
         .bind(&category_create.description)
@@ -48,15 +59,25 @@ pub async fn modify_category_by_mid_and_category_modify(
         _ => 0,
     };
 
-    let update_sql = format!(
-        r#"
-        UPDATE {metas_table}
-        SET "name" = ?1, "slug" = ?2, "description" = ?3, "parent" = ?4
-        WHERE {metas_table}."mid" == ?5
-        "#,
-        metas_table = &state.metas_table
-    );
-    match sqlx::query(&update_sql)
+    let sql = match state.pool.any_kind() {
+        AnyKind::Postgres => format!(
+            r#"
+            UPDATE {metas_table}
+            SET "name" = $1, "slug" = $2, "description" = $3, "parent" = $4
+            WHERE {metas_table}."mid" == ?5
+            "#,
+            metas_table = &state.metas_table
+        ),
+        _ => format!(
+            r#"
+            UPDATE {metas_table}
+            SET "name" = ?, "slug" = ?, "description" = ?, "parent" = ?
+            WHERE {metas_table}."mid" == ?
+            "#,
+            metas_table = &state.metas_table
+        ),
+    };
+    match sqlx::query(&sql)
         .bind(&category_modify.name)
         .bind(&category_modify.slug)
         .bind(&category_modify.description)

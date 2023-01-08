@@ -1,3 +1,4 @@
+use sqlx::any::AnyKind;
 use std::time::SystemTime;
 
 use super::forms::PostCreate;
@@ -28,14 +29,23 @@ pub async fn create_post_by_post_create_with_uid(
         false => "0",
     };
 
-    let insert_sql = format!(
-        r#"
-        INSERT INTO {contents_table} ("type", "title", "slug", "created", "modified", "text", "authorId", "status", "password", "allowComment", "allowPing", "allowFeed")
-        VALUES ('post', ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
-        "#,
-        contents_table = &state.contents_table,
-    );
-    match sqlx::query(&insert_sql)
+    let sql = match state.pool.any_kind() {
+        AnyKind::Postgres => format!(
+            r#"
+            INSERT INTO {contents_table} ("type", "title", "slug", "created", "modified", "text", "authorId", "status", "password", "allowComment", "allowPing", "allowFeed")
+            VALUES ('post', $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            "#,
+            contents_table = &state.contents_table,
+        ),
+        _ => format!(
+            r#"
+            INSERT INTO {contents_table} ("type", "title", "slug", "created", "modified", "text", "authorId", "status", "password", "allowComment", "allowPing", "allowFeed")
+            VALUES ('post', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            "#,
+            contents_table = &state.contents_table,
+        ),
+    };
+    match sqlx::query(&sql)
         .bind(&post_create.title)
         .bind(&post_create.slug)
         .bind(&post_create.created)
@@ -86,24 +96,43 @@ pub async fn modify_post_by_post_create_with_exist_post(
         false => "0",
     };
 
-    let update_sql = format!(
-        r#"
-        UPDATE {contents_table}
-        SET "title" = ?1,
-            "slug" = ?2,
-            "created" = ?3,
-            "modified" = ?4,
-            "text" = ?5,
-            "status" = ?6,
-            "password" = ?7,
-            "allowComment" = ?8,
-            "allowPing" = ?9,
-            "allowFeed" = ?10
-        WHERE "cid" == ?11
-        "#,
-        contents_table = &state.contents_table,
-    );
-    match sqlx::query(&update_sql)
+    let sql = match state.pool.any_kind() {
+        AnyKind::Postgres => format!(
+            r#"
+            UPDATE {contents_table}
+            SET "title" = $1,
+                "slug" = $2,
+                "created" = $3,
+                "modified" = $4,
+                "text" = $5,
+                "status" = $6,
+                "password" = $7,
+                "allowComment" = $8,
+                "allowPing" = $9,
+                "allowFeed" = $10
+            WHERE "cid" == $11
+            "#,
+            contents_table = &state.contents_table,
+        ),
+        _ => format!(
+            r#"
+            UPDATE {contents_table}
+            SET "title" = ?,
+                "slug" = ?,
+                "created" = ?,
+                "modified" = ?,
+                "text" = ?,
+                "status" = ?,
+                "password" = ?,
+                "allowComment" = ?,
+                "allowPing" = ?,
+                "allowFeed" = ?
+            WHERE "cid" == ?
+            "#,
+            contents_table = &state.contents_table,
+        ),
+    };
+    match sqlx::query(&sql)
         .bind(&post_modify.title)
         .bind(&post_modify.slug)
         .bind(&post_modify.created)
@@ -133,16 +162,28 @@ pub async fn get_contents_with_metas_user_and_fields_by_filter_and_list_query(
 ) -> Result<Vec<ContentWithMetasUsersFields>, FieldError> {
     let content_type = if post { "post" } else { "page" };
 
-    let sql = format!(
-        r#"
-        SELECT *
-        FROM {contents_table}
-        WHERE "type" == '{content_type}'{filter_sql}
-        GROUP BY "cid"
-        ORDER BY {order_by}
-        LIMIT ?1 OFFSET ?2"#,
-        contents_table = &state.contents_table,
-    );
+    let sql = match state.pool.any_kind() {
+        AnyKind::Postgres => format!(
+            r#"
+            SELECT *
+            FROM {contents_table}
+            WHERE "type" == '{content_type}'{filter_sql}
+            GROUP BY "cid"
+            ORDER BY {order_by}
+            LIMIT $1 OFFSET $2"#,
+            contents_table = &state.contents_table,
+        ),
+        _ => format!(
+            r#"
+            SELECT *
+            FROM {contents_table}
+            WHERE "type" == '{content_type}'{filter_sql}
+            GROUP BY "cid"
+            ORDER BY {order_by}
+            LIMIT ? OFFSET ?"#,
+            contents_table = &state.contents_table,
+        ),
+    };
     match sqlx::query_as::<_, Content>(&sql)
         .bind(page_size)
         .bind(offset)
@@ -167,13 +208,22 @@ pub async fn get_content_with_metas_user_fields_by_slug_and_private(
     slug: &str,
     private_sql: &str,
 ) -> Result<ContentWithMetasUsersFields, FieldError> {
-    let sql = format!(
-        r#"
-        SELECT *
-        FROM {contents_table}
-        WHERE "slug" == ?1{private_sql}"#,
-        contents_table = &state.contents_table
-    );
+    let sql = match state.pool.any_kind() {
+        AnyKind::Postgres => format!(
+            r#"
+            SELECT *
+            FROM {contents_table}
+            WHERE "slug" == $1{private_sql}"#,
+            contents_table = &state.contents_table
+        ),
+        _ => format!(
+            r#"
+            SELECT *
+            FROM {contents_table}
+            WHERE "slug" == ?{private_sql}"#,
+            contents_table = &state.contents_table
+        ),
+    };
 
     match sqlx::query_as::<_, Content>(&sql)
         .bind(slug)

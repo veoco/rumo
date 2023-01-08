@@ -1,3 +1,5 @@
+use sqlx::any::AnyKind;
+
 use super::forms::TagCreate;
 use crate::common::db as common_db;
 use crate::common::errors::FieldError;
@@ -12,14 +14,23 @@ pub async fn create_tag_by_tag_create(
         _ => 0,
     };
 
-    let insert_sql = format!(
-        r#"
-        INSERT INTO {metas_table} ("type", "name", "slug", "description", "parent")
-        VALUES ('tag', ?1, ?2, ?3, ?4)
-        "#,
-        metas_table = &state.metas_table,
-    );
-    match sqlx::query(&insert_sql)
+    let sql = match state.pool.any_kind() {
+        AnyKind::Postgres => format!(
+            r#"
+            INSERT INTO {metas_table} ("type", "name", "slug", "description", "parent")
+            VALUES ('tag', $1, $2, $3, $4)
+            "#,
+            metas_table = &state.metas_table,
+        ),
+        _ => format!(
+            r#"
+            INSERT INTO {metas_table} ("type", "name", "slug", "description", "parent")
+            VALUES ('tag', ?, ?, ?, ?)
+            "#,
+            metas_table = &state.metas_table,
+        ),
+    };
+    match sqlx::query(&sql)
         .bind(&tag_create.name)
         .bind(&tag_create.slug)
         .bind(&tag_create.description)
@@ -45,15 +56,25 @@ pub async fn modify_tag_by_mid_and_tag_modify(
         _ => 0,
     };
 
-    let update_sql = format!(
-        r#"
-        UPDATE {metas_table}
-        SET "name" = ?1, "slug" = ?2, "description" = ?3, "parent" = ?4
-        WHERE {metas_table}."mid" == ?5
-        "#,
-        metas_table = &state.metas_table
-    );
-    match sqlx::query(&update_sql)
+    let sql = match state.pool.any_kind() {
+        AnyKind::Postgres => format!(
+            r#"
+            UPDATE {metas_table}
+            SET "name" = $1, "slug" = $2, "description" = $3, "parent" = $4
+            WHERE {metas_table}."mid" == $5
+            "#,
+            metas_table = &state.metas_table
+        ),
+        _ => format!(
+            r#"
+            UPDATE {metas_table}
+            SET "name" = ?, "slug" = ?, "description" = ?, "parent" = ?
+            WHERE {metas_table}."mid" == ?
+            "#,
+            metas_table = &state.metas_table
+        ),
+    };
+    match sqlx::query(&sql)
         .bind(&tag_modify.name)
         .bind(&tag_modify.slug)
         .bind(&tag_modify.description)

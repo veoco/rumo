@@ -183,10 +183,10 @@ async fn create_then_modify_page_field_success() {
         "str_value": "test-str-feild-modified",
     })
     .to_string();
-    let (status_code, _) = admin_patch("/api/pages/test-page-field/fields/test_str", data).await;
+    let (status_code, _) = admin_patch("/api/pages/test-page-field-modify/fields/test_str", data).await;
     assert_eq!(status_code, StatusCode::OK);
 
-    let (status_code, body) = get("/api/pages/test-page-field/fields/test_str").await;
+    let (status_code, body) = get("/api/pages/test-page-field-modify/fields/test_str").await;
     assert_eq!(status_code, StatusCode::OK);
 
     let body = body.unwrap();

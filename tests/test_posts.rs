@@ -215,10 +215,10 @@ async fn create_then_modify_post_field_success() {
         "str_value": "test-str-feild-modified",
     })
     .to_string();
-    let (status_code, _) = admin_patch("/api/posts/test-post-field/fields/test_str", data).await;
+    let (status_code, _) = admin_patch("/api/posts/test-post-field-modify/fields/test_str", data).await;
     assert_eq!(status_code, StatusCode::OK);
 
-    let (status_code, body) = get("/api/posts/test-post-field/fields/test_str").await;
+    let (status_code, body) = get("/api/posts/test-post-field-modify/fields/test_str").await;
     assert_eq!(status_code, StatusCode::OK);
 
     let body = body.unwrap();

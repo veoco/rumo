@@ -1,3 +1,5 @@
+use sqlx::any::AnyKind;
+
 use super::models::Attachment;
 use crate::common::errors::FieldError;
 use crate::AppState;
@@ -9,15 +11,26 @@ pub async fn create_attachment_with_params(
     text: &str,
     uid: i32,
 ) -> Result<u64, FieldError> {
-    let insert_sql = format!(
-        r#"
-        INSERT INTO {contents_table} ("type", "title", "slug", "created", "modified", "text", "authorId")
-        VALUES ('attachment', ?1, ?1, ?2, ?2, ?3, ?4)
-        "#,
-        contents_table = &state.contents_table,
-    );
-    match sqlx::query(&insert_sql)
+    let sql = match state.pool.any_kind() {
+        AnyKind::Postgres => format!(
+            r#"
+            INSERT INTO {contents_table} ("type", "title", "slug", "created", "modified", "text", "authorId")
+            VALUES ('attachment', $1, $2, $3, $4, $5, $6)
+            "#,
+            contents_table = &state.contents_table,
+        ),
+        _ => format!(
+            r#"
+            INSERT INTO {contents_table} ("type", "title", "slug", "created", "modified", "text", "authorId")
+            VALUES ('attachment', ?, ?, ?, ?, ?, ?)
+            "#,
+            contents_table = &state.contents_table,
+        ),
+    };
+    match sqlx::query(&sql)
         .bind(name)
+        .bind(name)
+        .bind(now)
         .bind(now)
         .bind(text)
         .bind(uid)
@@ -36,17 +49,30 @@ pub async fn get_attachments_count_by_list_query(
     offset: i32,
     order_by: &str,
 ) -> Result<Vec<Attachment>, FieldError> {
-    let sql = format!(
-        r#"
-        SELECT *
-        FROM {contents_table}
-        WHERE {contents_table}."type" == 'attachment'{}
-        ORDER BY {}
-        LIMIT ?1 OFFSET ?2"#,
-        private_sql,
-        order_by,
-        contents_table = &state.contents_table,
-    );
+    let sql = match state.pool.any_kind() {
+        AnyKind::Postgres => format!(
+            r#"
+            SELECT *
+            FROM {contents_table}
+            WHERE {contents_table}."type" == 'attachment'{}
+            ORDER BY {}
+            LIMIT $1 OFFSET $2"#,
+            private_sql,
+            order_by,
+            contents_table = &state.contents_table,
+        ),
+        _ => format!(
+            r#"
+            SELECT *
+            FROM {contents_table}
+            WHERE {contents_table}."type" == 'attachment'{}
+            ORDER BY {}
+            LIMIT ? OFFSET ?"#,
+            private_sql,
+            order_by,
+            contents_table = &state.contents_table,
+        ),
+    };
     match sqlx::query_as::<_, Attachment>(&sql)
         .bind(page_size)
         .bind(offset)

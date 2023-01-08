@@ -9,9 +9,9 @@ use std::sync::Arc;
 
 use super::db;
 use super::models::{Comment, CommentCreate, CommentModify, CommentsQuery};
+use crate::common::db as common_db;
 use crate::common::errors::FieldError;
 use crate::common::extractors::{PMEditor, PMVisitor, ValidatedJson, ValidatedQuery};
-use crate::common::db as common_db;
 use crate::AppState;
 
 pub async fn create_page_comment(
@@ -214,7 +214,9 @@ pub async fn list_page_comments_by_slug(
         None => return Err(FieldError::InvalidParams("slug".to_string())),
     };
 
-    let all_count = db::get_comments_count_with_private(&state, &private_sql).await;
+    let all_count =
+        db::get_content_comments_count_by_cid_with_private(&state, target_page.cid, &private_sql)
+            .await;
 
     let page = q.page.unwrap_or(1);
     let page_size = q.page_size.unwrap_or(10);
@@ -283,7 +285,9 @@ pub async fn list_post_comments_by_slug(
         None => return Err(FieldError::InvalidParams("slug".to_string())),
     };
 
-    let all_count = db::get_comments_count_with_private(&state, &private_sql).await;
+    let all_count =
+        db::get_content_comments_count_by_cid_with_private(&state, target_post.cid, &private_sql)
+            .await;
 
     let page = q.page.unwrap_or(1);
     let page_size = q.page_size.unwrap_or(10);
@@ -359,8 +363,7 @@ pub async fn modify_comment_by_coid(
         _ => return Err(FieldError::InvalidParams("status".to_string())),
     };
 
-    let _ =
-        db::modify_comment_with_params(&state, coid, &comment_modify.text, &status).await?;
+    let _ = db::modify_comment_with_params(&state, coid, &comment_modify.text, &status).await?;
     Ok(Json(json!({ "msg": "ok" })))
 }
 
