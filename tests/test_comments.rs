@@ -24,7 +24,8 @@ async fn create_then_list_comments_success() {
         "text": "test comment",
     })
     .to_string();
-    let (status_code, _) = post("/api/posts/test-comment-post/comments/", data).await;
+    let (status_code, body) = post("/api/posts/test-comment-post/comments/", data).await;
+    println!("{:?}", body);
     assert_eq!(status_code, StatusCode::CREATED);
 
     let (status_code, body) = get("/api/posts/test-comment-post/comments/").await;

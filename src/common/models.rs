@@ -42,7 +42,7 @@ pub struct Field {
     pub r#type: String,
     pub str_value: Option<String>,
     pub int_value: i32,
-    pub float_value: f64,
+    pub float_value: f32,
 }
 
 #[derive(Serialize, Deserialize)]

@@ -142,7 +142,7 @@ pub async fn get_contents_with_metas_user_and_fields_by_mid_list_query_and_priva
     let sql = match state.pool.any_kind() {
         AnyKind::Postgres => format!(
             r#"
-            SELECT *
+            SELECT {contents_table}.*
             FROM {contents_table}
             JOIN {relationships_table} ON {contents_table}.cid = {relationships_table}.cid
             WHERE "type" = '{content_type}' AND "mid" = $1{private_sql}
@@ -154,7 +154,7 @@ pub async fn get_contents_with_metas_user_and_fields_by_mid_list_query_and_priva
         ),
         _ => format!(
             r#"
-            SELECT *
+            SELECT {contents_table}.*
             FROM {contents_table}
             JOIN {relationships_table} ON {contents_table}.cid = {relationships_table}.cid
             WHERE "type" = '{content_type}' AND "mid" = ?{private_sql}
@@ -380,7 +380,7 @@ pub async fn get_fields_by_cid(state: &AppState, cid: i32) -> Vec<Field> {
         .await
     {
         Ok(fields) => fields,
-        Err(_) => vec![],
+        Err(_) => {vec![]},
     }
 }
 
@@ -592,20 +592,22 @@ pub async fn get_metas_by_cid(state: &AppState, cid: i32) -> Vec<Meta> {
     let sql = match state.pool.any_kind() {
         AnyKind::Postgres => format!(
             r#"
-            SELECT *
+            SELECT {metas_table}.*
             FROM {metas_table}
             JOIN {relationships_table} ON {metas_table}.mid = {relationships_table}.mid
             WHERE "cid" = $1
+            GROUP BY {metas_table}.mid
             "#,
             metas_table = &state.metas_table,
             relationships_table = &state.relationships_table,
         ),
         _ => format!(
             r#"
-            SELECT *
+            SELECT {metas_table}.*
             FROM {metas_table}
             JOIN {relationships_table} ON {metas_table}.mid = {relationships_table}.mid
             WHERE "cid" = ?
+            GROUP BY {metas_table}.mid
             "#,
             metas_table = &state.metas_table,
             relationships_table = &state.relationships_table,
@@ -703,6 +705,7 @@ pub async fn get_meta_posts_count_by_mid_with_private(
             FROM {contents_table}
             JOIN {relationships_table} ON {contents_table}.cid = {relationships_table}.cid
             WHERE "type" = 'post' AND "mid" = $1{private_sql}
+            GROUP BY {contents_table}.cid
             "#,
             contents_table = &state.contents_table,
             relationships_table = &state.relationships_table
@@ -713,6 +716,7 @@ pub async fn get_meta_posts_count_by_mid_with_private(
             FROM {contents_table}
             JOIN {relationships_table} ON {contents_table}.cid = {relationships_table}.cid
             WHERE "type" = 'post' AND "mid" = ?{private_sql}
+            GROUP BY {contents_table}.cid
             "#,
             contents_table = &state.contents_table,
             relationships_table = &state.relationships_table

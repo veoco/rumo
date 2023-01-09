@@ -98,16 +98,16 @@ pub async fn update_content_count_increase_by_cid(
         AnyKind::Postgres => format!(
             r#"
             UPDATE {contents_table}
-            SET commentsNum=commentsNum+1
-            WHERE "coid" = $1
+            SET "commentsNum" = "commentsNum" + 1
+            WHERE "cid" = $1
             "#,
             contents_table = &state.contents_table
         ),
         _ => format!(
             r#"
             UPDATE {contents_table}
-            SET commentsNum=commentsNum+1
-            WHERE "coid" = ?
+            SET "commentsNum" = "commentsNum" + 1
+            WHERE "cid" = ?
             "#,
             contents_table = &state.contents_table
         ),
@@ -126,16 +126,16 @@ pub async fn update_content_count_decrease_by_cid(
         AnyKind::Postgres => format!(
             r#"
             UPDATE {contents_table}
-            SET commentsNum=commentsNum-1
-            WHERE "coid" = $1
+            SET "commentsNum" = "commentsNum" - 1
+            WHERE "cid" = $1
             "#,
             contents_table = &state.contents_table
         ),
         _ => format!(
             r#"
             UPDATE {contents_table}
-            SET commentsNum=commentsNum-1
-            WHERE "coid" = ?
+            SET "commentsNum" = "commentsNum" - 1
+            WHERE "cid" = ?
             "#,
             contents_table = &state.contents_table
         ),

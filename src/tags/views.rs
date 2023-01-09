@@ -2,7 +2,6 @@ use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::Json;
 use serde_json::{json, Value};
-use sqlx::any::AnyKind;
 use std::sync::Arc;
 
 use super::db::{self};
@@ -174,10 +173,7 @@ pub async fn list_tag_posts_by_slug(
     let private_sql = if private {
         String::from("")
     } else {
-        match state.pool.any_kind() {
-            AnyKind::Postgres => format!(r#" AND "status" = 'publish' AND "password" = NULL"#),
-            _ => format!(r#" AND "status" = 'publish' AND "password" IS NULL"#),
-        }
+        format!(r#" AND "status" = 'publish' AND "password" IS NULL"#)
     };
 
     let all_count =

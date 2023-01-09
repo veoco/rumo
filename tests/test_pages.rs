@@ -108,6 +108,7 @@ async fn create_then_get_page_field_success() {
     assert_eq!(status_code, StatusCode::CREATED);
 
     let (status_code, body) = get("/api/pages/test-page-field").await;
+    println!("{:?}", body);
     assert_eq!(status_code, StatusCode::OK);
 
     let body = body.unwrap();
@@ -142,6 +143,7 @@ async fn create_then_get_page_field_success() {
     assert_eq!(status_code, StatusCode::CREATED);
 
     let (status_code, body) = get("/api/pages/test-page-field").await;
+    println!("{:?}", body);
     assert_eq!(status_code, StatusCode::OK);
 
     let body = body.unwrap();

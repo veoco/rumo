@@ -2,7 +2,6 @@ use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::Json;
 use serde_json::{json, Value};
-use sqlx::any::AnyKind;
 use std::sync::Arc;
 
 use super::db;
@@ -71,10 +70,7 @@ pub async fn list_posts(
     } else if !private && own {
         format!(r#" AND "authorId" = {}"#, user.uid,)
     } else {
-        match state.pool.any_kind() {
-            AnyKind::Postgres => format!(r#" AND "status" = 'publish' AND "password" = NULL"#),
-            _ => format!(r#" AND "status" = 'publish' AND "password" IS NULL"#),
-        }
+        format!(r#" AND "status" = 'publish' AND "password" IS NULL"#)
     };
 
     let all_count = common_db::get_contents_count_with_private(&state, &filter_sql, "post").await;

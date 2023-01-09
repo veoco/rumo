@@ -53,7 +53,8 @@ async fn create_then_modify_category_by_slug_success() {
 
     let data =
         json!({"name": "testCategoryModified", "slug": "test-category-modified"}).to_string();
-    let (status_code, _) = admin_patch("/api/categories/test-category-modify", data).await;
+    let (status_code, body) = admin_patch("/api/categories/test-category-modify", data).await;
+    println!("{:?}", body);
     assert_eq!(status_code, StatusCode::OK);
 
     let (status_code, _) = get("/api/categories/test-category-modified").await;
@@ -83,6 +84,7 @@ async fn create_then_list_category_posts_success() {
     assert_eq!(status_code, StatusCode::CREATED);
 
     let (status_code, body) = get("/api/categories/test-category-post/posts/").await;
+    println!("{:?}", body);
     assert_eq!(status_code, StatusCode::OK);
 
     let body = body.unwrap();
@@ -104,6 +106,7 @@ async fn create_then_list_category_posts_success() {
     assert_eq!(status_code, StatusCode::CREATED);
 
     let (status_code, body) = get("/api/categories/test-category-post/posts/").await;
+    println!("{:?}", body);
     assert_eq!(status_code, StatusCode::OK);
 
     let body = body.unwrap();
