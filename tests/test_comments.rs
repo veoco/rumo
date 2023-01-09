@@ -29,6 +29,7 @@ async fn create_then_list_comments_success() {
     assert_eq!(status_code, StatusCode::CREATED);
 
     let (status_code, body) = get("/api/posts/test-comment-post/comments/").await;
+    println!("{:?}", body);
     assert_eq!(status_code, StatusCode::OK);
 
     let body = body.unwrap();

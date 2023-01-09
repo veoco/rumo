@@ -275,9 +275,10 @@ pub async fn list_post_comments_by_slug(
     let private_sql = if private {
         String::from("")
     } else {
-        format!(
-            r#" AND "status" = 'approved'"#,
-        )
+        match state.pool.any_kind() {
+            AnyKind::MySql => format!(r#" AND `status` = 'approved'"#),
+            _ => format!(r#" AND "status" = 'approved'"#),
+        }
     };
 
     let target_post = match common_db::get_content_by_slug(&state, &slug).await {

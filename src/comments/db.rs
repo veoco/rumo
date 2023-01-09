@@ -278,11 +278,13 @@ pub async fn get_comments_count(state: &AppState) -> i32 {
             comments_table = &state.comments_table
         ),
     };
-    let all_count = sqlx::query_scalar::<_, i32>(&sql)
+    match sqlx::query_scalar::<_, i32>(&sql)
         .fetch_one(&state.pool)
         .await
-        .unwrap_or(0);
-    all_count
+    {
+        Ok(c) => c,
+        Err(_) => 0
+    }
 }
 
 pub async fn get_comments_by_list_query(
