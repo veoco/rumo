@@ -118,6 +118,8 @@ pub async fn init(name: String, mail: String, password: String) {
 
     init::init_table(&state).await;
     info!("schema created");
+    init::init_options(&state).await;
+    info!("options created");
     init::init_admin(&state, user_register).await;
     info!("admin user created");
 }
