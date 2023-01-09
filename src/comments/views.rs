@@ -203,10 +203,7 @@ pub async fn list_page_comments_by_slug(
     let private_sql = if private {
         String::from("")
     } else {
-        format!(
-            r#" AND {comments_table}."status" == 'approved'"#,
-            comments_table = &state.comments_table
-        )
+        format!(r#" AND "status" == 'approved'"#)
     };
 
     let target_page = match common_db::get_content_by_slug(&state, &slug).await {
@@ -275,8 +272,7 @@ pub async fn list_post_comments_by_slug(
         String::from("")
     } else {
         format!(
-            r#" AND {comments_table}."status" == 'approved'"#,
-            comments_table = &state.comments_table
+            r#" AND "status" == 'approved'"#,
         )
     };
 

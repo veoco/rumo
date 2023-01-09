@@ -68,16 +68,9 @@ pub async fn list_posts(
     let filter_sql = if private && !own {
         String::from("")
     } else if !private && own {
-        format!(
-            r#" AND {contents_table}."authorId" == {}"#,
-            user.uid,
-            contents_table = &state.contents_table,
-        )
+        format!(r#" AND "authorId" == {}"#, user.uid,)
     } else {
-        format!(
-            r#" AND {contents_table}."status" == 'publish' AND {contents_table}."password" IS NULL"#,
-            contents_table = &state.contents_table,
-        )
+        format!(r#" AND "status" == 'publish' AND "password" IS NULL"#,)
     };
 
     let all_count = common_db::get_contents_count_with_private(&state, &filter_sql, "post").await;
@@ -125,10 +118,7 @@ pub async fn get_post_by_slug(
     let private_sql = if private {
         String::from("")
     } else {
-        format!(
-            r#" AND ({contents_table}."status" == 'publish' OR {contents_table}."status" == 'password' OR {contents_table}."status" == 'hidden')"#,
-            contents_table = &state.contents_table,
-        )
+        format!(r#" AND ("status" == 'publish' OR "status" == 'password' OR "status" == 'hidden')"#)
     };
 
     let post =

@@ -63,10 +63,7 @@ pub async fn list_pages(
     let private_sql = if private {
         String::from("")
     } else {
-        format!(
-            r#" AND {contents_table}."status" == 'publish'"#,
-            contents_table = &state.contents_table,
-        )
+        format!(r#" AND "status" == 'publish'"#,)
     };
 
     let all_count = common_db::get_contents_count_with_private(&state, &private_sql, "page").await;
@@ -151,9 +148,8 @@ pub async fn create_page_field_by_slug(
     }
     let exist_page = exist_page.unwrap();
 
-    let _ =
-        common_db::create_field_by_cid_with_field_create(&state, exist_page.cid, &field_create)
-            .await?;
+    let _ = common_db::create_field_by_cid_with_field_create(&state, exist_page.cid, &field_create)
+        .await?;
     Ok((StatusCode::CREATED, Json(json!({ "msg": "ok" }))))
 }
 

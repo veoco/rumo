@@ -11,7 +11,7 @@ pub async fn get_comment_by_coid(state: &AppState, coid: i32) -> Option<Comment>
             r#"
             SELECT *
             FROM {comments_table}
-            WHERE {comments_table}."type" == 'comment' AND {comments_table}."coid" == $1
+            WHERE "type" == 'comment' AND "coid" == $1
             "#,
             comments_table = &state.comments_table
         ),
@@ -19,7 +19,7 @@ pub async fn get_comment_by_coid(state: &AppState, coid: i32) -> Option<Comment>
             r#"
             SELECT *
             FROM {comments_table}
-            WHERE {comments_table}."type" == 'comment' AND {comments_table}."coid" == ?
+            WHERE "type" == 'comment' AND "coid" == ?
             "#,
             comments_table = &state.comments_table
         ),
@@ -211,7 +211,7 @@ pub async fn get_comments_count(state: &AppState) -> i32 {
             r#"
             SELECT COUNT(*)
             FROM {comments_table}
-            WHERE {comments_table}."type" == 'comment'
+            WHERE "type" == 'comment'
             "#,
             comments_table = &state.comments_table
         ),
@@ -234,8 +234,8 @@ pub async fn get_comments_by_list_query(
             r#"            
             SELECT *
             FROM {comments_table}
-            WHERE {comments_table}."type" == 'comment'
-            ORDER BY {comments_table}.{}
+            WHERE "type" == 'comment'
+            ORDER BY {}
             LIMIT $1 OFFSET $2"#,
             order_by,
             comments_table = &state.comments_table
@@ -244,8 +244,8 @@ pub async fn get_comments_by_list_query(
             r#"            
             SELECT *
             FROM {comments_table}
-            WHERE {comments_table}."type" == 'comment'
-            ORDER BY {comments_table}.{}
+            WHERE "type" == 'comment'
+            ORDER BY {}
             LIMIT ? OFFSET ?"#,
             order_by,
             comments_table = &state.comments_table
@@ -272,7 +272,7 @@ pub async fn get_content_comments_count_by_cid_with_private(
             r#"
             SELECT COUNT(*)
             FROM {comments_table}
-            WHERE {comments_table}."type" == 'comment' AND {comments_table}."cid" == $1{}
+            WHERE "type" == 'comment' AND "cid" == $1{}
             "#,
             private_sql,
             comments_table = &state.comments_table
@@ -281,7 +281,7 @@ pub async fn get_content_comments_count_by_cid_with_private(
             r#"
             SELECT COUNT(*)
             FROM {comments_table}
-            WHERE {comments_table}."type" == 'comment' AND {comments_table}."cid" == ?{}
+            WHERE "type" == 'comment' AND "cid" == ?{}
             "#,
             private_sql,
             comments_table = &state.comments_table
@@ -308,8 +308,8 @@ pub async fn get_comments_by_cid_and_list_query_with_private(
             r#"            
             SELECT *
             FROM {comments_table}
-            WHERE {comments_table}."type" == 'comment' AND {comments_table}."cid" == $1{}
-            ORDER BY {comments_table}.{}
+            WHERE "type" == 'comment' AND "cid" == $1{}
+            ORDER BY {}
             LIMIT $2 OFFSET $3"#,
             private_sql,
             order_by,
@@ -319,8 +319,8 @@ pub async fn get_comments_by_cid_and_list_query_with_private(
             r#"            
             SELECT *
             FROM {comments_table}
-            WHERE {comments_table}."type" == 'comment' AND {comments_table}."cid" == ?{}
-            ORDER BY {comments_table}.{}
+            WHERE "type" == 'comment' AND "cid" == ?{}
+            ORDER BY {}
             LIMIT ? OFFSET ?"#,
             private_sql,
             order_by,

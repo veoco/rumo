@@ -136,9 +136,9 @@ pub async fn get_contents_with_metas_user_and_fields_by_mid_list_query_and_priva
             r#"
             SELECT *
             FROM {contents_table}
-            JOIN {relationships_table} ON {contents_table}.cid == {relationships_table}."cid"
-            WHERE {contents_table}."type" == '{content_type}' AND mid == $1{private_sql}
-            GROUP BY {contents_table}."cid"
+            JOIN {relationships_table} ON {contents_table}.cid == {relationships_table}.cid
+            WHERE "type" == '{content_type}' AND "mid" == $1{private_sql}
+            GROUP BY {contents_table}.cid
             ORDER BY {contents_table}.{order_by}
             LIMIT $2 OFFSET $3"#,
             contents_table = &state.contents_table,
@@ -148,9 +148,9 @@ pub async fn get_contents_with_metas_user_and_fields_by_mid_list_query_and_priva
             r#"
             SELECT *
             FROM {contents_table}
-            JOIN {relationships_table} ON {contents_table}.cid == {relationships_table}."cid"
-            WHERE {contents_table}."type" == '{content_type}' AND mid == ?{private_sql}
-            GROUP BY {contents_table}."cid"
+            JOIN {relationships_table} ON {contents_table}.cid == {relationships_table}.cid
+            WHERE "type" == '{content_type}' AND "mid" == ?{private_sql}
+            GROUP BY {contents_table}.cid
             ORDER BY {contents_table}.{order_by}
             LIMIT ? OFFSET ?"#,
             contents_table = &state.contents_table,
@@ -586,7 +586,7 @@ pub async fn get_metas_by_cid(state: &AppState, cid: i32) -> Vec<Meta> {
             r#"
             SELECT *
             FROM {metas_table}
-            JOIN {relationships_table} ON {metas_table}."mid" == {relationships_table}."mid"
+            JOIN {relationships_table} ON {metas_table}.mid == {relationships_table}.mid
             WHERE "cid" == $1
             "#,
             metas_table = &state.metas_table,
@@ -596,7 +596,7 @@ pub async fn get_metas_by_cid(state: &AppState, cid: i32) -> Vec<Meta> {
             r#"
             SELECT *
             FROM {metas_table}
-            JOIN {relationships_table} ON {metas_table}."mid" == {relationships_table}."mid"
+            JOIN {relationships_table} ON {metas_table}.mid == {relationships_table}.mid
             WHERE "cid" == ?
             "#,
             metas_table = &state.metas_table,
@@ -685,8 +685,8 @@ pub async fn get_meta_posts_count_by_mid_with_private(
             r#"
             SELECT COUNT(*)
             FROM {contents_table}
-            JOIN {relationships_table} ON {contents_table}."cid" == {relationships_table}."cid"
-            WHERE {contents_table}."type" == 'post' AND {relationships_table}."mid" == $1{private_sql}
+            JOIN {relationships_table} ON {contents_table}.cid == {relationships_table}.cid
+            WHERE {contents_table}.type == 'post' AND {relationships_table}.mid == $1{private_sql}
             "#,
             contents_table = &state.contents_table,
             relationships_table = &state.relationships_table
@@ -695,8 +695,8 @@ pub async fn get_meta_posts_count_by_mid_with_private(
             r#"
             SELECT COUNT(*)
             FROM {contents_table}
-            JOIN {relationships_table} ON {contents_table}."cid" == {relationships_table}."cid"
-            WHERE {contents_table}."type" == 'post' AND {relationships_table}."mid" == ?{private_sql}
+            JOIN {relationships_table} ON {contents_table}.cid == {relationships_table}.cid
+            WHERE {contents_table}.type == 'post' AND {relationships_table}.mid == ?{private_sql}
             "#,
             contents_table = &state.contents_table,
             relationships_table = &state.relationships_table

@@ -46,7 +46,8 @@ pub async fn list_tags(
         f => return Err(FieldError::InvalidParams(f.to_string())),
     };
 
-    let tags = common_db::get_metas_by_list_query(&state, page_size, offset, order_by, true).await?;
+    let tags =
+        common_db::get_metas_by_list_query(&state, page_size, offset, order_by, true).await?;
     Ok(Json(json!({
         "page": page,
         "page_size": page_size,
@@ -172,13 +173,11 @@ pub async fn list_tag_posts_by_slug(
     let private_sql = if private {
         String::from("")
     } else {
-        format!(
-            r#" AND {contents_table}."status" == 'publish' AND {contents_table}."password" IS NULL"#,
-            contents_table = &state.contents_table
-        )
+        format!(r#" AND "status" == 'publish' AND "password" IS NULL"#)
     };
 
-    let all_count = common_db::get_meta_posts_count_by_mid_with_private(&state, mid, &private_sql).await;
+    let all_count =
+        common_db::get_meta_posts_count_by_mid_with_private(&state, mid, &private_sql).await;
 
     let page = q.page.unwrap_or(1);
     let page_size = q.page_size.unwrap_or(10);

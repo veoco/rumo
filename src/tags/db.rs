@@ -61,7 +61,7 @@ pub async fn modify_tag_by_mid_and_tag_modify(
             r#"
             UPDATE {metas_table}
             SET "name" = $1, "slug" = $2, "description" = $3, "parent" = $4
-            WHERE {metas_table}."mid" == $5
+            WHERE "mid" == $5
             "#,
             metas_table = &state.metas_table
         ),
@@ -69,7 +69,7 @@ pub async fn modify_tag_by_mid_and_tag_modify(
             r#"
             UPDATE {metas_table}
             SET "name" = ?, "slug" = ?, "description" = ?, "parent" = ?
-            WHERE {metas_table}."mid" == ?
+            WHERE "mid" == ?
             "#,
             metas_table = &state.metas_table
         ),
