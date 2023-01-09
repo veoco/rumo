@@ -2,7 +2,7 @@
 
 [![Test](https://github.com/veoco/rumo/actions/workflows/test.yml/badge.svg)](https://github.com/veoco/rumo/actions/workflows/test.yml)
 
-使用 Rust 编写的博客后端程序，与 Typecho 数据库级兼容。
+使用 Rust 编写的博客后端程序，与 Typecho 数据库级兼容（不含 mysql）。
 
 测试网址：[点击跳转](https://rumo.cf)
 
@@ -15,6 +15,14 @@
 ## 基础架构
 
 axum + sqlx + jwt + sqlite
+
+## Mysql/MariaDB 说明
+
+rumo 兼容 mysql/mariadb，理论上由 rumo 生成的数据库是能够被 typecho 兼容的，实际未测试。
+
+而 typehco 生成的数据库表使用了无符号整数，在目前架构下并不能与 rumo 兼容。
+
+完全兼容需要相当大的工作量，目前没有兼容的计划。
 
 ## 路线图
 
