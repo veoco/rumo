@@ -173,7 +173,7 @@ pub async fn list_tag_posts_by_slug(
     let private_sql = if private {
         String::from("")
     } else {
-        format!(r#" AND "status" = 'publish' AND "password" IS NULL"#)
+        format!(r#" AND "status" = 'publish' AND "password" = NULL"#)
     };
 
     let all_count =

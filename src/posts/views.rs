@@ -70,7 +70,7 @@ pub async fn list_posts(
     } else if !private && own {
         format!(r#" AND "authorId" = {}"#, user.uid,)
     } else {
-        format!(r#" AND "status" = 'publish' AND "password" IS NULL"#,)
+        format!(r#" AND "status" = 'publish' AND "password" = NULL"#,)
     };
 
     let all_count = common_db::get_contents_count_with_private(&state, &filter_sql, "post").await;
