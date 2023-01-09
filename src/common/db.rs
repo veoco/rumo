@@ -702,7 +702,7 @@ pub async fn get_meta_posts_count_by_mid_with_private(
             SELECT COUNT(*)
             FROM {contents_table}
             JOIN {relationships_table} ON {contents_table}.cid = {relationships_table}.cid
-            WHERE {contents_table}.type = 'post' AND {relationships_table}.mid = $1{private_sql}
+            WHERE "type" = 'post' AND "mid" = $1{private_sql}
             "#,
             contents_table = &state.contents_table,
             relationships_table = &state.relationships_table
@@ -712,7 +712,7 @@ pub async fn get_meta_posts_count_by_mid_with_private(
             SELECT COUNT(*)
             FROM {contents_table}
             JOIN {relationships_table} ON {contents_table}.cid = {relationships_table}.cid
-            WHERE {contents_table}.type = 'post' AND {relationships_table}.mid = ?{private_sql}
+            WHERE "type" = 'post' AND "mid" = ?{private_sql}
             "#,
             contents_table = &state.contents_table,
             relationships_table = &state.relationships_table
