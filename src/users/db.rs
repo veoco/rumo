@@ -472,7 +472,7 @@ pub async fn modify_option_by_uid_and_name_with_option_modify(
             r#"
             UPDATE {options_table}
             SET "value" = $1
-            WHERE "name" = $3 AND "user" = $3
+            WHERE "name" = $2 AND "user" = $3
             "#,
             options_table = &state.options_table
         ),
