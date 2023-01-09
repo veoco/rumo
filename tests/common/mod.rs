@@ -18,17 +18,10 @@ async fn setup_state() -> AppState {
 
     let secret_key = env::var("SECRET_KEY").unwrap();
     let access_token_expire_secondes = 3600 * 24 * 30;
-    let upload_root = env::var("UPLOAD_ROOT").unwrap_or(String::from("."));
-    let read_only = match env::var("READ_ONLY") {
-        Ok(s) => {
-            if s == "true" {
-                true
-            } else {
-                false
-            }
-        }
-        _ => false,
-    };
+    let preload_index = false;
+    let index_page = "".to_string();
+    let upload_root = ".".to_string();
+    let read_only = false;
 
     let table_prefix = env::var("TABLE_PREFIX").unwrap_or("typecho_".to_string());
     let comments_table = format!("{}comments", table_prefix);
@@ -45,6 +38,8 @@ async fn setup_state() -> AppState {
         access_token_expire_secondes,
         upload_root,
         read_only,
+        preload_index,
+        index_page,
         
         comments_table,
         contents_table,

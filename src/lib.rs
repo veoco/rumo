@@ -4,6 +4,7 @@ use std::env;
 use std::sync::Arc;
 use tower_http::trace::TraceLayer;
 use tracing::info;
+use tokio::fs;
 
 mod attachments;
 mod categories;
@@ -14,12 +15,14 @@ mod pages;
 mod posts;
 mod tags;
 mod users;
+mod preload;
 use attachments::attachments_routers;
 use categories::categories_routers;
 use comments::comments_routers;
 use pages::pages_routers;
 use posts::posts_routers;
 use tags::tags_routers;
+use preload::index_router;
 use users::{models::UserRegister, users_routers};
 
 #[derive(Clone)]
@@ -29,6 +32,8 @@ pub struct AppState {
     pub access_token_expire_secondes: u64,
     pub upload_root: String,
     pub read_only: bool,
+    pub preload_index: bool,
+    pub index_page: String,
 
     pub comments_table: String,
     pub contents_table: String,
@@ -48,7 +53,30 @@ async fn get_state(app_state: Option<AppState>) -> AppState {
                     .await
                     .expect("Database connect failed");
             let secret_key = env::var("SECRET_KEY").expect("SECRET_KEY is required");
-            let access_token_expire_secondes = 3600 * 24 * 30;
+
+            let access_token_expire_secondes = env::var("TOKEN_EXPIRE")
+                .unwrap_or("720".to_string())
+                .parse::<u64>()
+                .expect("TOKEN_EXPIRE is invalid");
+
+            let preload_index = match env::var("PRELOAD_INDEX") {
+                Ok(s) => {
+                    if s == "true" {
+                        true
+                    } else {
+                        false
+                    }
+                }
+                _ => false,
+            };
+
+            let filepath = env::var("INDEX_PAGE").unwrap_or(String::from("./index.html"));
+            let filepath = std::path::Path::new(&filepath);
+            if !filepath.exists() && !filepath.is_file(){
+                panic!("INDEX_PAGE is invalid")
+            }
+            let index_page = fs::read_to_string(filepath).await.expect("INDEX_PAGE is invalid");
+
             let upload_root = env::var("UPLOAD_ROOT").unwrap_or(String::from("."));
             let read_only = match env::var("READ_ONLY") {
                 Ok(s) => {
@@ -76,6 +104,8 @@ async fn get_state(app_state: Option<AppState>) -> AppState {
                 access_token_expire_secondes,
                 upload_root,
                 read_only,
+                preload_index,
+                index_page,
 
                 comments_table,
                 contents_table,
@@ -94,14 +124,19 @@ async fn get_state(app_state: Option<AppState>) -> AppState {
 pub async fn app(app_state: Option<AppState>) -> Router {
     let state = Arc::new(get_state(app_state).await);
     let ro = state.read_only;
-    let app = Router::new()
+    let mut router = Router::new()
         .merge(users_routers(ro))
         .merge(categories_routers(ro))
         .merge(tags_routers(ro))
         .merge(posts_routers(ro))
         .merge(pages_routers(ro))
         .merge(comments_routers(ro))
-        .merge(attachments_routers(ro))
+        .merge(attachments_routers(ro));
+    
+    if state.preload_index{
+        router = router.merge(index_router());
+    }
+    let app = router
         .layer(TraceLayer::new_for_http())
         .with_state(state);
     app
