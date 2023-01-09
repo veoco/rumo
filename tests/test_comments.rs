@@ -117,6 +117,15 @@ async fn create_then_delete_comments_success() {
     let (status_code, _) = post("/api/posts/test-comment-post-delete/comments/", data).await;
     assert_eq!(status_code, StatusCode::CREATED);
 
+    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+
+    let (status_code, body) = get("/api/posts/test-comment-post-delete/comments/").await;
+    println!("{:?}", body);
+    assert_eq!(status_code, StatusCode::OK);
+
+    let body = body.unwrap();
+    let count = body.get("count").unwrap().as_u64().unwrap();
+
     let (status_code, body) = get("/api/posts/test-comment-post-delete/comments/").await;
     assert_eq!(status_code, StatusCode::OK);
 
@@ -133,4 +142,12 @@ async fn create_then_delete_comments_success() {
 
     let (status_code, _) = admin_get(&url).await;
     assert_eq!(status_code, StatusCode::NOT_FOUND);
+
+    let (status_code, body) = get("/api/posts/test-comment-post-delete/comments/").await;
+    println!("{:?}", body);
+    assert_eq!(status_code, StatusCode::OK);
+
+    let body = body.unwrap();
+    let new_count = body.get("count").unwrap().as_u64().unwrap();
+    assert!(count > new_count);
 }
