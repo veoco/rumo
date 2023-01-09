@@ -9,7 +9,9 @@ use std::sync::Arc;
 use std::time::SystemTime;
 
 use super::db;
-use super::models::{TokenData, UserLogin, UserModify, UserRegister, UsersQuery};
+use super::models::{
+    OptionCreate, OptionModify, TokenData, UserLogin, UserModify, UserRegister, UsersQuery,
+};
 use super::utils::{authenticate_user, hash};
 use crate::common::errors::{AuthError, FieldError};
 use crate::common::extractors::{PMAdministrator, PMSubscriber, ValidatedJson, ValidatedQuery};
@@ -155,5 +157,92 @@ pub async fn delete_user_by_id(
     }
 
     let _ = db::delete_user_by_uid(&state, uid).await?;
+    Ok(Json(json!({"msg": "ok"})))
+}
+
+pub async fn list_options(
+    State(state): State<Arc<AppState>>,
+    PMSubscriber(user): PMSubscriber,
+    Path(uid): Path<i32>,
+) -> Result<Json<Value>, FieldError> {
+    if uid != user.uid && !(user.group == "administrator") {
+        return Err(FieldError::PermissionDeny);
+    }
+
+    let options = db::get_options_by_uid(&state, uid).await?;
+    Ok(Json(json!({
+        "page": 1,
+        "page_size": options.len(),
+        "all_count": options.len(),
+        "count": options.len(),
+        "results": options
+    })))
+}
+
+pub async fn get_option_by_uid_and_name(
+    State(state): State<Arc<AppState>>,
+    PMSubscriber(user): PMSubscriber,
+    Path((uid, name)): Path<(i32, String)>,
+) -> Result<Json<Value>, FieldError> {
+    if user.uid != uid && !(user.group == "administrator") {
+        return Err(FieldError::PermissionDeny);
+    }
+
+    let option = db::get_option_by_uid_and_name(&state, uid, &name)
+        .await
+        .map_err(|_| FieldError::NotFound("name".to_string()))?;
+    Ok(Json(json!(option)))
+}
+
+pub async fn create_option_by_option_create(
+    State(state): State<Arc<AppState>>,
+    PMSubscriber(user): PMSubscriber,
+    ValidatedJson(option_create): ValidatedJson<OptionCreate>,
+) -> Result<(StatusCode, Json<Value>), FieldError> {
+    let option = db::get_option_by_uid_and_name(&state, user.uid, &option_create.name).await;
+    if option.is_ok() {
+        return Err(FieldError::InvalidParams("name".to_string()));
+    }
+
+    let _ = db::create_option_by_uid_with_option_create(&state, user.uid, &option_create).await?;
+    Ok((StatusCode::CREATED, Json(json!({"msg": "ok"}))))
+}
+
+pub async fn modify_option_by_uid_and_name(
+    State(state): State<Arc<AppState>>,
+    PMSubscriber(user): PMSubscriber,
+    Path((uid, name)): Path<(i32, String)>,
+    ValidatedJson(option_modify): ValidatedJson<OptionModify>,
+) -> Result<Json<Value>, FieldError> {
+    if user.uid != uid && !(user.group == "administrator") {
+        return Err(FieldError::PermissionDeny);
+    }
+
+    let option = db::get_option_by_uid_and_name(&state, uid, &name).await;
+    if option.is_err() {
+        return Err(FieldError::InvalidParams("uid or name".to_string()));
+    }
+
+    let _ =
+        db::modify_option_by_uid_and_name_with_option_modify(&state, uid, &name, &option_modify)
+            .await?;
+    Ok(Json(json!({"msg": "ok"})))
+}
+
+pub async fn delete_option_by_uid_and_name(
+    State(state): State<Arc<AppState>>,
+    PMSubscriber(user): PMSubscriber,
+    Path((uid, name)): Path<(i32, String)>,
+) -> Result<Json<Value>, FieldError> {
+    if user.uid != uid && !(user.group == "administrator") {
+        return Err(FieldError::PermissionDeny);
+    }
+
+    let option = db::get_option_by_uid_and_name(&state, uid, &name).await;
+    if option.is_err() {
+        return Err(FieldError::InvalidParams("uid or name".to_string()));
+    }
+
+    let _ = db::delete_option_by_uid_and_name(&state, uid, &name).await?;
     Ok(Json(json!({"msg": "ok"})))
 }

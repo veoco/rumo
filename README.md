@@ -95,8 +95,8 @@ WantedBy=multi-user.target
      - 无
 
   3. 查询参数：
-     - page：u32，>= 1
-     - page_size：u32，>= 1
+     - page：i32，>= 1
+     - page_size：i32，>= 1
      - order_by：String，1 <= 长度 <= 13
 </details>
 
@@ -111,7 +111,7 @@ WantedBy=multi-user.target
     - PM0：允许
 
   2. 路径参数：
-     - uid：u32
+     - uid：i32
 
   3. 查询参数：
      - 无
@@ -128,7 +128,7 @@ WantedBy=multi-user.target
     - PM0：允许
 
   2. 路径参数：
-     - uid：u32
+     - uid：i32
 
   3. 查询参数：
      - 无
@@ -153,7 +153,7 @@ WantedBy=multi-user.target
     - PM0：允许
 
   2. 路径参数：
-     - uid：u32
+     - uid：i32
 
   3. 查询参数：
      - 无
@@ -206,6 +206,104 @@ WantedBy=multi-user.target
      - url：String，url 格式
 </details>
 
+<details>
+<summary>GET /api/users/:uid/options/ ，获取指定 uid 用户的选项列表</summary>
+  
+ 1. 权限要求：
+    - PM4：禁止
+    - PM3：允许，仅当 uid 与登录用户相同
+    - PM2：允许，仅当 uid 与登录用户相同
+    - PM1：允许，仅当 uid 与登录用户相同
+    - PM0：允许
+
+  2. 路径参数：
+     - uid: i32
+
+  3. 查询参数：
+     - 无
+</details>
+
+<details>
+<summary>POST /api/users/:uid/options/，新建指定 uid 用户的选项</summary>
+  
+ 1. 权限要求：
+    - PM4：禁止
+    - PM3：允许，仅当 uid 与登录用户相同
+    - PM2：允许，仅当 uid 与登录用户相同
+    - PM1：允许，仅当 uid 与登录用户相同
+    - PM0：允许
+
+  2. 路径参数：
+     - uid: i32
+
+  3. 查询参数：
+     - 无
+  
+  4. 提交表单：
+     - name：String，1 <= 长度 <= 32
+     - value：String
+</details>
+
+<details>
+<summary>GET /api/users/:uid/options/:name ，获取指定 uid 用户的指定 name 选项</summary>
+  
+ 1. 权限要求：
+    - PM4：禁止
+    - PM3：允许，仅当 uid 与登录用户相同
+    - PM2：允许，仅当 uid 与登录用户相同
+    - PM1：允许，仅当 uid 与登录用户相同
+    - PM0：允许
+
+  2. 路径参数：
+     - uid: i32
+     - name: String
+
+  3. 查询参数：
+     - 无
+</details>
+
+<details>
+<summary>PATCH /api/users/:uid/options/:name ，修改指定 uid 用户的指定 name 选项</summary>
+  
+ 1. 权限要求：
+    - PM4：禁止
+    - PM3：允许，仅当 uid 与登录用户相同
+    - PM2：允许，仅当 uid 与登录用户相同
+    - PM1：允许，仅当 uid 与登录用户相同
+    - PM0：允许
+
+  2. 路径参数：
+     - uid: i32
+     - name: String
+
+  3. 查询参数：
+     - 无
+
+  4. 提交表单：
+     - value：String
+</details>
+
+<details>
+<summary>DELETE /api/users/:uid/options/:name ，删除指定 uid 用户的指定 name 选项</summary>
+  
+ 1. 权限要求：
+    - PM4：禁止
+    - PM3：允许，仅当 uid 与登录用户相同
+    - PM2：允许，仅当 uid 与登录用户相同
+    - PM1：允许，仅当 uid 与登录用户相同
+    - PM0：允许
+
+  2. 路径参数：
+     - uid: i32
+     - name: String
+
+  3. 查询参数：
+     - 无
+
+  4. 提交表单：
+     - 无
+</details>
+
 ### 页面相关 API：
 <details>
 <summary>GET /api/pages/ ，获取所有页面列表</summary>
@@ -221,8 +319,8 @@ WantedBy=multi-user.target
      - 无
 
   3. 查询参数：
-     - page：u32，>= 1
-     - page_size：u32，>= 1
+     - page：i32，>= 1
+     - page_size：i32，>= 1
      - order_by：String，1 <= 长度 <= 13
      - private：Option<bool>，启用查询所有类型页面，默认 false，仅 PM1 或更高权限可用
 </details>
@@ -246,7 +344,7 @@ WantedBy=multi-user.target
   4. 提交表单：
      - title：String，1 <= 长度 <= 150
      - slug：String，1 <= 长度 <= 150
-     - created：u32，unix 时间戳，精确到秒
+     - created：i32，unix 时间戳，精确到秒
      - text：String
      - template：Option<String>，1 <= 长度 <= 16
      - publish：Option<bool>，默认 true
@@ -291,7 +389,7 @@ WantedBy=multi-user.target
   4. 提交表单：
      - title：String，1 <= 长度 <= 150
      - slug：String，1 <= 长度 <= 150
-     - created：u32，unix 时间戳，精确到秒
+     - created：i32，unix 时间戳，精确到秒
      - text：String
      - template：Option<String>，1 <= 长度 <= 16
      - publish：Option<bool>，默认 true
@@ -423,8 +521,8 @@ WantedBy=multi-user.target
      - 无
 
   3. 查询参数：
-     - page：u32，>= 1
-     - page_size：u32，>= 1
+     - page：i32，>= 1
+     - page_size：i32，>= 1
      - order_by：String，1 <= 长度 <= 13
      - private：bool，启用查询所有类型文章，仅 PM1 或更高权限可用
      - own: bool，启用查询当前用户所有文章，仅 PM3 或更高权限可用，与 private 同时使用时，两者均无效。
@@ -449,7 +547,7 @@ WantedBy=multi-user.target
   4. 提交表单：
      - title：String，1 <= 长度 <= 150
      - slug：String，1 <= 长度 <= 150
-     - created：u32，unix 时间戳，精确到秒
+     - created：i32，unix 时间戳，精确到秒
      - text：String
      - status：String，1 <= 长度 <= 32
      - password：Option<String>，1 <= 长度 <= 32
@@ -495,7 +593,7 @@ WantedBy=multi-user.target
   4. 提交表单：
      - title：String，1 <= 长度 <= 150
      - slug：String，1 <= 长度 <= 150
-     - created：u32，unix 时间戳，精确到秒
+     - created：i32，unix 时间戳，精确到秒
      - text：String
      - status：String，1 <= 长度 <= 32
      - password：Option<String>，1 <= 长度 <= 32
@@ -630,8 +728,8 @@ WantedBy=multi-user.target
      - 无
 
   3. 查询参数：
-     - page：u32，>= 1
-     - page_size：u32，>= 1
+     - page：i32，>= 1
+     - page_size：i32，>= 1
      - order_by：String，1 <= 长度 <= 13
 </details>
 
@@ -655,7 +753,7 @@ WantedBy=multi-user.target
      - name：String，1 <= 长度 <= 150
      - slug：String，1 <= 长度 <= 150
      - description：Option<String>，1 <= 长度 <= 150
-     - parent：Option<u32>，> 0
+     - parent：Option<i32>，> 0
 </details>
 
 <details>
@@ -695,7 +793,7 @@ WantedBy=multi-user.target
      - name：String，1 <= 长度 <= 150
      - slug：String，1 <= 长度 <= 150
      - description：Option<String>，1 <= 长度 <= 150
-     - parent：Option<u32>，> 0
+     - parent：Option<i32>，> 0
 </details>
 
 <details>
@@ -732,8 +830,8 @@ WantedBy=multi-user.target
      - slug：String
 
   3. 查询参数：
-     - page：u32，>= 1
-     - page_size：u32，>= 1
+     - page：i32，>= 1
+     - page_size：i32，>= 1
      - order_by：String，1 <= 长度 <= 13
      - private：bool，启用查询所有类型文章，仅 PM1 或更高权限可用
 </details>
@@ -788,8 +886,8 @@ WantedBy=multi-user.target
      - 无
 
   3. 查询参数：
-     - page：u32，>= 1
-     - page_size：u32，>= 1
+     - page：i32，>= 1
+     - page_size：i32，>= 1
      - order_by：String，1 <= 长度 <= 13
 </details>
 
@@ -813,7 +911,7 @@ WantedBy=multi-user.target
      - name：String，1 <= 长度 <= 150
      - slug：String，1 <= 长度 <= 150
      - description：Option<String>，1 <= 长度 <= 150
-     - parent：Option<u32>，> 0
+     - parent：Option<i32>，> 0
 </details>
 
 <details>
@@ -853,7 +951,7 @@ WantedBy=multi-user.target
      - name：String，1 <= 长度 <= 150
      - slug：String，1 <= 长度 <= 150
      - description：Option<String>，1 <= 长度 <= 150
-     - parent：Option<u32>，> 0
+     - parent：Option<i32>，> 0
 </details>
 
 <details>
@@ -910,8 +1008,8 @@ WantedBy=multi-user.target
      - slug：String
 
   3. 查询参数：
-     - page：u32，>= 1
-     - page_size：u32，>= 1
+     - page：i32，>= 1
+     - page_size：i32，>= 1
      - order_by：String，1 <= 长度 <= 13
      - private：bool，启用查询所有类型文章，仅 PM1 或更高权限可用
 </details>
@@ -949,8 +1047,8 @@ WantedBy=multi-user.target
      - 无
 
   3. 查询参数：
-     - page：u32，>= 1
-     - page_size：u32，>= 1
+     - page：i32，>= 1
+     - page_size：i32，>= 1
      - order_by：String，1 <= 长度 <= 13
 </details>
 
@@ -965,7 +1063,7 @@ WantedBy=multi-user.target
     - PM0：允许
 
   2. 路径参数：
-     - coid：u32
+     - coid：i32
 
   3. 查询参数：
      - 无
@@ -982,7 +1080,7 @@ WantedBy=multi-user.target
     - PM0：允许
 
   2. 路径参数：
-     - coid：u32
+     - coid：i32
 
   3. 查询参数：
      - 无
@@ -1003,7 +1101,7 @@ WantedBy=multi-user.target
     - PM0：允许
 
   2. 路径参数：
-     - coid：u32
+     - coid：i32
 
   3. 查询参数：
      - 无
@@ -1023,8 +1121,8 @@ WantedBy=multi-user.target
      - 无
 
   3. 查询参数：
-     - page：u32，>= 1
-     - page_size：u32，>= 1
+     - page：i32，>= 1
+     - page_size：i32，>= 1
      - order_by：String，1 <= 长度 <= 13
      - private：bool，启用查询所有类型页面的评论，仅 PM1 或更高权限可用
 </details>
@@ -1050,7 +1148,7 @@ WantedBy=multi-user.target
      - mail：Option<String>，邮箱格式
      - url：Option<String>，url 格式
      - text: String
-     - parent：Option<u32>，> 0
+     - parent：Option<i32>，> 0
 </details>
 
 <details>
@@ -1067,8 +1165,8 @@ WantedBy=multi-user.target
      - 无
 
   3. 查询参数：
-     - page：u32，>= 1
-     - page_size：u32，>= 1
+     - page：i32，>= 1
+     - page_size：i32，>= 1
      - order_by：String，1 <= 长度 <= 13
      - private：bool，启用查询所有类型文章的评论，仅 PM1 或更高权限可用
 </details>
@@ -1094,7 +1192,7 @@ WantedBy=multi-user.target
      - mail：Option<String>，邮箱格式
      - url：Option<String>，url 格式
      - text: String
-     - parent：Option<u32>，> 0
+     - parent：Option<i32>，> 0
 </details>
 
 ### 附件相关 API：
@@ -1112,8 +1210,8 @@ WantedBy=multi-user.target
      - 无
 
   3. 查询参数：
-     - page：u32，>= 1
-     - page_size：u32，>= 1
+     - page：i32，>= 1
+     - page_size：i32，>= 1
      - order_by：String，1 <= 长度 <= 13
      - private：bool，启用查询所有用户附件，仅 PM1 或更高权限可用
 </details>
@@ -1149,7 +1247,7 @@ WantedBy=multi-user.target
     - PM0：允许
 
   2. 路径参数：
-     - cid：u32
+     - cid：i32
 
   3. 查询参数：
      - 无

@@ -1,7 +1,7 @@
 use sqlx::any::AnyKind;
 use std::time::SystemTime;
 
-use super::models::{User, UserModify, UserRegister};
+use super::models::{OptionCreate, OptionModify, User, UserModify, UserOption, UserRegister};
 use super::utils::hash;
 use crate::common::errors::FieldError;
 use crate::AppState;
@@ -335,6 +335,212 @@ pub async fn get_users_by_list_query(
         .await
     {
         Ok(users) => Ok(users),
+        Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
+    }
+}
+
+pub async fn get_options_by_uid(state: &AppState, uid: i32) -> Result<Vec<UserOption>, FieldError> {
+    let sql = match state.pool.any_kind() {
+        AnyKind::Postgres => format!(
+            r#"
+            SELECT *
+            FROM {options_table}
+            WHERE "user" = $1
+            "#,
+            options_table = &state.options_table
+        ),
+        AnyKind::MySql => format!(
+            r#"
+            SELECT *
+            FROM {options_table}
+            WHERE `user` = ?
+            "#,
+            options_table = &state.options_table
+        ),
+        _ => format!(
+            r#"
+            SELECT *
+            FROM {options_table}
+            WHERE "user" = ?
+            "#,
+            options_table = &state.options_table
+        ),
+    };
+
+    match sqlx::query_as::<_, UserOption>(&sql)
+        .bind(uid)
+        .fetch_all(&state.pool)
+        .await
+    {
+        Ok(user_options) => Ok(user_options),
+        Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
+    }
+}
+
+pub async fn get_option_by_uid_and_name(
+    state: &AppState,
+    uid: i32,
+    name: &str,
+) -> Result<UserOption, FieldError> {
+    let sql = match state.pool.any_kind() {
+        AnyKind::Postgres => format!(
+            r#"
+            SELECT *
+            FROM {options_table}
+            WHERE "user" = $1 AND "name" = $2
+            "#,
+            options_table = &state.options_table
+        ),
+        AnyKind::MySql => format!(
+            r#"
+            SELECT *
+            FROM {options_table}
+            WHERE `user` = ? AND `name` = ?
+            "#,
+            options_table = &state.options_table
+        ),
+        _ => format!(
+            r#"
+            SELECT *
+            FROM {options_table}
+            WHERE "user" = ? AND "name" = ?
+            "#,
+            options_table = &state.options_table
+        ),
+    };
+
+    match sqlx::query_as::<_, UserOption>(&sql)
+        .bind(uid)
+        .bind(name)
+        .fetch_one(&state.pool)
+        .await
+    {
+        Ok(user_option) => Ok(user_option),
+        Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
+    }
+}
+
+pub async fn create_option_by_uid_with_option_create(
+    state: &AppState,
+    uid: i32,
+    option_create: &OptionCreate,
+) -> Result<u64, FieldError> {
+    let sql = match state.pool.any_kind() {
+        AnyKind::Postgres => format!(
+            r#"
+            INSERT INTO {options_table} ("name", "user" , "value")
+            VALUES ($1, $2, $3)
+            "#,
+            options_table = &state.options_table
+        ),
+        AnyKind::MySql => format!(
+            r#"
+            INSERT INTO {options_table} (`name`, `user` , `value`)
+            VALUES (?, ?, ?)
+            "#,
+            options_table = &state.options_table
+        ),
+        _ => format!(
+            r#"
+            INSERT INTO {options_table} ("name", "user" , "value")
+            VALUES (?, ?, ?)
+            "#,
+            options_table = &state.options_table
+        ),
+    };
+
+    match sqlx::query(&sql)
+        .bind(&option_create.name)
+        .bind(uid)
+        .bind(&option_create.value)
+        .execute(&state.pool)
+        .await
+    {
+        Ok(r) => Ok(r.rows_affected()),
+        Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
+    }
+}
+
+pub async fn modify_option_by_uid_and_name_with_option_modify(
+    state: &AppState,
+    uid: i32,
+    name: &str,
+    option_modify: &OptionModify,
+) -> Result<u64, FieldError> {
+    let sql = match state.pool.any_kind() {
+        AnyKind::Postgres => format!(
+            r#"
+            UPDATE {options_table}
+            SET "value" = $1
+            WHERE "name" = $3 AND "user" = $3
+            "#,
+            options_table = &state.options_table
+        ),
+        AnyKind::MySql => format!(
+            r#"
+            UPDATE {options_table}
+            SET `value"` = ?
+            WHERE `name` = ? AND `user` = ?
+            "#,
+            options_table = &state.options_table
+        ),
+        _ => format!(
+            r#"
+            UPDATE {options_table}
+            SET "value" = ?
+            WHERE "name" = ? AND "user" = ?
+            "#,
+            options_table = &state.options_table
+        ),
+    };
+
+    match sqlx::query(&sql)
+        .bind(&option_modify.value)
+        .bind(name)
+        .bind(uid)
+        .execute(&state.pool)
+        .await
+    {
+        Ok(r) => Ok(r.rows_affected()),
+        Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
+    }
+}
+
+pub async fn delete_option_by_uid_and_name(
+    state: &AppState,
+    uid: i32,
+    name: &str,
+) -> Result<u64, FieldError> {
+    let sql = match state.pool.any_kind() {
+        AnyKind::Postgres => format!(
+            r#"
+            DELETE FROM {options_table}
+            WHERE "user" = $1 AND "name" = $2
+            "#,
+            options_table = &state.options_table
+        ),
+        AnyKind::MySql => format!(
+            r#"
+            DELETE FROM {options_table}
+            WHERE `user` = ? AND `name` = ?
+            "#,
+            options_table = &state.options_table
+        ),
+        _ => format!(
+            r#"
+            DELETE FROM {options_table}
+            WHERE "user" = ? AND "name" = ?
+            "#,
+            options_table = &state.options_table
+        ),
+    };
+    match sqlx::query(&sql)
+        .bind(uid)
+        .bind(name)
+        .execute(&state.pool)
+        .await
+    {
+        Ok(r) => Ok(r.rows_affected()),
         Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
     }
 }

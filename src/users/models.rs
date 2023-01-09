@@ -1,5 +1,6 @@
 #![allow(non_snake_case)]
 use serde::{Deserialize, Serialize};
+use sqlx::FromRow;
 use validator::Validate;
 
 #[derive(Serialize, Deserialize)]
@@ -8,7 +9,7 @@ pub struct TokenData {
     pub exp: u64,
 }
 
-#[derive(Serialize, Deserialize, sqlx::FromRow)]
+#[derive(Serialize, Deserialize, FromRow)]
 pub struct User {
     pub uid: i32,
     pub name: Option<String>,
@@ -21,6 +22,13 @@ pub struct User {
     pub logged: i32,
     pub group: String,
     pub authCode: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, FromRow)]
+pub struct UserOption {
+    pub name: String,
+    pub user: i32,
+    pub value: String,
 }
 
 #[derive(Serialize, Deserialize, Validate)]
@@ -67,4 +75,18 @@ pub struct UsersQuery {
     pub page_size: Option<i32>,
     #[validate(length(min = 1, max = 13, message = "order_by length must greater than 1"))]
     pub order_by: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Validate)]
+pub struct OptionCreate {
+    #[validate(length(min = 1, max = 32, message = "name length must greater than 1"))]
+    pub name: String,
+    #[validate(length(min = 1, message = "value length must greater than 1"))]
+    pub value: String,
+}
+
+#[derive(Serialize, Deserialize, Validate)]
+pub struct OptionModify {
+    #[validate(length(min = 1, message = "value length must greater than 1"))]
+    pub value: String,
 }
