@@ -44,6 +44,9 @@ rumo 兼容 mysql/mariadb，理论上由 rumo 生成的数据库是能够被 typ
 
 - `DATABASE_URL`：必选，数据库 URL，当前仅支持 sqlite
 - `SECRET_KEY`：必选，密钥字符串，用于 jwt 加密
+- `TOKEN_EXPIRE`：可选，jwt 密钥过期时间，单位小时
+- `PRELOAD_INDEX`：可选，首页预加载，默认为 false
+- `INDEX_PAGE`：可选，预加载的首页文件地址，默认为当前目录下的 index.html 文件
 - `UPLOAD_ROOT`：可选，文件上传根目录，相当于原版 usr 文件夹所在目录，默认为当前工作目录。
 - `READ_ONLY`：可选，只读模式将关闭所有写入 api，默认为 false。
 
