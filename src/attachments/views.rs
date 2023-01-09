@@ -114,7 +114,7 @@ pub async fn list_attachments(
     let private_sql = if private {
         String::from("")
     } else {
-        format!(r#" AND "authorId" == {}"#, user.uid)
+        format!(r#" AND "authorId" = {}"#, user.uid)
     };
 
     let all_count =

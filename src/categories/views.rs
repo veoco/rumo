@@ -175,7 +175,7 @@ pub async fn list_category_posts_by_slug(
     let private_sql = if private {
         String::from("")
     } else {
-        format!(r#" AND "status" == 'publish' AND "password" IS NULL"#)
+        format!(r#" AND "status" = 'publish' AND "password" IS NULL"#)
     };
 
     let all_count =

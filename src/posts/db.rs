@@ -110,7 +110,7 @@ pub async fn modify_post_by_post_create_with_exist_post(
                 "allowComment" = $8,
                 "allowPing" = $9,
                 "allowFeed" = $10
-            WHERE "cid" == $11
+            WHERE "cid" = $11
             "#,
             contents_table = &state.contents_table,
         ),
@@ -127,7 +127,7 @@ pub async fn modify_post_by_post_create_with_exist_post(
                 "allowComment" = ?,
                 "allowPing" = ?,
                 "allowFeed" = ?
-            WHERE "cid" == ?
+            WHERE "cid" = ?
             "#,
             contents_table = &state.contents_table,
         ),
@@ -167,7 +167,7 @@ pub async fn get_contents_with_metas_user_and_fields_by_filter_and_list_query(
             r#"
             SELECT *
             FROM {contents_table}
-            WHERE "type" == '{content_type}'{filter_sql}
+            WHERE "type" = '{content_type}'{filter_sql}
             GROUP BY "cid"
             ORDER BY {order_by}
             LIMIT $1 OFFSET $2"#,
@@ -177,7 +177,7 @@ pub async fn get_contents_with_metas_user_and_fields_by_filter_and_list_query(
             r#"
             SELECT *
             FROM {contents_table}
-            WHERE "type" == '{content_type}'{filter_sql}
+            WHERE "type" = '{content_type}'{filter_sql}
             GROUP BY "cid"
             ORDER BY {order_by}
             LIMIT ? OFFSET ?"#,
@@ -213,14 +213,14 @@ pub async fn get_content_with_metas_user_fields_by_slug_and_private(
             r#"
             SELECT *
             FROM {contents_table}
-            WHERE "slug" == $1{private_sql}"#,
+            WHERE "slug" = $1{private_sql}"#,
             contents_table = &state.contents_table
         ),
         _ => format!(
             r#"
             SELECT *
             FROM {contents_table}
-            WHERE "slug" == ?{private_sql}"#,
+            WHERE "slug" = ?{private_sql}"#,
             contents_table = &state.contents_table
         ),
     };

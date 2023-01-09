@@ -54,7 +54,7 @@ pub async fn get_attachments_count_by_list_query(
             r#"
             SELECT *
             FROM {contents_table}
-            WHERE "type" == 'attachment'{}
+            WHERE "type" = 'attachment'{}
             ORDER BY {}
             LIMIT $1 OFFSET $2"#,
             private_sql,
@@ -65,7 +65,7 @@ pub async fn get_attachments_count_by_list_query(
             r#"
             SELECT *
             FROM {contents_table}
-            WHERE "type" == 'attachment'{}
+            WHERE "type" = 'attachment'{}
             ORDER BY {}
             LIMIT ? OFFSET ?"#,
             private_sql,

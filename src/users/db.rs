@@ -71,14 +71,14 @@ pub async fn delete_user_by_uid(state: &AppState, uid: i32) -> Result<u64, Field
         AnyKind::Postgres => format!(
             r#"
             DELETE FROM {users_table}
-            WHERE "uid" == $1
+            WHERE "uid" = $1
             "#,
             users_table = &state.users_table
         ),
         _ => format!(
             r#"
             DELETE FROM {users_table}
-            WHERE "uid" == ?
+            WHERE "uid" = ?
             "#,
             users_table = &state.users_table
         ),

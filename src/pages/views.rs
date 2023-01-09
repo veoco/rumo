@@ -63,7 +63,7 @@ pub async fn list_pages(
     let private_sql = if private {
         String::from("")
     } else {
-        format!(r#" AND "status" == 'publish'"#,)
+        format!(r#" AND "status" = 'publish'"#,)
     };
 
     let all_count = common_db::get_contents_count_with_private(&state, &private_sql, "page").await;

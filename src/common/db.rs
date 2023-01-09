@@ -13,7 +13,7 @@ pub async fn get_content_by_cid(state: &AppState, cid: i32) -> Option<Content> {
             r#"
             SELECT *
             FROM {contents_table}
-            WHERE "cid" == $1
+            WHERE "cid" = $1
             "#,
             contents_table = &state.contents_table,
         ),
@@ -21,7 +21,7 @@ pub async fn get_content_by_cid(state: &AppState, cid: i32) -> Option<Content> {
             r#"
             SELECT *
             FROM {contents_table}
-            WHERE "cid" == ?
+            WHERE "cid" = ?
             "#,
             contents_table = &state.contents_table,
         ),
@@ -42,7 +42,7 @@ pub async fn get_content_by_slug(state: &AppState, slug: &str) -> Option<Content
             r#"
             SELECT *
             FROM {contents_table}
-            WHERE "slug" == $1
+            WHERE "slug" = $1
             "#,
             contents_table = &state.contents_table,
         ),
@@ -50,7 +50,7 @@ pub async fn get_content_by_slug(state: &AppState, slug: &str) -> Option<Content
             r#"
             SELECT *
             FROM {contents_table}
-            WHERE "slug" == ?
+            WHERE "slug" = ?
             "#,
             contents_table = &state.contents_table,
         ),
@@ -72,11 +72,19 @@ pub async fn get_contents_count_with_private(
     content_type: &str,
 ) -> i32 {
     let sql = match state.pool.any_kind() {
+        AnyKind::Postgres => format!(
+            r#"
+            SELECT COUNT(*)
+            FROM {contents_table}
+            WHERE "type" = '{content_type}'{private_sql}
+            "#,
+            contents_table = &state.contents_table,
+        ),
         _ => format!(
             r#"
             SELECT COUNT(*)
             FROM {contents_table}
-            WHERE "type" == '{content_type}'{private_sql}
+            WHERE "type" = '{content_type}'{private_sql}
             "#,
             contents_table = &state.contents_table,
         ),
@@ -136,8 +144,8 @@ pub async fn get_contents_with_metas_user_and_fields_by_mid_list_query_and_priva
             r#"
             SELECT *
             FROM {contents_table}
-            JOIN {relationships_table} ON {contents_table}.cid == {relationships_table}.cid
-            WHERE "type" == '{content_type}' AND "mid" == $1{private_sql}
+            JOIN {relationships_table} ON {contents_table}.cid = {relationships_table}.cid
+            WHERE "type" = '{content_type}' AND "mid" = $1{private_sql}
             GROUP BY {contents_table}.cid
             ORDER BY {contents_table}.{order_by}
             LIMIT $2 OFFSET $3"#,
@@ -148,8 +156,8 @@ pub async fn get_contents_with_metas_user_and_fields_by_mid_list_query_and_priva
             r#"
             SELECT *
             FROM {contents_table}
-            JOIN {relationships_table} ON {contents_table}.cid == {relationships_table}.cid
-            WHERE "type" == '{content_type}' AND "mid" == ?{private_sql}
+            JOIN {relationships_table} ON {contents_table}.cid = {relationships_table}.cid
+            WHERE "type" = '{content_type}' AND "mid" = ?{private_sql}
             GROUP BY {contents_table}.cid
             ORDER BY {contents_table}.{order_by}
             LIMIT ? OFFSET ?"#,
@@ -181,14 +189,14 @@ pub async fn delete_content_by_cid(state: &AppState, cid: i32) -> Result<u64, Fi
         AnyKind::Postgres => format!(
             r#"
             DELETE FROM {contents_table}
-            WHERE "cid" == $1
+            WHERE "cid" = $1
             "#,
             contents_table = &state.contents_table,
         ),
         _ => format!(
             r#"
             DELETE FROM {contents_table}
-            WHERE "cid" == ?
+            WHERE "cid" = ?
             "#,
             contents_table = &state.contents_table,
         ),
@@ -210,7 +218,7 @@ pub async fn check_relationship_by_cid_and_mid(
             SELECT EXISTS (
                 SELECT 1
                 FROM {relationships_table}
-                WHERE "cid" == $1 AND "mid" == $2
+                WHERE "cid" = $1 AND "mid" = $2
             )
             "#,
             relationships_table = &state.relationships_table,
@@ -220,7 +228,7 @@ pub async fn check_relationship_by_cid_and_mid(
             SELECT EXISTS (
                 SELECT 1
                 FROM {relationships_table}
-                WHERE "cid" == ? AND "mid" == ?
+                WHERE "cid" = ? AND "mid" = ?
             )
             "#,
             relationships_table = &state.relationships_table,
@@ -272,13 +280,13 @@ pub async fn delete_relationship_by_cid_and_mid(
         AnyKind::Postgres => format!(
             r#"
             DELETE FROM {relationships_table}
-            WHERE "cid" == $1 AND "mid" == $2"#,
+            WHERE "cid" = $1 AND "mid" = $2"#,
             relationships_table = &state.relationships_table,
         ),
         _ => format!(
             r#"
             DELETE FROM {relationships_table}
-            WHERE "cid" == ? AND "mid" == ?"#,
+            WHERE "cid" = ? AND "mid" = ?"#,
             relationships_table = &state.relationships_table,
         ),
     };
@@ -298,14 +306,14 @@ pub async fn delete_relationships_by_mid(state: &AppState, mid: i32) -> Result<u
         AnyKind::Postgres => format!(
             r#"
             DELETE FROM {relationships_table}
-            WHERE "mid" == $1
+            WHERE "mid" = $1
             "#,
             relationships_table = &state.relationships_table
         ),
         _ => format!(
             r#"
             DELETE FROM {relationships_table}
-            WHERE "mid" == ?
+            WHERE "mid" = ?
             "#,
             relationships_table = &state.relationships_table
         ),
@@ -322,7 +330,7 @@ pub async fn get_field_by_cid_and_name(state: &AppState, cid: i32, name: &str) -
             r#"
             SELECT *
             FROM {fields_table}
-            WHERE "cid" == $1 AND "name" == $2
+            WHERE "cid" = $1 AND "name" = $2
             "#,
             fields_table = &state.fields_table,
         ),
@@ -330,7 +338,7 @@ pub async fn get_field_by_cid_and_name(state: &AppState, cid: i32, name: &str) -
             r#"
             SELECT *
             FROM {fields_table}
-            WHERE "cid" == ? AND "name" == ?
+            WHERE "cid" = ? AND "name" = ?
             "#,
             fields_table = &state.fields_table,
         ),
@@ -353,7 +361,7 @@ pub async fn get_fields_by_cid(state: &AppState, cid: i32) -> Vec<Field> {
             r#"
             SELECT *
             FROM {fields_table}
-            WHERE "cid" == $1
+            WHERE "cid" = $1
             "#,
             fields_table = &state.fields_table,
         ),
@@ -361,7 +369,7 @@ pub async fn get_fields_by_cid(state: &AppState, cid: i32) -> Vec<Field> {
             r#"
             SELECT *
             FROM {fields_table}
-            WHERE "cid" == ?
+            WHERE "cid" = ?
             "#,
             fields_table = &state.fields_table,
         ),
@@ -431,7 +439,7 @@ pub async fn modify_field_by_cid_and_name_with_field_create(
                 "str_value" = $3,
                 "int_value" = $4,
                 "float_value" = $5
-            WHERE "cid" == $6 and "name" = $7
+            WHERE "cid" = $6 and "name" = $7
             "#,
             fields_table = &state.fields_table,
         ),
@@ -443,7 +451,7 @@ pub async fn modify_field_by_cid_and_name_with_field_create(
                 "str_value" = ?,
                 "int_value" = ?,
                 "float_value" = ?
-            WHERE "cid" == ? and "name" = ?
+            WHERE "cid" = ? and "name" = ?
             "#,
             fields_table = &state.fields_table,
         ),
@@ -473,14 +481,14 @@ pub async fn delete_field_by_cid_and_name(
         AnyKind::Postgres => format!(
             r#"
             DELETE FROM {fields_table}
-            WHERE "cid" == $1 AND "name" == $2
+            WHERE "cid" = $1 AND "name" = $2
             "#,
             fields_table = &state.fields_table,
         ),
         _ => format!(
             r#"
             DELETE FROM {fields_table}
-            WHERE "cid" == ? AND "name" == ?
+            WHERE "cid" = ? AND "name" = ?
             "#,
             fields_table = &state.fields_table,
         ),
@@ -501,14 +509,14 @@ pub async fn delete_fields_by_cid(state: &AppState, cid: i32) -> Result<u64, Fie
         AnyKind::Postgres => format!(
             r#"
             DELETE FROM {fields_table}
-            WHERE "cid" == $1
+            WHERE "cid" = $1
             "#,
             fields_table = &state.fields_table,
         ),
         _ => format!(
             r#"
             DELETE FROM {fields_table}
-            WHERE "cid" == ?
+            WHERE "cid" = ?
             "#,
             fields_table = &state.fields_table,
         ),
@@ -525,7 +533,7 @@ pub async fn get_meta_by_mid(state: &AppState, mid: i32) -> Option<Meta> {
             r#"
             SELECT *
             FROM {metas_table}
-            WHERE "mid" == $1
+            WHERE "mid" = $1
             "#,
             metas_table = &state.metas_table,
         ),
@@ -533,7 +541,7 @@ pub async fn get_meta_by_mid(state: &AppState, mid: i32) -> Option<Meta> {
             r#"
             SELECT *
             FROM {metas_table}
-            WHERE "mid" == ?
+            WHERE "mid" = ?
             "#,
             metas_table = &state.metas_table,
         ),
@@ -557,7 +565,7 @@ pub async fn get_meta_by_slug(state: &AppState, slug: &str, tag: bool) -> Option
             r#"
             SELECT *
             FROM {metas_table}
-            WHERE "type" == '{meta_type}' AND "slug" == $1
+            WHERE "type" = '{meta_type}' AND "slug" = $1
             "#,
             metas_table = &state.metas_table,
         ),
@@ -565,7 +573,7 @@ pub async fn get_meta_by_slug(state: &AppState, slug: &str, tag: bool) -> Option
             r#"
             SELECT *
             FROM {metas_table}
-            WHERE "type" == '{meta_type}' AND "slug" == ?
+            WHERE "type" = '{meta_type}' AND "slug" = ?
             "#,
             metas_table = &state.metas_table,
         ),
@@ -586,8 +594,8 @@ pub async fn get_metas_by_cid(state: &AppState, cid: i32) -> Vec<Meta> {
             r#"
             SELECT *
             FROM {metas_table}
-            JOIN {relationships_table} ON {metas_table}.mid == {relationships_table}.mid
-            WHERE "cid" == $1
+            JOIN {relationships_table} ON {metas_table}.mid = {relationships_table}.mid
+            WHERE "cid" = $1
             "#,
             metas_table = &state.metas_table,
             relationships_table = &state.relationships_table,
@@ -596,8 +604,8 @@ pub async fn get_metas_by_cid(state: &AppState, cid: i32) -> Vec<Meta> {
             r#"
             SELECT *
             FROM {metas_table}
-            JOIN {relationships_table} ON {metas_table}.mid == {relationships_table}.mid
-            WHERE "cid" == ?
+            JOIN {relationships_table} ON {metas_table}.mid = {relationships_table}.mid
+            WHERE "cid" = ?
             "#,
             metas_table = &state.metas_table,
             relationships_table = &state.relationships_table,
@@ -627,7 +635,7 @@ pub async fn get_metas_by_list_query(
             r#"
             SELECT *
             FROM {metas_table}
-            WHERE "type" == '{meta_type}'
+            WHERE "type" = '{meta_type}'
             ORDER BY {order_by}
             LIMIT $1 OFFSET $2
             "#,
@@ -637,7 +645,7 @@ pub async fn get_metas_by_list_query(
             r#"
             SELECT *
             FROM {metas_table}
-            WHERE "type" == '{meta_type}'
+            WHERE "type" = '{meta_type}'
             ORDER BY {order_by}
             LIMIT ? OFFSET ?
             "#,
@@ -659,11 +667,19 @@ pub async fn get_metas_count(state: &AppState, tag: bool) -> i32 {
     let meta_type = if tag { "tag" } else { "category" };
 
     let sql = match state.pool.any_kind() {
+        AnyKind::Postgres => format!(
+            r#"
+            SELECT COUNT(*)
+            FROM {metas_table}
+            WHERE "type" = '{meta_type}'
+            "#,
+            metas_table = &state.metas_table,
+        ),
         _ => format!(
             r#"
             SELECT COUNT(*)
             FROM {metas_table}
-            WHERE "type" == '{meta_type}'
+            WHERE "type" = '{meta_type}'
             "#,
             metas_table = &state.metas_table,
         ),
@@ -685,8 +701,8 @@ pub async fn get_meta_posts_count_by_mid_with_private(
             r#"
             SELECT COUNT(*)
             FROM {contents_table}
-            JOIN {relationships_table} ON {contents_table}.cid == {relationships_table}.cid
-            WHERE {contents_table}.type == 'post' AND {relationships_table}.mid == $1{private_sql}
+            JOIN {relationships_table} ON {contents_table}.cid = {relationships_table}.cid
+            WHERE {contents_table}.type = 'post' AND {relationships_table}.mid = $1{private_sql}
             "#,
             contents_table = &state.contents_table,
             relationships_table = &state.relationships_table
@@ -695,8 +711,8 @@ pub async fn get_meta_posts_count_by_mid_with_private(
             r#"
             SELECT COUNT(*)
             FROM {contents_table}
-            JOIN {relationships_table} ON {contents_table}.cid == {relationships_table}.cid
-            WHERE {contents_table}.type == 'post' AND {relationships_table}.mid == ?{private_sql}
+            JOIN {relationships_table} ON {contents_table}.cid = {relationships_table}.cid
+            WHERE {contents_table}.type = 'post' AND {relationships_table}.mid = ?{private_sql}
             "#,
             contents_table = &state.contents_table,
             relationships_table = &state.relationships_table
@@ -719,7 +735,7 @@ pub async fn update_meta_by_mid_for_increase_count(
             r#"
             UPDATE {metas_table}
             SET "count" = "count" + 1
-            WHERE "mid" == $1
+            WHERE "mid" = $1
             "#,
             metas_table = &state.metas_table,
         ),
@@ -727,7 +743,7 @@ pub async fn update_meta_by_mid_for_increase_count(
             r#"
             UPDATE {metas_table}
             SET "count" = "count" + 1
-            WHERE "mid" == ?
+            WHERE "mid" = ?
             "#,
             metas_table = &state.metas_table,
         ),
@@ -747,7 +763,7 @@ pub async fn update_meta_by_mid_for_decrease_count(
             r#"
             UPDATE {metas_table}
             SET "count" = "count" - 1
-            WHERE "mid" == $1
+            WHERE "mid" = $1
             "#,
             metas_table = &state.metas_table,
         ),
@@ -755,7 +771,7 @@ pub async fn update_meta_by_mid_for_decrease_count(
             r#"
             UPDATE {metas_table}
             SET "count" = "count" - 1
-            WHERE "mid" == ?
+            WHERE "mid" = ?
             "#,
             metas_table = &state.metas_table,
         ),
@@ -771,14 +787,14 @@ pub async fn delete_meta_by_mid(state: &AppState, mid: i32) -> Result<u64, Field
         AnyKind::Postgres => format!(
             r#"
             DELETE FROM {metas_table}
-            WHERE "mid" == $1
+            WHERE "mid" = $1
             "#,
             metas_table = &state.metas_table
         ),
         _ => format!(
             r#"
             DELETE FROM {metas_table}
-            WHERE "mid" == ?
+            WHERE "mid" = ?
             "#,
             metas_table = &state.metas_table
         ),

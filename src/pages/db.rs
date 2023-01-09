@@ -121,7 +121,7 @@ pub async fn modify_page_by_page_modify_with_exist_page(
                 "allowComment" = $8,
                 "allowPing" = $9,
                 "allowFeed" = $10
-            WHERE "cid" == $11
+            WHERE "cid" = $11
             "#,
             contents_table = &state.contents_table,
         ),
@@ -138,7 +138,7 @@ pub async fn modify_page_by_page_modify_with_exist_page(
                 "allowComment" = ?,
                 "allowPing" = ?,
                 "allowFeed" = ?
-            WHERE "cid" == ?
+            WHERE "cid" = ?
             "#,
             contents_table = &state.contents_table,
         ),
@@ -172,7 +172,7 @@ pub async fn get_content_with_fields_by_slug(
             r#"
             SELECT *
             FROM {contents_table}
-            WHERE "slug" == $1
+            WHERE "slug" = $1
             "#,
             contents_table = &state.contents_table,
         ),
@@ -180,7 +180,7 @@ pub async fn get_content_with_fields_by_slug(
             r#"
             SELECT *
             FROM {contents_table}
-            WHERE "slug" == ?
+            WHERE "slug" = ?
             "#,
             contents_table = &state.contents_table,
         ),
@@ -215,7 +215,7 @@ pub async fn get_contents_with_fields_by_list_query_with_private(
             r#"
             SELECT *
             FROM {contents_table}
-            WHERE "type" == '{content_type}'{private_sql}
+            WHERE "type" = '{content_type}'{private_sql}
             ORDER BY {order_by}
             LIMIT $1 OFFSET $2
             "#,
@@ -225,7 +225,7 @@ pub async fn get_contents_with_fields_by_list_query_with_private(
             r#"
             SELECT *
             FROM {contents_table}
-            WHERE "type" == '{content_type}'{private_sql}
+            WHERE "type" = '{content_type}'{private_sql}
             ORDER BY {order_by}
             LIMIT ? OFFSET ?
             "#,
