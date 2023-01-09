@@ -4,6 +4,7 @@ use axum::response::Json;
 use chrono::prelude::*;
 use rand::Rng;
 use serde_json::{json, Value};
+use sqlx::any::AnyKind;
 use std::sync::Arc;
 
 use super::db;
@@ -114,7 +115,10 @@ pub async fn list_attachments(
     let private_sql = if private {
         String::from("")
     } else {
-        format!(r#" AND "authorId" = {}"#, user.uid)
+        match state.pool.any_kind() {
+            AnyKind::MySql => format!(r#" AND `authorId` = {}"#, user.uid),
+            _ => format!(r#" AND "authorId" = {}"#, user.uid),
+        }
     };
 
     let all_count =

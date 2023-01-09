@@ -22,6 +22,13 @@ pub async fn create_tag_by_tag_create(
             "#,
             metas_table = &state.metas_table,
         ),
+        AnyKind::MySql => format!(
+            r#"
+            INSERT INTO {metas_table} (`type`, `name`, `slug`, `description`, `parent`)
+            VALUES ('tag', ?, ?, ?, ?)
+            "#,
+            metas_table = &state.metas_table,
+        ),
         _ => format!(
             r#"
             INSERT INTO {metas_table} ("type", "name", "slug", "description", "parent")
@@ -62,6 +69,14 @@ pub async fn modify_tag_by_mid_and_tag_modify(
             UPDATE {metas_table}
             SET "name" = $1, "slug" = $2, "description" = $3, "parent" = $4
             WHERE "mid" = $5
+            "#,
+            metas_table = &state.metas_table
+        ),
+        AnyKind::MySql => format!(
+            r#"
+            UPDATE {metas_table}
+            SET `name` = ?, `slug` = ?, `description` = ?, `parent` = ?
+            WHERE `mid` = ?
             "#,
             metas_table = &state.metas_table
         ),

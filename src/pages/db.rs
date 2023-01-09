@@ -41,6 +41,13 @@ pub async fn create_page_by_page_create_with_uid(
             "#,
             contents_table = &state.contents_table,
         ),
+        AnyKind::MySql => format!(
+            r#"
+            INSERT INTO {contents_table} (`type`, `title`, `slug`, `created`, `modified`, `text`, `authorId`, `template`, `status`, `allowComment`, `allowPing`, `allowFeed`)
+            VALUES ('page', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            "#,
+            contents_table = &state.contents_table,
+        ),
         _ => format!(
             r#"
             INSERT INTO {contents_table} ("type", "title", "slug", "created", "modified", "text", "authorId", "template", "status", "allowComment", "allowPing", "allowFeed")
@@ -125,6 +132,23 @@ pub async fn modify_page_by_page_modify_with_exist_page(
             "#,
             contents_table = &state.contents_table,
         ),
+        AnyKind::MySql => format!(
+            r#"
+            UPDATE {contents_table}
+            SET `title` = ?,
+                `slug` = ?,
+                `created` = ?,
+                `modified` = ?,
+                `text` = ?,
+                `template` = ?,
+                `status` = ?,
+                `allowComment` = ?,
+                `allowPing` = ?,
+                `allowFeed` = ?
+            WHERE `cid` = ?
+            "#,
+            contents_table = &state.contents_table,
+        ),
         _ => format!(
             r#"
             UPDATE {contents_table}
@@ -176,6 +200,14 @@ pub async fn get_content_with_fields_by_slug(
             "#,
             contents_table = &state.contents_table,
         ),
+        AnyKind::MySql => format!(
+            r#"
+            SELECT *
+            FROM {contents_table}
+            WHERE `slug` = ?
+            "#,
+            contents_table = &state.contents_table,
+        ),
         _ => format!(
             r#"
             SELECT *
@@ -218,6 +250,16 @@ pub async fn get_contents_with_fields_by_list_query_with_private(
             WHERE "type" = '{content_type}'{private_sql}
             ORDER BY {order_by}
             LIMIT $1 OFFSET $2
+            "#,
+            contents_table = &state.contents_table,
+        ),
+        AnyKind::MySql => format!(
+            r#"
+            SELECT *
+            FROM {contents_table}
+            WHERE `type` = '{content_type}'{private_sql}
+            ORDER BY {order_by}
+            LIMIT ? OFFSET ?
             "#,
             contents_table = &state.contents_table,
         ),

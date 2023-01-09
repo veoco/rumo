@@ -2,6 +2,7 @@ use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::Json;
 use serde_json::{json, Value};
+use sqlx::any::AnyKind;
 use std::sync::Arc;
 
 use super::db;
@@ -63,7 +64,10 @@ pub async fn list_pages(
     let private_sql = if private {
         String::from("")
     } else {
-        format!(r#" AND "status" = 'publish'"#,)
+        match state.pool.any_kind() {
+            AnyKind::MySql => format!(r#" AND `status` = 'publish'"#),
+            _ => format!(r#" AND "status" = 'publish'"#),
+        }
     };
 
     let all_count = common_db::get_contents_count_with_private(&state, &private_sql, "page").await;

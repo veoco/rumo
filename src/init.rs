@@ -132,7 +132,7 @@ pub async fn init_table(state: &AppState) {
                 PRIMARY KEY  (`coid`),
                 KEY `cid` (`cid`),
                 KEY `created` (`created`)
-            ) ENGINE=%engine%  DEFAULT CHARSET=%charset%;
+            ) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4;
           
             CREATE TABLE `typecho_contents` (
                 `cid` int(10) unsigned NOT NULL auto_increment,
@@ -155,7 +155,7 @@ pub async fn init_table(state: &AppState) {
                 PRIMARY KEY  (`cid`),
                 UNIQUE KEY `slug` (`slug`),
                 KEY `created` (`created`)
-            ) ENGINE=%engine%  DEFAULT CHARSET=%charset%;
+            ) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4;
           
             CREATE TABLE `typecho_fields` (
                 `cid` int(10) unsigned NOT NULL,
@@ -167,7 +167,7 @@ pub async fn init_table(state: &AppState) {
                 PRIMARY KEY  (`cid`,`name`),
                 KEY `int_value` (`int_value`),
                 KEY `float_value` (`float_value`)
-            ) ENGINE=%engine%  DEFAULT CHARSET=%charset%;
+            ) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4;
           
             CREATE TABLE `typecho_metas` (
                 `mid` int(10) unsigned NOT NULL auto_increment,
@@ -180,20 +180,20 @@ pub async fn init_table(state: &AppState) {
                 `parent` int(10) unsigned default '0',
                 PRIMARY KEY  (`mid`),
                 KEY `slug` (`slug`)
-            ) ENGINE=%engine%  DEFAULT CHARSET=%charset%;
+            ) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4;
           
             CREATE TABLE `typecho_options` (
                 `name` varchar(32) NOT NULL,
                 `user` int(10) unsigned NOT NULL default '0',
                 `value` text,
                 PRIMARY KEY  (`name`,`user`)
-            ) ENGINE=%engine% DEFAULT CHARSET=%charset%;
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
           
             CREATE TABLE `typecho_relationships` (
                 `cid` int(10) unsigned NOT NULL,
                 `mid` int(10) unsigned NOT NULL,
                 PRIMARY KEY  (`cid`,`mid`)
-            ) ENGINE=%engine% DEFAULT CHARSET=%charset%;
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
           
             CREATE TABLE `typecho_users` (
                 `uid` int(10) unsigned NOT NULL auto_increment,
@@ -210,7 +210,7 @@ pub async fn init_table(state: &AppState) {
                 PRIMARY KEY  (`uid`),
                 UNIQUE KEY `name` (`name`),
                 UNIQUE KEY `mail` (`mail`)
-            ) ENGINE=%engine%  DEFAULT CHARSET=%charset%;
+            ) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4;
             "#
         }
         AnyKind::Sqlite => {
@@ -327,6 +327,13 @@ pub async fn init_admin(state: &AppState, user_register: UserRegister) {
             r#"
             INSERT INTO {users_table} ("name", "mail", "url", "screenName", "password", "created", "group")
             VALUES ($1, $2, $3, $4, $5, $6, $7)
+            "#,
+            users_table = &state.users_table,
+        ),
+        AnyKind::MySql => format!(
+            r#"
+            INSERT INTO {users_table} (`name`, `mail`, `url`, `screenName`, `password`, `created`, `group`)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             "#,
             users_table = &state.users_table,
         ),

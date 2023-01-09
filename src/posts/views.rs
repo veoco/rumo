@@ -2,6 +2,7 @@ use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::Json;
 use serde_json::{json, Value};
+use sqlx::any::AnyKind;
 use std::sync::Arc;
 
 use super::db;
@@ -68,9 +69,15 @@ pub async fn list_posts(
     let filter_sql = if private && !own {
         String::from("")
     } else if !private && own {
-        format!(r#" AND "authorId" = {}"#, user.uid,)
+        match state.pool.any_kind() {
+            AnyKind::MySql => format!(r#" AND `authorId` = {}"#, user.uid),
+            _ => format!(r#" AND "authorId" = {}"#, user.uid),
+        }
     } else {
-        format!(r#" AND "status" = 'publish' AND "password" IS NULL"#)
+        match state.pool.any_kind() {
+            AnyKind::MySql => format!(r#" AND `status` = 'publish' AND `password` IS NULL"#),
+            _ => format!(r#" AND "status" = 'publish' AND "password" IS NULL"#),
+        }
     };
 
     let all_count = common_db::get_contents_count_with_private(&state, &filter_sql, "post").await;
@@ -118,7 +125,10 @@ pub async fn get_post_by_slug(
     let private_sql = if private {
         String::from("")
     } else {
-        format!(r#" AND ("status" = 'publish' OR "status" = 'password' OR "status" = 'hidden')"#)
+        match state.pool.any_kind() {
+            AnyKind::MySql => format!(r#" AND (`status` = 'publish' OR `status` = 'password' OR `status` = 'hidden')"#),
+            _ => format!(r#" AND ("status" = 'publish' OR "status" = 'password' OR "status" = 'hidden')"#),
+        }
     };
 
     let post =

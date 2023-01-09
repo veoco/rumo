@@ -17,6 +17,14 @@ pub async fn get_content_by_cid(state: &AppState, cid: i32) -> Option<Content> {
             "#,
             contents_table = &state.contents_table,
         ),
+        AnyKind::MySql => format!(
+            r#"
+            SELECT *
+            FROM {contents_table}
+            WHERE `cid` = ?
+            "#,
+            contents_table = &state.contents_table,
+        ),
         _ => format!(
             r#"
             SELECT *
@@ -43,6 +51,14 @@ pub async fn get_content_by_slug(state: &AppState, slug: &str) -> Option<Content
             SELECT *
             FROM {contents_table}
             WHERE "slug" = $1
+            "#,
+            contents_table = &state.contents_table,
+        ),
+        AnyKind::MySql => format!(
+            r#"
+            SELECT *
+            FROM {contents_table}
+            WHERE `slug` = ?
             "#,
             contents_table = &state.contents_table,
         ),
@@ -77,6 +93,14 @@ pub async fn get_contents_count_with_private(
             SELECT COUNT(*)
             FROM {contents_table}
             WHERE "type" = '{content_type}'{private_sql}
+            "#,
+            contents_table = &state.contents_table,
+        ),
+        AnyKind::MySql => format!(
+            r#"
+            SELECT COUNT(*)
+            FROM {contents_table}
+            WHERE `type` = '{content_type}'{private_sql}
             "#,
             contents_table = &state.contents_table,
         ),
@@ -152,6 +176,18 @@ pub async fn get_contents_with_metas_user_and_fields_by_mid_list_query_and_priva
             contents_table = &state.contents_table,
             relationships_table = &state.relationships_table,
         ),
+        AnyKind::MySql => format!(
+            r#"
+            SELECT {contents_table}.*
+            FROM {contents_table}
+            JOIN {relationships_table} ON {contents_table}.cid = {relationships_table}.cid
+            WHERE `type` = '{content_type}' AND `mid` = ?{private_sql}
+            GROUP BY {contents_table}.cid
+            ORDER BY {contents_table}.{order_by}
+            LIMIT ? OFFSET ?"#,
+            contents_table = &state.contents_table,
+            relationships_table = &state.relationships_table,
+        ),
         _ => format!(
             r#"
             SELECT {contents_table}.*
@@ -193,6 +229,13 @@ pub async fn delete_content_by_cid(state: &AppState, cid: i32) -> Result<u64, Fi
             "#,
             contents_table = &state.contents_table,
         ),
+        AnyKind::MySql => format!(
+            r#"
+            DELETE FROM {contents_table}
+            WHERE `cid` = ?
+            "#,
+            contents_table = &state.contents_table,
+        ),
         _ => format!(
             r#"
             DELETE FROM {contents_table}
@@ -219,6 +262,16 @@ pub async fn check_relationship_by_cid_and_mid(
                 SELECT 1
                 FROM {relationships_table}
                 WHERE "cid" = $1 AND "mid" = $2
+            )
+            "#,
+            relationships_table = &state.relationships_table,
+        ),
+        AnyKind::MySql => format!(
+            r#"
+            SELECT EXISTS (
+                SELECT 1
+                FROM {relationships_table}
+                WHERE `cid` = ? AND `mid` = ?
             )
             "#,
             relationships_table = &state.relationships_table,
@@ -255,6 +308,10 @@ pub async fn create_relationship_by_cid_and_mid(
             r#"INSERT INTO {relationships_table} ("cid", "mid") VALUES ($1, $2)"#,
             relationships_table = &state.relationships_table,
         ),
+        AnyKind::MySql => format!(
+            r#"INSERT INTO {relationships_table} (`cid`, `mid`) VALUES (?, ?)"#,
+            relationships_table = &state.relationships_table,
+        ),
         _ => format!(
             r#"INSERT INTO {relationships_table} ("cid", "mid") VALUES (?, ?)"#,
             relationships_table = &state.relationships_table,
@@ -281,6 +338,12 @@ pub async fn delete_relationship_by_cid_and_mid(
             r#"
             DELETE FROM {relationships_table}
             WHERE "cid" = $1 AND "mid" = $2"#,
+            relationships_table = &state.relationships_table,
+        ),
+        AnyKind::MySql => format!(
+            r#"
+            DELETE FROM {relationships_table}
+            WHERE `cid` = ? AND `mid` = ?"#,
             relationships_table = &state.relationships_table,
         ),
         _ => format!(
@@ -310,6 +373,13 @@ pub async fn delete_relationships_by_mid(state: &AppState, mid: i32) -> Result<u
             "#,
             relationships_table = &state.relationships_table
         ),
+        AnyKind::MySql => format!(
+            r#"
+            DELETE FROM {relationships_table}
+            WHERE `mid` = ?
+            "#,
+            relationships_table = &state.relationships_table
+        ),
         _ => format!(
             r#"
             DELETE FROM {relationships_table}
@@ -331,6 +401,14 @@ pub async fn get_field_by_cid_and_name(state: &AppState, cid: i32, name: &str) -
             SELECT *
             FROM {fields_table}
             WHERE "cid" = $1 AND "name" = $2
+            "#,
+            fields_table = &state.fields_table,
+        ),
+        AnyKind::MySql => format!(
+            r#"
+            SELECT *
+            FROM {fields_table}
+            WHERE `cid` = ? AND `name` = ?
             "#,
             fields_table = &state.fields_table,
         ),
@@ -365,6 +443,14 @@ pub async fn get_fields_by_cid(state: &AppState, cid: i32) -> Vec<Field> {
             "#,
             fields_table = &state.fields_table,
         ),
+        AnyKind::MySql => format!(
+            r#"
+            SELECT *
+            FROM {fields_table}
+            WHERE `cid` = ?
+            "#,
+            fields_table = &state.fields_table,
+        ),
         _ => format!(
             r#"
             SELECT *
@@ -396,6 +482,13 @@ pub async fn create_field_by_cid_with_field_create(
             r#"
             INSERT INTO {fields_table} ("cid", "name", "type", "str_value", "int_value", "float_value")
             VALUES ($1, $2, $3, $4, $5, $6)
+            "#,
+            fields_table = &state.fields_table,
+        ),
+        AnyKind::MySql => format!(
+            r#"
+            INSERT INTO {fields_table} (`cid`, `name`, `type`, `str_value`, `int_value`, `float_value`)
+            VALUES (?, ?, ?, ?, ?, ?)
             "#,
             fields_table = &state.fields_table,
         ),
@@ -443,6 +536,18 @@ pub async fn modify_field_by_cid_and_name_with_field_create(
             "#,
             fields_table = &state.fields_table,
         ),
+        AnyKind::MySql => format!(
+            r#"
+            UPDATE {fields_table}
+            SET `name` = ?,
+                `type` = ?,
+                `str_value` = ?,
+                `int_value` = ?,
+                `float_value` = ?
+            WHERE `cid` = ? and `name` = ?
+            "#,
+            fields_table = &state.fields_table,
+        ),
         _ => format!(
             r#"
             UPDATE {fields_table}
@@ -485,6 +590,13 @@ pub async fn delete_field_by_cid_and_name(
             "#,
             fields_table = &state.fields_table,
         ),
+        AnyKind::MySql => format!(
+            r#"
+            DELETE FROM {fields_table}
+            WHERE `cid` = ? AND `name` = ?
+            "#,
+            fields_table = &state.fields_table,
+        ),
         _ => format!(
             r#"
             DELETE FROM {fields_table}
@@ -513,6 +625,13 @@ pub async fn delete_fields_by_cid(state: &AppState, cid: i32) -> Result<u64, Fie
             "#,
             fields_table = &state.fields_table,
         ),
+        AnyKind::MySql => format!(
+            r#"
+            DELETE FROM {fields_table}
+            WHERE `cid` = ?
+            "#,
+            fields_table = &state.fields_table,
+        ),
         _ => format!(
             r#"
             DELETE FROM {fields_table}
@@ -534,6 +653,14 @@ pub async fn get_meta_by_mid(state: &AppState, mid: i32) -> Option<Meta> {
             SELECT *
             FROM {metas_table}
             WHERE "mid" = $1
+            "#,
+            metas_table = &state.metas_table,
+        ),
+        AnyKind::MySql => format!(
+            r#"
+            SELECT *
+            FROM {metas_table}
+            WHERE `mid` = ?
             "#,
             metas_table = &state.metas_table,
         ),
@@ -569,6 +696,14 @@ pub async fn get_meta_by_slug(state: &AppState, slug: &str, tag: bool) -> Option
             "#,
             metas_table = &state.metas_table,
         ),
+        AnyKind::MySql => format!(
+            r#"
+            SELECT *
+            FROM {metas_table}
+            WHERE `type` = '{meta_type}' AND `slug` = ?
+            "#,
+            metas_table = &state.metas_table,
+        ),
         _ => format!(
             r#"
             SELECT *
@@ -596,6 +731,17 @@ pub async fn get_metas_by_cid(state: &AppState, cid: i32) -> Vec<Meta> {
             FROM {metas_table}
             JOIN {relationships_table} ON {metas_table}.mid = {relationships_table}.mid
             WHERE "cid" = $1
+            GROUP BY {metas_table}.mid
+            "#,
+            metas_table = &state.metas_table,
+            relationships_table = &state.relationships_table,
+        ),
+        AnyKind::MySql => format!(
+            r#"
+            SELECT {metas_table}.*
+            FROM {metas_table}
+            JOIN {relationships_table} ON {metas_table}.mid = {relationships_table}.mid
+            WHERE `cid` = ?
             GROUP BY {metas_table}.mid
             "#,
             metas_table = &state.metas_table,
@@ -643,6 +789,16 @@ pub async fn get_metas_by_list_query(
             "#,
             metas_table = &state.metas_table,
         ),
+        AnyKind::MySql => format!(
+            r#"
+            SELECT *
+            FROM {metas_table}
+            WHERE `type` = '{meta_type}'
+            ORDER BY {order_by}
+            LIMIT ? OFFSET ?
+            "#,
+            metas_table = &state.metas_table,
+        ),
         _ => format!(
             r#"
             SELECT *
@@ -677,6 +833,14 @@ pub async fn get_metas_count(state: &AppState, tag: bool) -> i32 {
             "#,
             metas_table = &state.metas_table,
         ),
+        AnyKind::MySql => format!(
+            r#"
+            SELECT COUNT(*)
+            FROM {metas_table}
+            WHERE `type` = '{meta_type}'
+            "#,
+            metas_table = &state.metas_table,
+        ),
         _ => format!(
             r#"
             SELECT COUNT(*)
@@ -705,6 +869,17 @@ pub async fn get_meta_posts_count_by_mid_with_private(
             FROM {contents_table}
             JOIN {relationships_table} ON {contents_table}.cid = {relationships_table}.cid
             WHERE "type" = 'post' AND "mid" = $1{private_sql}
+            GROUP BY {contents_table}.cid
+            "#,
+            contents_table = &state.contents_table,
+            relationships_table = &state.relationships_table
+        ),
+        AnyKind::MySql => format!(
+            r#"
+            SELECT COUNT(*)
+            FROM {contents_table}
+            JOIN {relationships_table} ON {contents_table}.cid = {relationships_table}.cid
+            WHERE `type` = 'post' AND `mid` = ?{private_sql}
             GROUP BY {contents_table}.cid
             "#,
             contents_table = &state.contents_table,
@@ -743,6 +918,14 @@ pub async fn update_meta_by_mid_for_increase_count(
             "#,
             metas_table = &state.metas_table,
         ),
+        AnyKind::MySql => format!(
+            r#"
+            UPDATE {metas_table}
+            SET `count` = `count` + 1
+            WHERE `mid` = ?
+            "#,
+            metas_table = &state.metas_table,
+        ),
         _ => format!(
             r#"
             UPDATE {metas_table}
@@ -771,6 +954,14 @@ pub async fn update_meta_by_mid_for_decrease_count(
             "#,
             metas_table = &state.metas_table,
         ),
+        AnyKind::MySql => format!(
+            r#"
+            UPDATE {metas_table}
+            SET `count` = `count` - 1
+            WHERE `mid` = ?
+            "#,
+            metas_table = &state.metas_table,
+        ),
         _ => format!(
             r#"
             UPDATE {metas_table}
@@ -792,6 +983,13 @@ pub async fn delete_meta_by_mid(state: &AppState, mid: i32) -> Result<u64, Field
             r#"
             DELETE FROM {metas_table}
             WHERE "mid" = $1
+            "#,
+            metas_table = &state.metas_table
+        ),
+        AnyKind::MySql => format!(
+            r#"
+            DELETE FROM {metas_table}
+            WHERE `mid` = ?
             "#,
             metas_table = &state.metas_table
         ),

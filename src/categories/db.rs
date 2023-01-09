@@ -25,6 +25,13 @@ pub async fn create_category_by_category_create(
             "#,
             metas_table = &state.metas_table
         ),
+        AnyKind::MySql => format!(
+            r#"
+            INSERT INTO {metas_table} (`type`, `name`, `slug`, `description`, `parent`)
+            VALUES ('category', ?, ?, ?, ?)
+            "#,
+            metas_table = &state.metas_table
+        ),
         _ => format!(
             r#"
             INSERT INTO {metas_table} ("type", "name", "slug", "description", "parent")
@@ -65,6 +72,14 @@ pub async fn modify_category_by_mid_and_category_modify(
             UPDATE {metas_table}
             SET "name" = $1, "slug" = $2, "description" = $3, "parent" = $4
             WHERE "mid" = $5
+            "#,
+            metas_table = &state.metas_table
+        ),
+        AnyKind::MySql => format!(
+            r#"
+            UPDATE {metas_table}
+            SET `name` = ?, `slug` = ?, `description` = ?, `parent` = ?
+            WHERE `mid` = ?
             "#,
             metas_table = &state.metas_table
         ),

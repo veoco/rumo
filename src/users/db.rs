@@ -16,6 +16,14 @@ pub async fn get_user_by_mail(state: &AppState, mail: &str) -> Option<User> {
             "#,
             users_table = &state.users_table
         ),
+        AnyKind::MySql => format!(
+            r#"
+            SELECT *
+            FROM {users_table}
+            WHERE `mail` = ?
+            "#,
+            users_table = &state.users_table
+        ),
         _ => format!(
             r#"
             SELECT *
@@ -43,6 +51,14 @@ pub async fn get_user_by_uid(state: &AppState, uid: i32) -> Option<User> {
             SELECT *
             FROM {users_table}
             WHERE "uid" = $1
+            "#,
+            users_table = &state.users_table
+        ),
+        AnyKind::MySql => format!(
+            r#"
+            SELECT *
+            FROM {users_table}
+            WHERE `uid` = ?
             "#,
             users_table = &state.users_table
         ),
@@ -75,6 +91,13 @@ pub async fn delete_user_by_uid(state: &AppState, uid: i32) -> Result<u64, Field
             "#,
             users_table = &state.users_table
         ),
+        AnyKind::MySql => format!(
+            r#"
+            DELETE FROM {users_table}
+            WHERE `uid` = ?
+            "#,
+            users_table = &state.users_table
+        ),
         _ => format!(
             r#"
             DELETE FROM {users_table}
@@ -96,6 +119,14 @@ pub async fn update_user_by_uid_for_activity(state: &AppState, uid: i32, now: i3
             UPDATE {users_table}
             SET "activated" = $1, "logged" = $2
             WHERE "uid" = $3
+            "#,
+            users_table = &state.users_table
+        ),
+        AnyKind::MySql => format!(
+            r#"
+            UPDATE {users_table}
+            SET `activated` = ?, `logged` = ?
+            WHERE `uid` = ?
             "#,
             users_table = &state.users_table
         ),
@@ -127,6 +158,14 @@ pub async fn update_user_by_uid_with_user_modify_for_data_without_password(
             UPDATE {users_table}
             SET "name" = $1, "mail" = $2, "url" = $3, "screenName" = $4, "group" = $5
             WHERE "uid" = $6
+            "#,
+            users_table = &state.users_table
+        ),
+        AnyKind::MySql => format!(
+            r#"
+            UPDATE {users_table}
+            SET `name` = ?, `mail` = ?, `url` = ?, `screenName` = ?, `group` = ?
+            WHERE `uid` = ?
             "#,
             users_table = &state.users_table
         ),
@@ -168,6 +207,14 @@ pub async fn update_user_by_uid_for_password(
             "#,
             users_table = &state.users_table
         ),
+        AnyKind::MySql => format!(
+            r#"
+            UPDATE {users_table}
+            SET `password` = ?
+            WHERE `uid` = ?
+            "#,
+            users_table = &state.users_table
+        ),
         _ => format!(
             r#"
             UPDATE {users_table}
@@ -203,6 +250,13 @@ pub async fn create_user_with_user_register(
             r#"
             INSERT INTO {users_table} ("name", "mail", "url", "screenName", "password", "created", "group")
             VALUES ($1, $2, $3, $4, $5, $6, 'subscriber')
+            "#,
+            users_table = &state.users_table
+        ),
+        AnyKind::MySql => format!(
+            r#"
+            INSERT INTO {users_table} (`name`, `mail`, `url`, `screenName`, `password`, `created`, `group`)
+            VALUES (?, ?, ?, ?, ?, ?, 'subscriber')
             "#,
             users_table = &state.users_table
         ),

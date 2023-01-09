@@ -19,6 +19,13 @@ pub async fn create_attachment_with_params(
             "#,
             contents_table = &state.contents_table,
         ),
+        AnyKind::MySql => format!(
+            r#"
+            INSERT INTO {contents_table} (`type`, `title`, `slug`, `created`, `modified`, `text`, `authorId`)
+            VALUES ('attachment', ?, ?, ?, ?, ?, ?)
+            "#,
+            contents_table = &state.contents_table,
+        ),
         _ => format!(
             r#"
             INSERT INTO {contents_table} ("type", "title", "slug", "created", "modified", "text", "authorId")
@@ -57,6 +64,17 @@ pub async fn get_attachments_count_by_list_query(
             WHERE "type" = 'attachment'{}
             ORDER BY {}
             LIMIT $1 OFFSET $2"#,
+            private_sql,
+            order_by,
+            contents_table = &state.contents_table,
+        ),
+        AnyKind::MySql => format!(
+            r#"
+            SELECT *
+            FROM {contents_table}
+            WHERE `type` = 'attachment'{}
+            ORDER BY {}
+            LIMIT ? OFFSET ?"#,
             private_sql,
             order_by,
             contents_table = &state.contents_table,

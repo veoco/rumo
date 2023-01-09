@@ -5,6 +5,7 @@ use axum::response::Json;
 use axum_client_ip::ClientIp;
 use md5::{Digest, Md5};
 use serde_json::{json, Value};
+use sqlx::any::AnyKind;
 use std::sync::Arc;
 
 use super::db;
@@ -203,7 +204,10 @@ pub async fn list_page_comments_by_slug(
     let private_sql = if private {
         String::from("")
     } else {
-        format!(r#" AND "status" = 'approved'"#)
+        match state.pool.any_kind() {
+            AnyKind::MySql => format!(r#" AND `status` = 'approved'"#),
+            _ => format!(r#" AND "status" = 'approved'"#),
+        }
     };
 
     let target_page = match common_db::get_content_by_slug(&state, &slug).await {

@@ -15,6 +15,14 @@ pub async fn get_comment_by_coid(state: &AppState, coid: i32) -> Option<Comment>
             "#,
             comments_table = &state.comments_table
         ),
+        AnyKind::MySql => format!(
+            r#"
+            SELECT *
+            FROM {comments_table}
+            WHERE `type` = 'comment' AND `coid` = ?
+            "#,
+            comments_table = &state.comments_table
+        ),
         _ => format!(
             r#"
             SELECT *
@@ -61,6 +69,13 @@ pub async fn create_comment_with_params(
             "#,
             comments_table = &state.comments_table
         ),
+        AnyKind::MySql => format!(
+            r#"
+            INSERT INTO {comments_table} (`type`, `cid`, `created`, `author`, `authorId`, `ownerId`, `mail`, `url`, `ip`, `agent`, `text`, `status`, `parent`)
+            VALUES ('comment', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            "#,
+            comments_table = &state.comments_table
+        ),
         _ => format!(
             r#"
             INSERT INTO {comments_table} ("type", "cid", "created", "author", "authorId", "ownerId", "mail", "url", "ip", "agent", "text", "status", "parent")
@@ -103,6 +118,14 @@ pub async fn update_content_count_increase_by_cid(
             "#,
             contents_table = &state.contents_table
         ),
+        AnyKind::MySql => format!(
+            r#"
+            UPDATE {contents_table}
+            SET `commentsNum` = `commentsNum` + 1
+            WHERE `cid` = ?
+            "#,
+            contents_table = &state.contents_table
+        ),
         _ => format!(
             r#"
             UPDATE {contents_table}
@@ -128,6 +151,14 @@ pub async fn update_content_count_decrease_by_cid(
             UPDATE {contents_table}
             SET "commentsNum" = "commentsNum" - 1
             WHERE "cid" = $1
+            "#,
+            contents_table = &state.contents_table
+        ),
+        AnyKind::MySql => format!(
+            r#"
+            UPDATE {contents_table}
+            SET `commentsNum` = `commentsNum` - 1
+            WHERE `cid` = ?
             "#,
             contents_table = &state.contents_table
         ),
@@ -161,6 +192,14 @@ pub async fn modify_comment_with_params(
             "#,
             comments_table = &state.comments_table
         ),
+        AnyKind::MySql => format!(
+            r#"
+            UPDATE {comments_table}
+            SET `text` = ?, `status` = ?
+            WHERE `coid` = ?
+            "#,
+            comments_table = &state.comments_table
+        ),
         _ => format!(
             r#"
             UPDATE {comments_table}
@@ -191,6 +230,13 @@ pub async fn delete_comment_by_coid(state: &AppState, coid: i32) -> Result<u64, 
             "#,
             comments_table = &state.comments_table
         ),
+        AnyKind::MySql => format!(
+            r#"
+            DELETE FROM {comments_table}
+            WHERE `coid` = ?
+            "#,
+            comments_table = &state.comments_table
+        ),
         _ => format!(
             r#"
             DELETE FROM {comments_table}
@@ -212,6 +258,14 @@ pub async fn get_comments_count(state: &AppState) -> i32 {
             SELECT COUNT(*)
             FROM {comments_table}
             WHERE "type" = 'comment'
+            "#,
+            comments_table = &state.comments_table
+        ),
+        AnyKind::MySql => format!(
+            r#"
+            SELECT COUNT(*)
+            FROM {comments_table}
+            WHERE `type` = 'comment'
             "#,
             comments_table = &state.comments_table
         ),
@@ -245,6 +299,16 @@ pub async fn get_comments_by_list_query(
             WHERE "type" = 'comment'
             ORDER BY {}
             LIMIT $1 OFFSET $2"#,
+            order_by,
+            comments_table = &state.comments_table
+        ),
+        AnyKind::MySql => format!(
+            r#"            
+            SELECT *
+            FROM {comments_table}
+            WHERE `type` = 'comment'
+            ORDER BY {}
+            LIMIT ? OFFSET ?"#,
             order_by,
             comments_table = &state.comments_table
         ),
@@ -285,6 +349,15 @@ pub async fn get_content_comments_count_by_cid_with_private(
             private_sql,
             comments_table = &state.comments_table
         ),
+        AnyKind::MySql => format!(
+            r#"
+            SELECT COUNT(*)
+            FROM {comments_table}
+            WHERE `type` = 'comment' AND `cid` = ?{}
+            "#,
+            private_sql,
+            comments_table = &state.comments_table
+        ),
         _ => format!(
             r#"
             SELECT COUNT(*)
@@ -319,6 +392,17 @@ pub async fn get_comments_by_cid_and_list_query_with_private(
             WHERE "type" = 'comment' AND "cid" = $1{}
             ORDER BY {}
             LIMIT $2 OFFSET $3"#,
+            private_sql,
+            order_by,
+            comments_table = &state.comments_table
+        ),
+        AnyKind::MySql => format!(
+            r#"            
+            SELECT *
+            FROM {comments_table}
+            WHERE `type` = 'comment' AND `cid` = ?{}
+            ORDER BY {}
+            LIMIT ? OFFSET ?"#,
             private_sql,
             order_by,
             comments_table = &state.comments_table
