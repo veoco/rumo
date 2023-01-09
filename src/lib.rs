@@ -2,9 +2,9 @@ use axum::Router;
 use sqlx::AnyPool;
 use std::env;
 use std::sync::Arc;
+use tokio::fs;
 use tower_http::trace::TraceLayer;
 use tracing::info;
-use tokio::fs;
 
 mod attachments;
 mod categories;
@@ -13,16 +13,16 @@ mod common;
 mod init;
 mod pages;
 mod posts;
+mod preload;
 mod tags;
 mod users;
-mod preload;
 use attachments::attachments_routers;
 use categories::categories_routers;
 use comments::comments_routers;
 use pages::pages_routers;
 use posts::posts_routers;
-use tags::tags_routers;
 use preload::index_router;
+use tags::tags_routers;
 use users::{models::UserRegister, users_routers};
 
 #[derive(Clone)]
@@ -72,10 +72,12 @@ async fn get_state(app_state: Option<AppState>) -> AppState {
 
             let filepath = env::var("INDEX_PAGE").unwrap_or(String::from("./index.html"));
             let filepath = std::path::Path::new(&filepath);
-            if !filepath.exists() && !filepath.is_file(){
+            if preload_index && !filepath.exists() && !filepath.is_file() {
                 panic!("INDEX_PAGE is invalid")
             }
-            let index_page = fs::read_to_string(filepath).await.expect("INDEX_PAGE is invalid");
+            let index_page = fs::read_to_string(filepath)
+                .await
+                .expect("INDEX_PAGE is invalid");
 
             let upload_root = env::var("UPLOAD_ROOT").unwrap_or(String::from("."));
             let read_only = match env::var("READ_ONLY") {
@@ -132,13 +134,11 @@ pub async fn app(app_state: Option<AppState>) -> Router {
         .merge(pages_routers(ro))
         .merge(comments_routers(ro))
         .merge(attachments_routers(ro));
-    
-    if state.preload_index{
+
+    if state.preload_index {
         router = router.merge(index_router());
     }
-    let app = router
-        .layer(TraceLayer::new_for_http())
-        .with_state(state);
+    let app = router.layer(TraceLayer::new_for_http()).with_state(state);
     app
 }
 
