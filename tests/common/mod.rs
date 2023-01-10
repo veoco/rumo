@@ -4,12 +4,13 @@ use axum::{
     http::{self, Request, StatusCode},
 };
 use hyper::body::to_bytes;
+use minijinja::Environment;
 use serde_json::{json, Value};
 use sqlx::AnyPool;
 use std::env;
 use tower::ServiceExt;
 
-use rumo::{app, AppState};
+use rumo::{app, AppState, INDEX_TPL};
 
 async fn setup_state() -> AppState {
     let pool = AnyPool::connect(&env::var("DATABASE_URL").unwrap())
@@ -19,7 +20,8 @@ async fn setup_state() -> AppState {
     let secret_key = env::var("SECRET_KEY").unwrap();
     let access_token_expire_secondes = 3600 * 24 * 30;
     let preload_index = false;
-    let index_page = "".to_string();
+    let mut jinja_env = Environment::new();
+    jinja_env.add_template("index.html", &INDEX_TPL).unwrap();
     let upload_root = ".".to_string();
     let read_only = false;
 
@@ -39,8 +41,8 @@ async fn setup_state() -> AppState {
         upload_root,
         read_only,
         preload_index,
-        index_page,
-        
+        jinja_env,
+
         comments_table,
         contents_table,
         fields_table,
@@ -242,7 +244,10 @@ pub async fn admin_post_file(url: &str, data: Vec<u8>) -> (StatusCode, Option<Va
     let request = Request::builder()
         .method(http::Method::POST)
         .uri(url)
-        .header(http::header::CONTENT_TYPE, "multipart/form-data; boundary=testfileboundary")
+        .header(
+            http::header::CONTENT_TYPE,
+            "multipart/form-data; boundary=testfileboundary",
+        )
         .header(http::header::AUTHORIZATION, format!("Bearer {}", token))
         .body(Body::from(data))
         .unwrap();
@@ -274,7 +279,10 @@ pub async fn admin_patch_file(url: &str, data: Vec<u8>) -> (StatusCode, Option<V
     let request = Request::builder()
         .method(http::Method::PATCH)
         .uri(url)
-        .header(http::header::CONTENT_TYPE, "multipart/form-data; boundary=testfileboundary")
+        .header(
+            http::header::CONTENT_TYPE,
+            "multipart/form-data; boundary=testfileboundary",
+        )
         .header(http::header::AUTHORIZATION, format!("Bearer {}", token))
         .body(Body::from(data))
         .unwrap();
