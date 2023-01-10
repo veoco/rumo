@@ -12,3 +12,5 @@ Cargo.lock
 # Custom
 .vscode
 db.sqlite3
+usr
+index.html
