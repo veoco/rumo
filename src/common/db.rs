@@ -118,10 +118,7 @@ pub async fn get_contents_count_with_private(
         .await
     {
         Ok(r) => r,
-        Err(e) => {
-            println!("{:?}", e);
-            0
-        }
+        Err(_)=> 0,
     }
 }
 

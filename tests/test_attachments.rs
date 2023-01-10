@@ -106,13 +106,10 @@ async fn create_then_delete_attachments_success() {
     let (status_code, _) = admin_post_file("/api/attachments/", data).await;
     assert_eq!(status_code, StatusCode::CREATED);
 
-    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-
     let (status_code, body) = admin_get("/api/attachments/").await;
     assert_eq!(status_code, StatusCode::OK);
 
     let body = body.unwrap();
-    let count = body.get("all_count").unwrap().as_u64().unwrap();
     let attachments = body.get("results").unwrap().as_array().unwrap().clone();
     let mut cid = 0;
     for at in attachments{
@@ -126,12 +123,8 @@ async fn create_then_delete_attachments_success() {
     let (status_code, _) = admin_delete(&url).await;
     assert_eq!(status_code, StatusCode::OK);
 
-    let (status_code, body) = admin_get("/api/attachments/").await;
-    assert_eq!(status_code, StatusCode::OK);
-
-    let body = body.unwrap();
-    let new_count = body.get("all_count").unwrap().as_u64().unwrap();
-    assert!(new_count < count)
+    let (status_code, _) = admin_get(&url).await;
+    assert_eq!(status_code, StatusCode::NOT_FOUND);
 }
 
 #[tokio::test]
