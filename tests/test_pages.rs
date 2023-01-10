@@ -10,7 +10,7 @@ async fn create_then_list_pages_success() {
     assert_eq!(status_code, StatusCode::OK);
 
     let body = body.unwrap();
-    let count = body.get("count").unwrap().as_u64().unwrap();
+    let count = body.get("all_count").unwrap().as_u64().unwrap();
 
     let data = json!({
         "title": "testPage",
@@ -46,7 +46,7 @@ async fn create_then_list_pages_success() {
     assert_eq!(status_code, StatusCode::OK);
 
     let body = body.unwrap();
-    let new_count = body.get("count").unwrap().as_u64().unwrap();
+    let new_count = body.get("all_count").unwrap().as_u64().unwrap();
     assert!(new_count > count);
 }
 

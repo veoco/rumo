@@ -90,7 +90,7 @@ async fn create_then_delete_user_success() {
     assert_eq!(status_code, StatusCode::OK);
 
     let body = body.unwrap();
-    let count = body.get("count").unwrap().as_u64().unwrap();
+    let count = body.get("all_count").unwrap().as_u64().unwrap();
 
     let url = format!("/api/users/{}", 3);
     let (status_code, _) = admin_delete(&url).await;
@@ -100,7 +100,7 @@ async fn create_then_delete_user_success() {
     assert_eq!(status_code, StatusCode::OK);
 
     let body = body.unwrap();
-    let new_count = body.get("count").unwrap().as_u64().unwrap();
+    let new_count = body.get("all_count").unwrap().as_u64().unwrap();
     assert!(new_count < count);
 }
 
@@ -114,7 +114,7 @@ async fn create_then_list_user_options_success() {
     assert_eq!(status_code, StatusCode::OK);
 
     let body = body.unwrap();
-    let count = body.get("count").unwrap().as_u64().unwrap();
+    let count = body.get("all_count").unwrap().as_u64().unwrap();
     assert!(count > 0);
 }
 

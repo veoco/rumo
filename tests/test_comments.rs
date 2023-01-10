@@ -33,14 +33,14 @@ async fn create_then_list_comments_success() {
     assert_eq!(status_code, StatusCode::OK);
 
     let body = body.unwrap();
-    let count = body.get("count").unwrap().as_u64().unwrap();
+    let count = body.get("all_count").unwrap().as_u64().unwrap();
     assert!(count > 0);
 
     let (status_code, body) = admin_get("/api/comments/").await;
     assert_eq!(status_code, StatusCode::OK);
 
     let body = body.unwrap();
-    let count = body.get("count").unwrap().as_u64().unwrap();
+    let count = body.get("all_count").unwrap().as_u64().unwrap();
     assert!(count > 0);
 }
 
@@ -124,7 +124,7 @@ async fn create_then_delete_comments_success() {
     assert_eq!(status_code, StatusCode::OK);
 
     let body = body.unwrap();
-    let count = body.get("count").unwrap().as_u64().unwrap();
+    let count = body.get("all_count").unwrap().as_u64().unwrap();
 
     let (status_code, body) = get("/api/posts/test-comment-post-delete/comments/").await;
     assert_eq!(status_code, StatusCode::OK);
@@ -148,6 +148,6 @@ async fn create_then_delete_comments_success() {
     assert_eq!(status_code, StatusCode::OK);
 
     let body = body.unwrap();
-    let new_count = body.get("count").unwrap().as_u64().unwrap();
+    let new_count = body.get("all_count").unwrap().as_u64().unwrap();
     assert!(count > new_count);
 }

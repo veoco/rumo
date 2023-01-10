@@ -10,7 +10,7 @@ async fn create_then_list_tags_success() {
     assert_eq!(status_code, StatusCode::OK);
 
     let body = body.unwrap();
-    let count = body.get("count").unwrap().as_u64().unwrap();
+    let count = body.get("all_count").unwrap().as_u64().unwrap();
 
     let data = json!({"name": "testTag", "slug": "test-tag"}).to_string();
     let (status_code, _) = admin_post("/api/tags/", data).await;
@@ -28,7 +28,7 @@ async fn create_then_list_tags_success() {
     assert_eq!(status_code, StatusCode::OK);
 
     let body = body.unwrap();
-    let new_count = body.get("count").unwrap().as_u64().unwrap();
+    let new_count = body.get("all_count").unwrap().as_u64().unwrap();
     assert!(new_count > count);
 }
 
@@ -86,7 +86,7 @@ async fn create_then_list_tag_posts_success() {
     assert_eq!(status_code, StatusCode::OK);
 
     let body = body.unwrap();
-    let count = body.get("count").unwrap().as_u64().unwrap();
+    let count = body.get("all_count").unwrap().as_u64().unwrap();
 
     let data = json!({
         "title": "testPostTag",
@@ -108,7 +108,7 @@ async fn create_then_list_tag_posts_success() {
     assert_eq!(status_code, StatusCode::OK);
 
     let body = body.unwrap();
-    let new_count = body.get("count").unwrap().as_u64().unwrap();
+    let new_count = body.get("all_count").unwrap().as_u64().unwrap();
     assert!(new_count > count);
 }
 
@@ -137,7 +137,7 @@ async fn create_then_delete_tag_posts_success() {
     assert_eq!(status_code, StatusCode::OK);
 
     let body = body.unwrap();
-    let count = body.get("count").unwrap().as_u64().unwrap();
+    let count = body.get("all_count").unwrap().as_u64().unwrap();
 
     let (status_code, _) = admin_delete("/api/tags/test-tag-post-delete/posts/test-post-tag-delete").await;
     assert_eq!(status_code, StatusCode::OK);
@@ -146,7 +146,7 @@ async fn create_then_delete_tag_posts_success() {
     assert_eq!(status_code, StatusCode::OK);
 
     let body = body.unwrap();
-    let new_count = body.get("count").unwrap().as_u64().unwrap();
+    let new_count = body.get("all_count").unwrap().as_u64().unwrap();
 
     assert!(new_count < count);
 }

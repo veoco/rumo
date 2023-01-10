@@ -7,10 +7,11 @@ use common::{admin_post, admin_patch, admin_delete, get};
 #[tokio::test]
 async fn create_then_list_posts_success() {
     let (status_code, body) = get("/api/posts/?page=1&page_size=10&order_by=-cid").await;
+    println!("{:?}", body);
     assert_eq!(status_code, StatusCode::OK);
 
     let body = body.unwrap();
-    let count = body.get("count").unwrap().as_u64().unwrap();
+    let count = body.get("all_count").unwrap().as_u64().unwrap();
 
     let data = json!({
         "title": "testPost",
@@ -46,10 +47,11 @@ async fn create_then_list_posts_success() {
     assert_eq!(status_code, StatusCode::CREATED);
 
     let (status_code, body) = get("/api/posts/?page=1&page_size=10&order_by=-cid").await;
+    println!("{:?}", body);
     assert_eq!(status_code, StatusCode::OK);
 
     let body = body.unwrap();
-    let new_count = body.get("count").unwrap().as_u64().unwrap();
+    let new_count = body.get("all_count").unwrap().as_u64().unwrap();
     assert!(new_count > count);
 }
 

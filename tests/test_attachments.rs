@@ -14,7 +14,7 @@ async fn create_then_list_attachments_success() {
     assert_eq!(status_code, StatusCode::OK);
 
     let body = body.unwrap();
-    let count = body.get("count").unwrap().as_u64().unwrap();
+    let count = body.get("all_count").unwrap().as_u64().unwrap();
     assert!(count > 0);
 }
 
@@ -112,7 +112,7 @@ async fn create_then_delete_attachments_success() {
     assert_eq!(status_code, StatusCode::OK);
 
     let body = body.unwrap();
-    let count = body.get("count").unwrap().as_u64().unwrap();
+    let count = body.get("all_count").unwrap().as_u64().unwrap();
     let attachments = body.get("results").unwrap().as_array().unwrap().clone();
     let mut cid = 0;
     for at in attachments{
@@ -130,7 +130,7 @@ async fn create_then_delete_attachments_success() {
     assert_eq!(status_code, StatusCode::OK);
 
     let body = body.unwrap();
-    let new_count = body.get("count").unwrap().as_u64().unwrap();
+    let new_count = body.get("all_count").unwrap().as_u64().unwrap();
     assert!(new_count < count)
 }
 
@@ -168,7 +168,7 @@ async fn create_then_delete_post_attachments_success() {
     assert_eq!(status_code, StatusCode::OK);
 
     let body = body.unwrap();
-    let count = body.get("count").unwrap().as_u64().unwrap();
+    let count = body.get("all_count").unwrap().as_u64().unwrap();
     
     let data = json!({
         "cid": cid,
@@ -181,7 +181,7 @@ async fn create_then_delete_post_attachments_success() {
     assert_eq!(status_code, StatusCode::OK);
 
     let body = body.unwrap();
-    let new_count = body.get("count").unwrap().as_u64().unwrap();
+    let new_count = body.get("all_count").unwrap().as_u64().unwrap();
     assert!(new_count > count);
 
     let url = format!("/api/posts/test-attachment-post-list/attachments/{cid}");
@@ -192,6 +192,6 @@ async fn create_then_delete_post_attachments_success() {
     assert_eq!(status_code, StatusCode::OK);
 
     let body = body.unwrap();
-    let new_count = body.get("count").unwrap().as_u64().unwrap();
+    let new_count = body.get("all_count").unwrap().as_u64().unwrap();
     assert!(new_count <= count);
 }
