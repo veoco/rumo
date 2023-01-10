@@ -105,7 +105,7 @@ pub async fn modify_attachment_by_cid_with_params(
     }
 }
 
-pub async fn get_attachments_count_by_list_query(
+pub async fn get_attachments_by_list_query(
     state: &AppState,
     private_sql: &str,
     page_size: i32,
@@ -155,5 +155,87 @@ pub async fn get_attachments_count_by_list_query(
     {
         Ok(attachements) => Ok(attachements),
         Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
+    }
+}
+
+pub async fn get_attachments_by_parent(
+    state: &AppState,
+    parent: i32,
+) -> Result<Vec<Content>, FieldError> {
+    let sql = match state.pool.any_kind() {
+        AnyKind::Postgres => format!(
+            r#"
+            SELECT *
+            FROM {contents_table}
+            WHERE "type" = 'attachment' AND "parent" = ?1
+            "#,
+            contents_table = &state.contents_table,
+        ),
+        AnyKind::MySql => format!(
+            r#"
+            SELECT *
+            FROM {contents_table}
+            WHERE `type` = 'attachment' AND `parent` = ?
+            "#,
+            contents_table = &state.contents_table,
+        ),
+        _ => format!(
+            r#"
+            SELECT *
+            FROM {contents_table}
+            WHERE "type" = 'attachment' AND "parent" = ?
+            "#,
+            contents_table = &state.contents_table,
+        ),
+    };
+    match sqlx::query_as::<_, Content>(&sql)
+        .bind(parent)
+        .fetch_all(&state.pool)
+        .await
+    {
+        Ok(attachements) => Ok(attachements),
+        Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
+    }
+}
+
+pub async fn modify_attachment_parent_by_cid(
+    state: &AppState,
+    cid: i32,
+    parent: i32,
+) -> Result<u64, FieldError> {
+    let sql = match state.pool.any_kind() {
+        AnyKind::Postgres => format!(
+            r#"
+            UPDATE {contents_table}
+            SET "parent" = $1,
+            WHERE "cid" = $2
+            "#,
+            contents_table = &state.contents_table,
+        ),
+        AnyKind::MySql => format!(
+            r#"
+            UPDATE {contents_table}
+            SET `parent` = ?
+            WHERE `cid` = ?
+            "#,
+            contents_table = &state.contents_table,
+        ),
+        _ => format!(
+            r#"
+            UPDATE {contents_table}
+            SET "parent" = ?
+            WHERE "cid" = ?
+            "#,
+            contents_table = &state.contents_table,
+        ),
+    };
+    match sqlx::query(&sql)
+        .bind(parent)
+        .bind(cid)
+        .execute(&state.pool)
+        .await
+    {
+        Ok(r) => Ok(r.rows_affected()),
+        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
     }
 }

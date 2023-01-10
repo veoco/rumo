@@ -64,3 +64,9 @@ pub struct AttachmentsQuery {
     pub order_by: Option<String>,
     pub private: Option<bool>,
 }
+
+#[derive(Serialize, Deserialize, Validate)]
+pub struct AttachmentCreate {
+    #[validate(range(min = 1, message = "cid must greater than 1"))]
+    pub cid: i32,
+}

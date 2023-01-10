@@ -9,12 +9,12 @@ use std::sync::Arc;
 
 use super::db;
 use super::de::from_str;
-use super::models::{AttachmentInfo, AttachmentText, AttachmentsQuery};
+use super::models::{AttachmentInfo, AttachmentText, AttachmentsQuery, AttachmentCreate};
 use super::ser::to_string;
 use super::utils::{delete_file, stream_to_file};
 use crate::common::db as common_db;
 use crate::common::errors::FieldError;
-use crate::common::extractors::{PMContributor, ValidatedQuery};
+use crate::common::extractors::{PMContributor, ValidatedQuery, ValidatedJson};
 use crate::AppState;
 
 pub async fn list_attachments(
@@ -51,7 +51,7 @@ pub async fn list_attachments(
     };
 
     let attachments =
-        db::get_attachments_count_by_list_query(&state, &private_sql, page_size, offset, order_by)
+        db::get_attachments_by_list_query(&state, &private_sql, page_size, offset, order_by)
             .await?;
 
     let mut results = vec![];
@@ -239,5 +239,88 @@ pub async fn delete_attachment_by_cid(
     let _ = delete_file(base_dir.to_path_buf(), &filepath).await;
 
     let _ = common_db::delete_content_by_cid(&state, cid).await?;
+    Ok(Json(json!({ "msg": "ok" })))
+}
+
+pub async fn list_content_attachments_by_slug(
+    State(state): State<Arc<AppState>>,
+    Path(slug): Path<String>,
+) -> Result<Json<Value>, FieldError> {
+    let content = common_db::get_content_by_slug(&state, &slug).await;
+    if content.is_none(){
+        return Err(FieldError::InvalidParams("slug".to_string()));
+    }
+    let content = content.unwrap();
+
+    let attachments =
+        db::get_attachments_by_parent(&state, content.cid)
+            .await?;
+
+    let mut results = vec![];
+    for at in attachments {
+        let attachment_info = AttachmentInfo::from(at);
+        results.push(attachment_info);
+    }
+
+    Ok(Json(json!({
+        "page": 1,
+        "page_size": results.len(),
+        "all_count": results.len(),
+        "count": results.len(),
+        "results": results
+    })))
+}
+
+pub async fn add_attachment_to_content_by_cid(
+    State(state): State<Arc<AppState>>,
+    PMContributor(user): PMContributor,
+    Path(slug): Path<String>,
+    ValidatedJson(attachement_create): ValidatedJson<AttachmentCreate>
+) -> Result<Json<Value>, FieldError> {
+    let attachment = common_db::get_content_by_cid(&state, attachement_create.cid).await;
+    if attachment.is_none() {
+        return Err(FieldError::InvalidParams("cid".to_string()));
+    }
+    let attachment = attachment.unwrap();
+    let admin = user.group == "editor" || user.group == "administrator";
+
+    let content = common_db::get_content_by_slug(&state, &slug).await;
+    if content.is_none(){
+        return Err(FieldError::InvalidParams("slug".to_string()));
+    }
+    let content = content.unwrap();
+    if user.uid != content.authorId && !admin {
+        return Err(FieldError::PermissionDeny);
+    }
+
+    let _ = db::modify_attachment_parent_by_cid(&state, attachment.cid, content.cid).await?;
+    Ok(Json(json!({ "msg": "ok" })))
+}
+
+pub async fn delete_attachment_from_content_by_cid(
+    State(state): State<Arc<AppState>>,
+    PMContributor(user): PMContributor,
+    Path((slug, cid)): Path<(String, i32)>,
+) -> Result<Json<Value>, FieldError> {
+    let attachment = common_db::get_content_by_cid(&state, cid).await;
+    if attachment.is_none() {
+        return Err(FieldError::InvalidParams("cid".to_string()));
+    }
+    let attachment = attachment.unwrap();
+    let admin = user.group == "editor" || user.group == "administrator";
+    if user.uid != attachment.authorId && !admin {
+        return Err(FieldError::PermissionDeny);
+    }
+
+    let content = common_db::get_content_by_slug(&state, &slug).await;
+    if content.is_none(){
+        return Err(FieldError::InvalidParams("slug".to_string()));
+    }
+    let content = content.unwrap();
+    if user.uid != content.authorId && !admin {
+        return Err(FieldError::PermissionDeny);
+    }
+
+    let _ = db::modify_attachment_parent_by_cid(&state, attachment.cid, 0).await?;
     Ok(Json(json!({ "msg": "ok" })))
 }
