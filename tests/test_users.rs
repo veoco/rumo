@@ -90,18 +90,21 @@ async fn create_then_delete_user_success() {
     assert_eq!(status_code, StatusCode::OK);
 
     let body = body.unwrap();
-    let count = body.get("all_count").unwrap().as_u64().unwrap();
+    let users = body.get("results").unwrap().as_array().unwrap();
+    let mut uid = 0;
+    for user in users{
+        let name = user.get("name").unwrap().as_str().unwrap();
+        if name == "delete_test3" {
+            uid = user.get("uid").unwrap().as_u64().unwrap();
+        }
+    }
 
-    let url = format!("/api/users/{}", 3);
+    let url = format!("/api/users/{}", uid);
     let (status_code, _) = admin_delete(&url).await;
     assert_eq!(status_code, StatusCode::OK);
 
-    let (status_code, body) = admin_get("/api/users/").await;
-    assert_eq!(status_code, StatusCode::OK);
-
-    let body = body.unwrap();
-    let new_count = body.get("all_count").unwrap().as_u64().unwrap();
-    assert!(new_count < count);
+    let (status_code, _) = admin_get(&url).await;
+    assert_eq!(status_code, StatusCode::BAD_REQUEST);
 }
 
 #[tokio::test]
