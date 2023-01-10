@@ -284,7 +284,7 @@ pub async fn create_user_with_user_register(
     }
 }
 
-pub async fn get_users_count(state: &AppState) -> i32 {
+pub async fn get_users_count(state: &AppState) -> i64 {
     let sql = match state.pool.any_kind() {
         _ => format!(
             r#"
@@ -294,7 +294,7 @@ pub async fn get_users_count(state: &AppState) -> i32 {
             users_table = &state.users_table
         ),
     };
-    let all_count = sqlx::query_scalar::<_, i32>(&sql)
+    let all_count = sqlx::query_scalar::<_, i64>(&sql)
         .fetch_one(&state.pool)
         .await
         .unwrap_or(0);

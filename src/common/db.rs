@@ -86,7 +86,7 @@ pub async fn get_contents_count_with_private(
     state: &AppState,
     private_sql: &str,
     content_type: &str,
-) -> i32 {
+) -> i64 {
     let sql = match state.pool.any_kind() {
         AnyKind::Postgres => format!(
             r#"
@@ -113,11 +113,16 @@ pub async fn get_contents_count_with_private(
             contents_table = &state.contents_table,
         ),
     };
-    let all_count = sqlx::query_scalar::<_, i32>(&sql)
+    match sqlx::query_scalar::<_, i64>(&sql)
         .fetch_one(&state.pool)
         .await
-        .unwrap_or(0);
-    all_count
+    {
+        Ok(r) => r,
+        Err(e) => {
+            println!("{:?}", e);
+            0
+        }
+    }
 }
 
 pub async fn get_content_with_metas_user_from_content(
@@ -466,7 +471,9 @@ pub async fn get_fields_by_cid(state: &AppState, cid: i32) -> Vec<Field> {
         .await
     {
         Ok(fields) => fields,
-        Err(_) => {vec![]},
+        Err(_) => {
+            vec![]
+        }
     }
 }
 
@@ -821,7 +828,7 @@ pub async fn get_metas_by_list_query(
     }
 }
 
-pub async fn get_metas_count(state: &AppState, tag: bool) -> i32 {
+pub async fn get_metas_count(state: &AppState, tag: bool) -> i64 {
     let meta_type = if tag { "tag" } else { "category" };
 
     let sql = match state.pool.any_kind() {
@@ -850,7 +857,7 @@ pub async fn get_metas_count(state: &AppState, tag: bool) -> i32 {
             metas_table = &state.metas_table,
         ),
     };
-    let all_count = sqlx::query_scalar::<_, i32>(&sql)
+    let all_count = sqlx::query_scalar::<_, i64>(&sql)
         .fetch_one(&state.pool)
         .await
         .unwrap_or(0);
@@ -861,7 +868,7 @@ pub async fn get_meta_posts_count_by_mid_with_private(
     state: &AppState,
     mid: i32,
     private_sql: &str,
-) -> i32 {
+) -> i64 {
     let sql = match state.pool.any_kind() {
         AnyKind::Postgres => format!(
             r#"
@@ -897,7 +904,7 @@ pub async fn get_meta_posts_count_by_mid_with_private(
             relationships_table = &state.relationships_table
         ),
     };
-    let all_count = sqlx::query_scalar::<_, i32>(&sql)
+    let all_count = sqlx::query_scalar::<_, i64>(&sql)
         .bind(mid)
         .fetch_one(&state.pool)
         .await

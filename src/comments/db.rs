@@ -251,7 +251,7 @@ pub async fn delete_comment_by_coid(state: &AppState, coid: i32) -> Result<u64, 
     }
 }
 
-pub async fn get_comments_count(state: &AppState) -> i32 {
+pub async fn get_comments_count(state: &AppState) -> i64 {
     let sql = match state.pool.any_kind() {
         AnyKind::Postgres => format!(
             r#"
@@ -278,7 +278,7 @@ pub async fn get_comments_count(state: &AppState) -> i32 {
             comments_table = &state.comments_table
         ),
     };
-    match sqlx::query_scalar::<_, i32>(&sql)
+    match sqlx::query_scalar::<_, i64>(&sql)
         .fetch_one(&state.pool)
         .await
     {
@@ -340,7 +340,7 @@ pub async fn get_content_comments_count_by_cid_with_private(
     state: &AppState,
     cid: i32,
     private_sql: &str,
-) -> i32 {
+) -> i64 {
     let sql = match state.pool.any_kind() {
         AnyKind::Postgres => format!(
             r#"
@@ -370,7 +370,7 @@ pub async fn get_content_comments_count_by_cid_with_private(
             comments_table = &state.comments_table
         ),
     };
-    let all_count = sqlx::query_scalar::<_, i32>(&sql)
+    let all_count = sqlx::query_scalar::<_, i64>(&sql)
         .bind(cid)
         .fetch_one(&state.pool)
         .await
