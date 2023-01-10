@@ -113,8 +113,16 @@ async fn create_then_delete_attachments_success() {
 
     let body = body.unwrap();
     let count = body.get("count").unwrap().as_u64().unwrap();
+    let attachments = body.get("results").unwrap().as_array().unwrap().clone();
+    let mut cid = 0;
+    for at in attachments{
+        let name = at.get("name").unwrap().as_str().unwrap();
+        if name == "testFile4.png" {
+            cid = at.get("cid").unwrap().as_u64().unwrap();
+        }
+    }
 
-    let url = format!("/api/attachments/{}", 3);
+    let url = format!("/api/attachments/{}", cid);
     let (status_code, _) = admin_delete(&url).await;
     assert_eq!(status_code, StatusCode::OK);
 
