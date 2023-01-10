@@ -479,7 +479,7 @@ pub async fn modify_option_by_uid_and_name_with_option_modify(
         AnyKind::MySql => format!(
             r#"
             UPDATE {options_table}
-            SET `value"` = ?
+            SET `value` = ?
             WHERE `name` = ? AND `user` = ?
             "#,
             options_table = &state.options_table
