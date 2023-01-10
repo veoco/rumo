@@ -74,34 +74,7 @@ pub async fn create_attachment(
         user.uid,
     )
     .await?;
-    let res = AttachmentInfo::from_attachment_text(text, now_timestamp, now_timestamp);
-    Ok((StatusCode::CREATED, Json(json!(res))))
-}
-
-pub async fn delete_attachment_by_cid(
-    State(state): State<Arc<AppState>>,
-    PMContributor(user): PMContributor,
-    Path(cid): Path<i32>,
-) -> Result<Json<Value>, FieldError> {
-    let attachment = common_db::get_content_by_cid(&state, cid).await;
-    if attachment.is_none() {
-        return Err(FieldError::InvalidParams("cid".to_string()));
-    }
-    let attachment = attachment.unwrap();
-    let admin = user.group == "editor" || user.group == "administrator";
-    if user.uid != attachment.authorId && !admin {
-        return Err(FieldError::PermissionDeny);
-    }
-
-    let text = from_str::<AttachmentText>(&attachment.text)
-        .map_err(|_| FieldError::DatabaseFailed("attachment decode error".to_string()))?;
-
-    let base_dir = std::path::Path::new(&state.upload_root);
-    let filepath = text.path;
-    let _ = delete_file(base_dir.to_path_buf(), &filepath).await;
-
-    let _ = common_db::delete_content_by_cid(&state, cid).await?;
-    Ok(Json(json!({ "msg": "ok" })))
+    Ok((StatusCode::CREATED, Json(json!({"msg":"ok"}))))
 }
 
 pub async fn list_attachments(
@@ -143,8 +116,7 @@ pub async fn list_attachments(
 
     let mut results = vec![];
     for at in attachments {
-        let attachment_info = AttachmentInfo::from_attachment(at)
-            .map_err(|_| FieldError::InvalidParams("text".to_string()))?;
+        let attachment_info = AttachmentInfo::from(at);
         results.push(attachment_info);
     }
 
@@ -155,4 +127,30 @@ pub async fn list_attachments(
         "count": results.len(),
         "results": results
     })))
+}
+
+pub async fn delete_attachment_by_cid(
+    State(state): State<Arc<AppState>>,
+    PMContributor(user): PMContributor,
+    Path(cid): Path<i32>,
+) -> Result<Json<Value>, FieldError> {
+    let attachment = common_db::get_content_by_cid(&state, cid).await;
+    if attachment.is_none() {
+        return Err(FieldError::InvalidParams("cid".to_string()));
+    }
+    let attachment = attachment.unwrap();
+    let admin = user.group == "editor" || user.group == "administrator";
+    if user.uid != attachment.authorId && !admin {
+        return Err(FieldError::PermissionDeny);
+    }
+
+    let text = from_str::<AttachmentText>(&attachment.text)
+        .map_err(|_| FieldError::DatabaseFailed("attachment decode error".to_string()))?;
+
+    let base_dir = std::path::Path::new(&state.upload_root);
+    let filepath = text.path;
+    let _ = delete_file(base_dir.to_path_buf(), &filepath).await;
+
+    let _ = common_db::delete_content_by_cid(&state, cid).await?;
+    Ok(Json(json!({ "msg": "ok" })))
 }

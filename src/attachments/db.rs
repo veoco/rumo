@@ -1,7 +1,7 @@
 use sqlx::any::AnyKind;
 
-use super::models::Attachment;
 use crate::common::errors::FieldError;
+use crate::common::models::Content;
 use crate::AppState;
 
 pub async fn create_attachment_with_params(
@@ -55,7 +55,7 @@ pub async fn get_attachments_count_by_list_query(
     page_size: i32,
     offset: i32,
     order_by: &str,
-) -> Result<Vec<Attachment>, FieldError> {
+) -> Result<Vec<Content>, FieldError> {
     let sql = match state.pool.any_kind() {
         AnyKind::Postgres => format!(
             r#"
@@ -91,7 +91,7 @@ pub async fn get_attachments_count_by_list_query(
             contents_table = &state.contents_table,
         ),
     };
-    match sqlx::query_as::<_, Attachment>(&sql)
+    match sqlx::query_as::<_, Content>(&sql)
         .bind(page_size)
         .bind(offset)
         .fetch_all(&state.pool)

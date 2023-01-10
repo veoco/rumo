@@ -1,30 +1,9 @@
 #![allow(non_snake_case)]
 use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
 use validator::Validate;
 
-use super::{de::from_str, errors::Error};
-
-#[derive(Serialize, Deserialize, FromRow)]
-pub struct Attachment {
-    pub cid: i32,
-    pub title: Option<String>,
-    pub slug: Option<String>,
-    pub created: i32,
-    pub modified: i32,
-    pub text: String,
-    pub order: i32,
-    pub authorId: i32,
-    pub template: Option<String>,
-    pub r#type: String,
-    pub status: String,
-    pub password: Option<String>,
-    pub commentsNum: i32,
-    pub allowComment: String,
-    pub allowPing: String,
-    pub allowFeed: String,
-    pub parent: i32,
-}
+use super::de::from_str;
+use crate::common::models::Content;
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct AttachmentText {
@@ -37,6 +16,7 @@ pub struct AttachmentText {
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct AttachmentInfo {
+    pub cid: i32,
     pub created: i32,
     pub modified: i32,
     pub name: String,
@@ -46,30 +26,31 @@ pub struct AttachmentInfo {
     pub mime: String,
 }
 
-impl AttachmentInfo {
-    pub fn from_attachment_text(at: AttachmentText, created: i32, modified: i32) -> Self {
-        AttachmentInfo {
-            created,
-            modified,
-            name: at.name,
-            path: at.path,
-            size: at.size,
-            r#type: at.r#type,
-            mime: at.mime,
+impl From<Content> for AttachmentInfo {
+    fn from(content: Content) -> Self {
+        if let Ok(at) = from_str::<AttachmentText>(&content.text) {
+            Self {
+                cid: content.cid,
+                created: content.created,
+                modified: content.modified,
+                name: at.name,
+                path: at.path,
+                size: at.size,
+                r#type: at.r#type,
+                mime: at.mime,
+            }
+        } else {
+            Self {
+                cid: 0,
+                created: content.created,
+                modified: content.modified,
+                name: "".to_string(),
+                path: "".to_string(),
+                size: 0,
+                r#type: "".to_string(),
+                mime: "".to_string(),
+            }
         }
-    }
-
-    pub fn from_attachment(attachment: Attachment) -> Result<Self, Error> {
-        let at = from_str::<AttachmentText>(&attachment.text)?;
-        Ok(AttachmentInfo {
-            created: attachment.created,
-            modified: attachment.modified,
-            name: at.name,
-            path: at.path,
-            size: at.size,
-            r#type: at.r#type,
-            mime: at.mime,
-        })
     }
 }
 
