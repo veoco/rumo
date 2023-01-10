@@ -254,6 +254,38 @@ pub async fn admin_post_file(url: &str, data: Vec<u8>) -> (StatusCode, Option<Va
 }
 
 #[allow(dead_code)]
+pub async fn admin_patch_file(url: &str, data: Vec<u8>) -> (StatusCode, Option<Value>) {
+    let state = setup_state().await;
+    let app = setup_app(state.clone()).await;
+    let login_data = json!({"mail": "admin@local.host", "password": "admin"}).to_string();
+    let request = Request::builder()
+        .method(http::Method::POST)
+        .uri("/api/users/token")
+        .header(http::header::CONTENT_TYPE, "application/json")
+        .body(Body::from(login_data))
+        .unwrap();
+    let response = app.oneshot(request).await.unwrap();
+    let body = to_bytes(response.into_body()).await.unwrap();
+    let body: Value = serde_json::from_slice(&body).unwrap();
+    let token = body.get("access_token").unwrap().as_str().unwrap();
+
+    let app = setup_app(state.clone()).await;
+
+    let request = Request::builder()
+        .method(http::Method::PATCH)
+        .uri(url)
+        .header(http::header::CONTENT_TYPE, "multipart/form-data; boundary=testfileboundary")
+        .header(http::header::AUTHORIZATION, format!("Bearer {}", token))
+        .body(Body::from(data))
+        .unwrap();
+    let response = app.oneshot(request).await.unwrap();
+    let status_code = response.status();
+    let body = to_bytes(response.into_body()).await.unwrap();
+    let body = serde_json::from_slice(&body).unwrap_or(None);
+    (status_code, body)
+}
+
+#[allow(dead_code)]
 pub fn get_multipart(filename: &str, content_type: &str) -> Vec<u8> {
     let boundary = "testfileboundary";
     let data = format!(

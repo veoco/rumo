@@ -49,6 +49,62 @@ pub async fn create_attachment_with_params(
     }
 }
 
+pub async fn modify_attachment_by_cid_with_params(
+    state: &AppState,
+    cid: i32,
+    name: &str,
+    now: i32,
+    text: &str,
+) -> Result<u64, FieldError> {
+    let sql = match state.pool.any_kind() {
+        AnyKind::Postgres => format!(
+            r#"
+            UPDATE {contents_table}
+            SET "title" = $1,
+                "slug" = $2,
+                "modified" = $3,
+                "text" = $4
+            WHERE "cid" = $5
+            "#,
+            contents_table = &state.contents_table,
+        ),
+        AnyKind::MySql => format!(
+            r#"
+            UPDATE {contents_table}
+            SET `title` = ?,
+                `slug` = ?,
+                `modified` = ?,
+                `text` = ?
+            WHERE `cid` = ?
+            "#,
+            contents_table = &state.contents_table,
+        ),
+        _ => format!(
+            r#"
+            UPDATE {contents_table}
+            SET "title" = ?,
+                "slug" = ?,
+                "modified" = ?,
+                "text" = ?
+            WHERE "cid" = ?
+            "#,
+            contents_table = &state.contents_table,
+        ),
+    };
+    match sqlx::query(&sql)
+        .bind(name)
+        .bind(name)
+        .bind(now)
+        .bind(text)
+        .bind(cid)
+        .execute(&state.pool)
+        .await
+    {
+        Ok(r) => Ok(r.rows_affected()),
+        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
+    }
+}
+
 pub async fn get_attachments_count_by_list_query(
     state: &AppState,
     private_sql: &str,
