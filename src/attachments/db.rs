@@ -167,7 +167,7 @@ pub async fn get_attachments_by_parent(
             r#"
             SELECT *
             FROM {contents_table}
-            WHERE "type" = 'attachment' AND "parent" = ?1
+            WHERE "type" = 'attachment' AND "parent" = $1
             "#,
             contents_table = &state.contents_table,
         ),
