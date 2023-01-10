@@ -25,7 +25,6 @@ use categories::categories_routers;
 use comments::comments_routers;
 use pages::pages_routers;
 use posts::posts_routers;
-use preload::index_router;
 use tags::tags_routers;
 use users::{models::UserRegister, users_routers};
 
@@ -159,7 +158,7 @@ pub async fn app(app_state: Option<AppState>) -> Router {
         .merge(attachments_routers(ro));
 
     if state.preload_index {
-        router = router.merge(index_router());
+        router = router.fallback(preload::index);
     }
     let app = router.layer(TraceLayer::new_for_http()).with_state(state);
     app
