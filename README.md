@@ -16,23 +16,15 @@
 
 axum + sqlx + jwt + sqlite
 
-## Mysql/MariaDB 说明
-
-rumo 兼容 mysql/mariadb，理论上由 rumo 生成的数据库是能够被 typecho 兼容的，实际未测试。
-
-而 typehco 生成的数据库表使用了无符号整数，在目前架构下并不能与 rumo 兼容。
-
-完全兼容需要相当大的工作量，目前没有兼容的计划。
-
 ## 路线图
 
-**起步 - v0.5（已完成）：**
+**起步 - v0.9（已完成）：**
 
-仅支持 sqlite，完成主要读取 API，v0.5 版本可以用作前端主题开发。
+完成所有读取和写入 API、sqlite、mariadb 和 postgresql 支持，核心功能已可以替代原版。
 
-**v0.5 - v1.0：**
+**v0.9 - v1.0：**
 
-完善读取和写入 API，添加 mariadb 和 postgresql 支持，预期 v1.0 版本可以完全替代原版。
+优化代码结构，修复潜在错误和漏洞。
 
 **v1.0 以后：**
 
@@ -42,17 +34,19 @@ rumo 兼容 mysql/mariadb，理论上由 rumo 生成的数据库是能够被 typ
 
 配置通过以下环境变量获取：
 
-- `DATABASE_URL`：必选，数据库 URL，当前仅支持 sqlite
-- `SECRET_KEY`：必选，密钥字符串，用于 jwt 加密
-- `TOKEN_EXPIRE`：可选，jwt 密钥过期时间，单位小时
-- `PRELOAD_INDEX`：可选，首页预加载，默认为 false
-- `INDEX_PAGE`：可选，预加载的首页文件地址，默认为当前目录下的 index.html 文件
+- `DATABASE_URL`：必选，数据库 URL。
+- `SECRET_KEY`：必选，密钥字符串，用于 jwt 加密。
+- `LISTEN_ADDRESS`：可选，http 监听地址，默认为 127.0.0.1:3000。
+- `TOKEN_EXPIRE`：可选，jwt 密钥过期时间，单位小时。
+- `PRELOAD_INDEX`：可选，首页预加载，默认为 false。
+- `INDEX_PAGE`：可选，预加载的首页文件地址，默认为当前目录下的 index.html 文件。
 - `UPLOAD_ROOT`：可选，文件上传根目录，相当于原版 usr 文件夹所在目录，默认为当前工作目录。
 - `READ_ONLY`：可选，只读模式将关闭所有写入 api，默认为 false。
+- `TABLE_PREFIX`：可选，数据库表前缀，默认为 typecho_。
 
 以下是 `systemd` 参考配置：
 
-```
+```ini
 [Unit]
 Description=rumo
 After=network.target
@@ -60,8 +54,9 @@ After=network.target
 [Service]
 Environment="DATABASE_URL=sqlite:data.db"
 Environment="SECRET_KEY=fake-key"
+Environment="PRELOAD_INDEX=true"
+Environment="INDEX_PAGE=/opt/rumo/index.html"
 Environment="UPLOAD_ROOT=/opt/rumo"
-Environment="READ_ONLY=false"
 Environment="RUST_LOG=ERROR"
 WorkingDirectory=/opt/rumo
 ExecStart=/opt/rumo/rumo run
@@ -71,6 +66,36 @@ Group=rumo
 [Install]
 WantedBy=multi-user.target
 ```
+
+## 页面预加载说明
+
+通过 [minijinja](https://crates.io/crates/minijinja) 支持类 jinja2/django 的写法，参考文件：
+
+```html
+<!DOCTYPE html>
+<html lang="{{ options.lang }}">
+<head>
+  <meta charset="{{ options.charset }}" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ options.title }}</title>
+  <script type="module" crossorigin src="/assets/fake.js"></script>
+  <link rel="stylesheet" href="/assets/fake.css">
+</head>
+<body>
+  <div id="app"></div>
+</body>
+</html>
+```
+
+可用变量请查看 typecho 数据库 options 表默认配置，或者利用选项相关 api 向 uid 为 0 的用户添加选项。
+
+## Mysql/MariaDB 说明
+
+rumo 兼容 mysql/mariadb，理论上由 rumo 生成的数据库是能够被 typecho 兼容的，实际未测试。
+
+而 typehco 生成的数据库表使用了无符号整数，在目前架构下并不能与 rumo 兼容。
+
+完全兼容需要相当大的工作量，目前没有兼容的计划，如有需要使用可尝试修改表中所有无符号整数列为有符号整数。
 
 ## API 列表
 
