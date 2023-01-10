@@ -207,7 +207,7 @@ pub async fn modify_attachment_parent_by_cid(
         AnyKind::Postgres => format!(
             r#"
             UPDATE {contents_table}
-            SET "parent" = $1,
+            SET "parent" = $1
             WHERE "cid" = $2
             "#,
             contents_table = &state.contents_table,
