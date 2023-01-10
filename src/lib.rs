@@ -70,14 +70,17 @@ async fn get_state(app_state: Option<AppState>) -> AppState {
                 _ => false,
             };
 
+            let mut index_page = "".to_string();
             let filepath = env::var("INDEX_PAGE").unwrap_or(String::from("./index.html"));
             let filepath = std::path::Path::new(&filepath);
-            if preload_index && !filepath.exists() && !filepath.is_file() {
-                panic!("INDEX_PAGE is invalid")
+            if preload_index {
+                if !filepath.exists() && !filepath.is_file() {
+                    panic!("INDEX_PAGE is invalid")
+                }
+                index_page = fs::read_to_string(filepath)
+                    .await
+                    .expect("INDEX_PAGE is invalid");
             }
-            let index_page = fs::read_to_string(filepath)
-                .await
-                .expect("INDEX_PAGE is invalid");
 
             let upload_root = env::var("UPLOAD_ROOT").unwrap_or(String::from("."));
             let read_only = match env::var("READ_ONLY") {
