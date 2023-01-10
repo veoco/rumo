@@ -1220,6 +1220,23 @@ WantedBy=multi-user.target
 </details>
 
 <details>
+<summary>GET /api/attachments/:cid ，获取指定 cid 附件列表</summary>
+  
+ 1. 权限要求：
+    - PM4：禁止
+    - PM3：禁止
+    - PM2：允许，仅当前用户上传附件
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - cid：i32
+
+  3. 查询参数：
+     - 无
+</details>
+
+<details>
 <summary>POST /api/attachments/ ，新建附件</summary>
   
  1. 权限要求：
@@ -1240,6 +1257,26 @@ WantedBy=multi-user.target
 </details>
 
 <details>
+<summary>PATCH /api/attachments/:cid ，修改指定 cid 附件</summary>
+  
+ 1. 权限要求：
+    - PM4：禁止
+    - PM3：禁止
+    - PM2：允许，仅当前用户上传附件
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - cid：i32
+
+  3. 查询参数：
+     - 无
+
+  4. 提交表单：
+     - file：multipart，multipart/form-data 单个文件，可用 `<input type="file" name="file">`
+</details>
+
+<details>
 <summary>DELETE /api/attachments/:cid ，删除指定 cid 的附件</summary>
   
  1. 权限要求：
@@ -1250,6 +1287,122 @@ WantedBy=multi-user.target
     - PM0：允许
 
   2. 路径参数：
+     - cid：i32
+
+  3. 查询参数：
+     - 无
+
+  4. 提交表单：
+     - 无
+</details>
+
+<details>
+<summary>GET /api/pages/:slug/attachments/ ，获取指定 slug 页面所有附件列表</summary>
+  
+ 1. 权限要求：
+    - PM4：允许
+    - PM3：允许
+    - PM2：允许
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - slug：String
+
+  3. 查询参数：
+     - 无
+</details>
+
+<details>
+<summary>POST /api/pages/:slug/attachments/ ，关联指定 cid 附件到指定 slug 页面</summary>
+  
+ 1. 权限要求：
+    - PM4：禁止
+    - PM3：禁止
+    - PM2：禁止
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - slug：String
+
+  3. 查询参数：
+     - 无
+
+  4. 提交表单：
+     - cid：i32
+</details>
+
+<details>
+<summary>DELETE /api/pages/:slug/attachments/:cid ，取消关联指定 slug 页面的指定 cid 的附件</summary>
+  
+ 1. 权限要求：
+    - PM4：禁止
+    - PM3：禁止
+    - PM2：禁止
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - slug: String
+     - cid：i32
+
+  3. 查询参数：
+     - 无
+
+  4. 提交表单：
+     - 无
+</details>
+
+<details>
+<summary>GET /api/posts/:slug/attachments/ ，获取指定 slug 文章所有附件列表</summary>
+  
+ 1. 权限要求：
+    - PM4：允许
+    - PM3：允许
+    - PM2：允许
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - slug：String
+
+  3. 查询参数：
+     - 无
+</details>
+
+<details>
+<summary>POST /api/posts/:slug/attachments/ ，关联指定 cid 附件到指定 slug 文章</summary>
+  
+ 1. 权限要求：
+    - PM4：禁止
+    - PM3：禁止
+    - PM2：允许，仅当前用户文章
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - slug：String
+
+  3. 查询参数：
+     - 无
+
+  4. 提交表单：
+     - cid：i32
+</details>
+
+<details>
+<summary>DELETE /api/posts/:slug/attachments/:cid ，取消关联指定 slug 页面的指定 cid 的附件</summary>
+  
+ 1. 权限要求：
+    - PM4：禁止
+    - PM3：禁止
+    - PM2：允许，仅当前用户文章
+    - PM1：允许
+    - PM0：允许
+
+  2. 路径参数：
+     - slug: String
      - cid：i32
 
   3. 查询参数：
