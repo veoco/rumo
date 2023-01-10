@@ -1,5 +1,5 @@
 use axum::extract::State;
-use axum::{routing::get, Router};
+use axum::response::Html;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -7,7 +7,7 @@ use crate::common::errors::FieldError;
 use crate::users::db as user_db;
 use crate::AppState;
 
-pub async fn index(State(state): State<Arc<AppState>>) -> Result<String, FieldError> {
+pub async fn index(State(state): State<Arc<AppState>>) -> Result<Html<String>, FieldError> {
     let template = state.jinja_env.get_template("index.html").unwrap();
     let mut context = HashMap::new();
 
@@ -21,10 +21,5 @@ pub async fn index(State(state): State<Arc<AppState>>) -> Result<String, FieldEr
     let output = template
         .render(context)
         .map_err(|e| FieldError::DatabaseFailed(e.to_string()))?;
-    Ok(output)
-}
-
-pub fn index_router() -> Router<Arc<AppState>> {
-    let index_route = Router::new().route("/", get(index));
-    index_route
+    Ok(Html(output))
 }
