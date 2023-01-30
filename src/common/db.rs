@@ -873,7 +873,6 @@ pub async fn get_meta_posts_count_by_mid_with_private(
             FROM {contents_table}
             JOIN {relationships_table} ON {contents_table}.cid = {relationships_table}.cid
             WHERE "type" = 'post' AND "mid" = $1{private_sql}
-            GROUP BY {contents_table}.cid
             "#,
             contents_table = &state.contents_table,
             relationships_table = &state.relationships_table
@@ -884,7 +883,6 @@ pub async fn get_meta_posts_count_by_mid_with_private(
             FROM {contents_table}
             JOIN {relationships_table} ON {contents_table}.cid = {relationships_table}.cid
             WHERE `type` = 'post' AND `mid` = ?{private_sql}
-            GROUP BY {contents_table}.cid
             "#,
             contents_table = &state.contents_table,
             relationships_table = &state.relationships_table
@@ -895,7 +893,6 @@ pub async fn get_meta_posts_count_by_mid_with_private(
             FROM {contents_table}
             JOIN {relationships_table} ON {contents_table}.cid = {relationships_table}.cid
             WHERE "type" = 'post' AND "mid" = ?{private_sql}
-            GROUP BY {contents_table}.cid
             "#,
             contents_table = &state.contents_table,
             relationships_table = &state.relationships_table
