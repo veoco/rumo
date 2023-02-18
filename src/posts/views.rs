@@ -31,7 +31,7 @@ pub async fn create_post(
     Ok((StatusCode::CREATED, Json(json!({ "msg": "ok" }))))
 }
 
-pub async fn modify_page_by_slug(
+pub async fn modify_post_by_slug(
     State(state): State<Arc<AppState>>,
     PMContributor(user): PMContributor,
     Path(slug): Path<String>,
@@ -43,9 +43,11 @@ pub async fn modify_page_by_slug(
     }
     let exist_post = exist_post.unwrap();
 
-    let target_post = common_db::get_content_by_slug(&state, &post_modify.slug).await;
-    if target_post.is_some() {
-        return Err(FieldError::AlreadyExist("post slug".to_owned()));
+    if slug != post_modify.slug {
+        let target_post = common_db::get_content_by_slug(&state, &post_modify.slug).await;
+        if target_post.is_some() {
+            return Err(FieldError::AlreadyExist("post slug".to_owned()));
+        }
     }
 
     if user.group == "contributor" {
@@ -126,8 +128,12 @@ pub async fn get_post_by_slug(
         String::from("")
     } else {
         match state.pool.any_kind() {
-            AnyKind::MySql => format!(r#" AND (`status` = 'publish' OR `status` = 'password' OR `status` = 'hidden')"#),
-            _ => format!(r#" AND ("status" = 'publish' OR "status" = 'password' OR "status" = 'hidden')"#),
+            AnyKind::MySql => format!(
+                r#" AND (`status` = 'publish' OR `status` = 'password' OR `status` = 'hidden')"#
+            ),
+            _ => format!(
+                r#" AND ("status" = 'publish' OR "status" = 'password' OR "status" = 'hidden')"#
+            ),
         }
     };
 
@@ -223,7 +229,7 @@ pub async fn modify_post_field_by_slug_and_name(
     State(state): State<Arc<AppState>>,
     PMContributor(user): PMContributor,
     Path((slug, name)): Path<(String, String)>,
-    ValidatedJson(field_create): ValidatedJson<FieldCreate>,
+    ValidatedJson(field_modify): ValidatedJson<FieldCreate>,
 ) -> Result<Json<Value>, FieldError> {
     let exist_post = common_db::get_content_by_slug(&state, &slug).await;
     if exist_post.is_none() {
@@ -236,16 +242,18 @@ pub async fn modify_post_field_by_slug_and_name(
         return Err(FieldError::PermissionDeny);
     }
 
-    let exist_field = common_db::get_field_by_cid_and_name(&state, exist_post.cid, &name).await;
-    if exist_field.is_none() {
-        return Err(FieldError::InvalidParams("name".to_owned()));
+    if name != field_modify.name {
+        let exist_field = common_db::get_field_by_cid_and_name(&state, exist_post.cid, &name).await;
+        if exist_field.is_none() {
+            return Err(FieldError::InvalidParams("name".to_owned()));
+        }
     }
 
     let _ = common_db::modify_field_by_cid_and_name_with_field_create(
         &state,
         exist_post.cid,
         &name,
-        &field_create,
+        &field_modify,
     )
     .await?;
     Ok(Json(json!({ "msg": "ok" })))

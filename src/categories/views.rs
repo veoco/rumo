@@ -80,9 +80,11 @@ pub async fn modify_category_by_slug(
     }
     let exist_cate = exist_cate.unwrap();
 
-    let target_cate = common_db::get_meta_by_slug(&state, &category_modify.slug, false).await;
-    if target_cate.is_some() {
-        return Err(FieldError::InvalidParams("category slug".to_owned()));
+    if slug != category_modify.slug {
+        let target_cate = common_db::get_meta_by_slug(&state, &category_modify.slug, false).await;
+        if target_cate.is_some() {
+            return Err(FieldError::InvalidParams("category slug".to_owned()));
+        }
     }
 
     let _ =

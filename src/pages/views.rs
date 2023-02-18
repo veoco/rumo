@@ -40,9 +40,11 @@ pub async fn modify_page_by_slug(
     }
     let exist_page = exist_page.unwrap();
 
-    let target_page = common_db::get_content_by_slug(&state, &page_modify.slug).await;
-    if target_page.is_some() {
-        return Err(FieldError::AlreadyExist("page slug".to_owned()));
+    if slug != page_modify.slug {
+        let target_page = common_db::get_content_by_slug(&state, &page_modify.slug).await;
+        if target_page.is_some() {
+            return Err(FieldError::AlreadyExist("page slug".to_owned()));
+        }
     }
 
     let _ =
@@ -198,7 +200,7 @@ pub async fn modify_page_field_by_slug_and_name(
     State(state): State<Arc<AppState>>,
     PMEditor(_): PMEditor,
     Path((slug, name)): Path<(String, String)>,
-    ValidatedJson(field_create): ValidatedJson<FieldCreate>,
+    ValidatedJson(field_modfify): ValidatedJson<FieldCreate>,
 ) -> Result<Json<Value>, FieldError> {
     let exist_page = common_db::get_content_by_slug(&state, &slug).await;
     if exist_page.is_none() {
@@ -206,16 +208,18 @@ pub async fn modify_page_field_by_slug_and_name(
     }
     let exist_page = exist_page.unwrap();
 
-    let exist_field = common_db::get_field_by_cid_and_name(&state, exist_page.cid, &name).await;
-    if exist_field.is_none() {
-        return Err(FieldError::InvalidParams("name".to_owned()));
+    if name != field_modfify.name {
+        let exist_field = common_db::get_field_by_cid_and_name(&state, exist_page.cid, &name).await;
+        if exist_field.is_none() {
+            return Err(FieldError::InvalidParams("name".to_owned()));
+        }
     }
 
     let _ = common_db::modify_field_by_cid_and_name_with_field_create(
         &state,
         exist_page.cid,
         &name,
-        &field_create,
+        &field_modfify,
     )
     .await?;
     Ok(Json(json!({ "msg": "ok" })))
