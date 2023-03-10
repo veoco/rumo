@@ -74,11 +74,10 @@ async fn main() {
             info!("Listening on http://{}", addr);
 
             let app = app(None).await;
-            axum::Server::bind(&addr.parse().unwrap())
+            let _ = axum::Server::bind(&addr.parse().unwrap())
                 .serve(app.into_make_service_with_connect_info::<SocketAddr>())
                 .with_graceful_shutdown(shutdown_signal())
-                .await
-                .expect("start server failed");
+                .await;
         }
         "init" => {
             let subscriber = FmtSubscriber::builder()
