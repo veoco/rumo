@@ -30,21 +30,15 @@ jobs:
         timeout-minutes: 120
         env:
           TARGET_AMD64: x86_64-unknown-linux-musl
-          TARGET_I586: i586-unknown-linux-musl
           OUPUT_AMD64: rumo-linux-amd64
-          OUPUT_I586: rumo-linux-i586
         run: |
           mkdir -p ./build/release
           sudo apt install -y libssl-dev musl-dev musl-tools
           rustup target add $TARGET_AMD64
-          rustup target add $TARGET_I586
           cargo build --release --target=$TARGET_AMD64
-          cargo build --release --target=$TARGET_I586
           cp ./target/$TARGET_AMD64/release/rumo ./build/release/$OUPUT_AMD64
-          cp ./target/$TARGET_I586/release/rumo ./build/release/$OUPUT_I586
           cd ./build/release
           shasum -a 256 $OUPUT_AMD64 > $OUPUT_AMD64.sha256
-          shasum -a 256 $OUPUT_I586 > $OUPUT_I586.sha256
 
       - name: Upload Github Assets
         uses: softprops/action-gh-release@v1
