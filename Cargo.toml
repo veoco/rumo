@@ -27,8 +27,7 @@ serde = { version = "1.0", features = ["derive"] }
 minijinja = "0.28"
 lazy_static = "1.4"
 
-sqlx = { version = "0.6", features = ["runtime-tokio-native-tls", "sqlite", "mysql", "postgres", "any", "json"] }
-openssl = { version = "0.10", features = ["vendored"] }
+sqlx = { version = "0.6", features = ["runtime-tokio-rustls", "sqlite", "mysql", "postgres", "any", "json"] }
 
 jwt = "0.16"
 md-5 = "0.10"
