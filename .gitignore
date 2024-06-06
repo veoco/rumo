@@ -14,3 +14,4 @@ Cargo.lock
 db.sqlite3
 usr
 index.html
+.env

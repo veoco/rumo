@@ -1,0 +1,12 @@
+[package]
+name = "entity"
+version = "0.10.0"
+edition = "2021"
+
+[lib]
+name = "entity"
+path = "src/lib.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+sea-orm = {version = "0.12"}
