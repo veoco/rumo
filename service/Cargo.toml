@@ -2,3 +2,20 @@
 name = "rumo-service"
 version = "0.10.0"
 edition = "2021"
+
+[dependencies]
+entity = { path = "../entity" }
+
+serde = "1"
+validator = { version = "0.18", features = ["derive"] }
+
+[dependencies.sea-orm]
+version = "0.12"
+features = [
+    "debug-print",
+    "runtime-tokio-rustls",
+    "sqlx-all",
+]
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt"] }

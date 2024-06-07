@@ -1,66 +1,39 @@
-use axum::Router;
 use axum::{
     body::Body,
     http::{self, Request, StatusCode},
 };
-use hyper::body::to_bytes;
-use minijinja::Environment;
+use http_body_util::BodyExt;
 use serde_json::{json, Value};
-use sqlx::AnyPool;
 use std::env;
 use tower::ServiceExt;
 
-use rumo::{app, AppState, INDEX_TPL};
+use rumo_api::{setup_app, AppState};
+use rumo_service::sea_orm::Database;
 
 async fn setup_state() -> AppState {
-    let pool = AnyPool::connect(&env::var("DATABASE_URL").unwrap())
+    let conn = Database::connect(&env::var("DATABASE_URL").unwrap())
         .await
         .unwrap();
 
     let secret_key = env::var("SECRET_KEY").unwrap();
     let access_token_expire_secondes = 3600 * 24 * 30;
-    let preload_index = false;
-    let mut jinja_env = Environment::new();
-    jinja_env.add_template("index.html", &INDEX_TPL).unwrap();
+
     let upload_root = ".".to_string();
     let read_only = false;
 
-    let table_prefix = env::var("TABLE_PREFIX").unwrap_or("typecho_".to_string());
-    let comments_table = format!("{}comments", table_prefix);
-    let contents_table = format!("{}contents", table_prefix);
-    let fields_table = format!("{}fields", table_prefix);
-    let metas_table = format!("{}metas", table_prefix);
-    let options_table = format!("{}options", table_prefix);
-    let relationships_table = format!("{}relationships", table_prefix);
-    let users_table = format!("{}users", table_prefix);
-
     AppState {
-        pool,
+        conn,
         secret_key,
         access_token_expire_secondes,
         upload_root,
         read_only,
-        preload_index,
-        jinja_env,
-
-        comments_table,
-        contents_table,
-        fields_table,
-        metas_table,
-        options_table,
-        relationships_table,
-        users_table,
     }
-}
-
-async fn setup_app(state: AppState) -> Router {
-    app(Some(state)).await
 }
 
 #[allow(dead_code)]
 pub async fn get(url: &str) -> (StatusCode, Option<Value>) {
     let state = setup_state().await;
-    let app = setup_app(state.clone()).await;
+    let app = setup_app(Some(state.clone())).await;
 
     let request = Request::builder()
         .method(http::Method::GET)
@@ -70,7 +43,7 @@ pub async fn get(url: &str) -> (StatusCode, Option<Value>) {
         .unwrap();
     let response = app.oneshot(request).await.unwrap();
     let status_code = response.status();
-    let body = to_bytes(response.into_body()).await.unwrap();
+    let body = response.into_body().collect().await.unwrap().to_bytes();
     let body = serde_json::from_slice(&body).unwrap_or(None);
     (status_code, body)
 }
@@ -78,7 +51,7 @@ pub async fn get(url: &str) -> (StatusCode, Option<Value>) {
 #[allow(dead_code)]
 pub async fn post(url: &str, data: String) -> (StatusCode, Option<Value>) {
     let state = setup_state().await;
-    let app = setup_app(state.clone()).await;
+    let app = setup_app(Some(state.clone())).await;
 
     let request = Request::builder()
         .method(http::Method::POST)
@@ -90,7 +63,7 @@ pub async fn post(url: &str, data: String) -> (StatusCode, Option<Value>) {
         .unwrap();
     let response = app.oneshot(request).await.unwrap();
     let status_code = response.status();
-    let body = to_bytes(response.into_body()).await.unwrap();
+    let body = response.into_body().collect().await.unwrap().to_bytes();
     let body = serde_json::from_slice(&body).unwrap_or(None);
     (status_code, body)
 }
@@ -98,7 +71,7 @@ pub async fn post(url: &str, data: String) -> (StatusCode, Option<Value>) {
 #[allow(dead_code)]
 pub async fn admin_get(url: &str) -> (StatusCode, Option<Value>) {
     let state = setup_state().await;
-    let app = setup_app(state.clone()).await;
+    let app = setup_app(Some(state.clone())).await;
     let login_data = json!({"mail": "admin@local.host", "password": "admin"}).to_string();
     let request = Request::builder()
         .method(http::Method::POST)
@@ -107,11 +80,11 @@ pub async fn admin_get(url: &str) -> (StatusCode, Option<Value>) {
         .body(Body::from(login_data))
         .unwrap();
     let response = app.oneshot(request).await.unwrap();
-    let body = to_bytes(response.into_body()).await.unwrap();
+    let body = response.into_body().collect().await.unwrap().to_bytes();
     let body: Value = serde_json::from_slice(&body).unwrap();
     let token = body.get("access_token").unwrap().as_str().unwrap();
 
-    let app = setup_app(state.clone()).await;
+    let app = setup_app(Some(state.clone())).await;
 
     let request = Request::builder()
         .method(http::Method::GET)
@@ -122,7 +95,7 @@ pub async fn admin_get(url: &str) -> (StatusCode, Option<Value>) {
         .unwrap();
     let response = app.oneshot(request).await.unwrap();
     let status_code = response.status();
-    let body = to_bytes(response.into_body()).await.unwrap();
+    let body = response.into_body().collect().await.unwrap().to_bytes();
     let body = serde_json::from_slice(&body).unwrap_or(None);
     (status_code, body)
 }
@@ -130,7 +103,7 @@ pub async fn admin_get(url: &str) -> (StatusCode, Option<Value>) {
 #[allow(dead_code)]
 pub async fn admin_delete(url: &str) -> (StatusCode, Option<Value>) {
     let state = setup_state().await;
-    let app = setup_app(state.clone()).await;
+    let app = setup_app(Some(state.clone())).await;
     let login_data = json!({"mail": "admin@local.host", "password": "admin"}).to_string();
     let request = Request::builder()
         .method(http::Method::POST)
@@ -139,11 +112,11 @@ pub async fn admin_delete(url: &str) -> (StatusCode, Option<Value>) {
         .body(Body::from(login_data))
         .unwrap();
     let response = app.oneshot(request).await.unwrap();
-    let body = to_bytes(response.into_body()).await.unwrap();
+    let body = response.into_body().collect().await.unwrap().to_bytes();
     let body: Value = serde_json::from_slice(&body).unwrap();
     let token = body.get("access_token").unwrap().as_str().unwrap();
 
-    let app = setup_app(state.clone()).await;
+    let app = setup_app(Some(state.clone())).await;
 
     let request = Request::builder()
         .method(http::Method::DELETE)
@@ -154,7 +127,7 @@ pub async fn admin_delete(url: &str) -> (StatusCode, Option<Value>) {
         .unwrap();
     let response = app.oneshot(request).await.unwrap();
     let status_code = response.status();
-    let body = to_bytes(response.into_body()).await.unwrap();
+    let body = response.into_body().collect().await.unwrap().to_bytes();
     let body = serde_json::from_slice(&body).unwrap_or(None);
     (status_code, body)
 }
@@ -162,7 +135,7 @@ pub async fn admin_delete(url: &str) -> (StatusCode, Option<Value>) {
 #[allow(dead_code)]
 pub async fn admin_post(url: &str, data: String) -> (StatusCode, Option<Value>) {
     let state = setup_state().await;
-    let app = setup_app(state.clone()).await;
+    let app = setup_app(Some(state.clone())).await;
     let login_data = json!({"mail": "admin@local.host", "password": "admin"}).to_string();
     let request = Request::builder()
         .method(http::Method::POST)
@@ -171,11 +144,11 @@ pub async fn admin_post(url: &str, data: String) -> (StatusCode, Option<Value>) 
         .body(Body::from(login_data))
         .unwrap();
     let response = app.oneshot(request).await.unwrap();
-    let body = to_bytes(response.into_body()).await.unwrap();
+    let body = response.into_body().collect().await.unwrap().to_bytes();
     let body: Value = serde_json::from_slice(&body).unwrap();
     let token = body.get("access_token").unwrap().as_str().unwrap();
 
-    let app = setup_app(state.clone()).await;
+    let app = setup_app(Some(state.clone())).await;
 
     let request = Request::builder()
         .method(http::Method::POST)
@@ -186,7 +159,7 @@ pub async fn admin_post(url: &str, data: String) -> (StatusCode, Option<Value>) 
         .unwrap();
     let response = app.oneshot(request).await.unwrap();
     let status_code = response.status();
-    let body = to_bytes(response.into_body()).await.unwrap();
+    let body = response.into_body().collect().await.unwrap().to_bytes();
     let body = serde_json::from_slice(&body).unwrap_or(None);
     (status_code, body)
 }
@@ -194,7 +167,7 @@ pub async fn admin_post(url: &str, data: String) -> (StatusCode, Option<Value>) 
 #[allow(dead_code)]
 pub async fn admin_patch(url: &str, data: String) -> (StatusCode, Option<Value>) {
     let state = setup_state().await;
-    let app = setup_app(state.clone()).await;
+    let app = setup_app(Some(state.clone())).await;
     let login_data = json!({"mail": "admin@local.host", "password": "admin"}).to_string();
     let request = Request::builder()
         .method(http::Method::POST)
@@ -203,11 +176,11 @@ pub async fn admin_patch(url: &str, data: String) -> (StatusCode, Option<Value>)
         .body(Body::from(login_data))
         .unwrap();
     let response = app.oneshot(request).await.unwrap();
-    let body = to_bytes(response.into_body()).await.unwrap();
+    let body = response.into_body().collect().await.unwrap().to_bytes();
     let body: Value = serde_json::from_slice(&body).unwrap();
     let token = body.get("access_token").unwrap().as_str().unwrap();
 
-    let app = setup_app(state.clone()).await;
+    let app = setup_app(Some(state.clone())).await;
 
     let request = Request::builder()
         .method(http::Method::PATCH)
@@ -218,7 +191,7 @@ pub async fn admin_patch(url: &str, data: String) -> (StatusCode, Option<Value>)
         .unwrap();
     let response = app.oneshot(request).await.unwrap();
     let status_code = response.status();
-    let body = to_bytes(response.into_body()).await.unwrap();
+    let body = response.into_body().collect().await.unwrap().to_bytes();
     let body = serde_json::from_slice(&body).unwrap_or(None);
     (status_code, body)
 }
@@ -226,7 +199,7 @@ pub async fn admin_patch(url: &str, data: String) -> (StatusCode, Option<Value>)
 #[allow(dead_code)]
 pub async fn admin_post_file(url: &str, data: Vec<u8>) -> (StatusCode, Option<Value>) {
     let state = setup_state().await;
-    let app = setup_app(state.clone()).await;
+    let app = setup_app(Some(state.clone())).await;
     let login_data = json!({"mail": "admin@local.host", "password": "admin"}).to_string();
     let request = Request::builder()
         .method(http::Method::POST)
@@ -235,11 +208,11 @@ pub async fn admin_post_file(url: &str, data: Vec<u8>) -> (StatusCode, Option<Va
         .body(Body::from(login_data))
         .unwrap();
     let response = app.oneshot(request).await.unwrap();
-    let body = to_bytes(response.into_body()).await.unwrap();
+    let body = response.into_body().collect().await.unwrap().to_bytes();
     let body: Value = serde_json::from_slice(&body).unwrap();
     let token = body.get("access_token").unwrap().as_str().unwrap();
 
-    let app = setup_app(state.clone()).await;
+    let app = setup_app(Some(state.clone())).await;
 
     let request = Request::builder()
         .method(http::Method::POST)
@@ -253,7 +226,7 @@ pub async fn admin_post_file(url: &str, data: Vec<u8>) -> (StatusCode, Option<Va
         .unwrap();
     let response = app.oneshot(request).await.unwrap();
     let status_code = response.status();
-    let body = to_bytes(response.into_body()).await.unwrap();
+    let body = response.into_body().collect().await.unwrap().to_bytes();
     let body = serde_json::from_slice(&body).unwrap_or(None);
     (status_code, body)
 }
@@ -261,7 +234,7 @@ pub async fn admin_post_file(url: &str, data: Vec<u8>) -> (StatusCode, Option<Va
 #[allow(dead_code)]
 pub async fn admin_patch_file(url: &str, data: Vec<u8>) -> (StatusCode, Option<Value>) {
     let state = setup_state().await;
-    let app = setup_app(state.clone()).await;
+    let app = setup_app(Some(state.clone())).await;
     let login_data = json!({"mail": "admin@local.host", "password": "admin"}).to_string();
     let request = Request::builder()
         .method(http::Method::POST)
@@ -270,11 +243,11 @@ pub async fn admin_patch_file(url: &str, data: Vec<u8>) -> (StatusCode, Option<V
         .body(Body::from(login_data))
         .unwrap();
     let response = app.oneshot(request).await.unwrap();
-    let body = to_bytes(response.into_body()).await.unwrap();
+    let body = response.into_body().collect().await.unwrap().to_bytes();
     let body: Value = serde_json::from_slice(&body).unwrap();
     let token = body.get("access_token").unwrap().as_str().unwrap();
 
-    let app = setup_app(state.clone()).await;
+    let app = setup_app(Some(state.clone())).await;
 
     let request = Request::builder()
         .method(http::Method::PATCH)
@@ -288,7 +261,7 @@ pub async fn admin_patch_file(url: &str, data: Vec<u8>) -> (StatusCode, Option<V
         .unwrap();
     let response = app.oneshot(request).await.unwrap();
     let status_code = response.status();
-    let body = to_bytes(response.into_body()).await.unwrap();
+    let body = response.into_body().collect().await.unwrap().to_bytes();
     let body = serde_json::from_slice(&body).unwrap_or(None);
     (status_code, body)
 }
