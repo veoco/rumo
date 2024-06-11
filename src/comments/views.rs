@@ -1,8 +1,8 @@
-use axum::extract::{Path, State, TypedHeader};
-use axum::headers::UserAgent;
+use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::Json;
-use axum_client_ip::ClientIp;
+use axum_client_ip::InsecureClientIp;
+use axum_extra::{headers::UserAgent, TypedHeader};
 use md5::{Digest, Md5};
 use serde_json::{json, Value};
 use sqlx::any::AnyKind;
@@ -19,7 +19,7 @@ pub async fn create_page_comment(
     State(state): State<Arc<AppState>>,
     PMVisitor(user): PMVisitor,
     TypedHeader(user_agent): TypedHeader<UserAgent>,
-    ClientIp(ip): ClientIp,
+    InsecureClientIp(ip): InsecureClientIp,
     Path(slug): Path<String>,
     ValidatedJson(comment_create): ValidatedJson<CommentCreate>,
 ) -> Result<(StatusCode, Json<Value>), FieldError> {
@@ -94,7 +94,7 @@ pub async fn create_post_comment(
     State(state): State<Arc<AppState>>,
     PMVisitor(user): PMVisitor,
     TypedHeader(user_agent): TypedHeader<UserAgent>,
-    ClientIp(ip): ClientIp,
+    InsecureClientIp(ip): InsecureClientIp,
     Path(slug): Path<String>,
     ValidatedJson(comment_create): ValidatedJson<CommentCreate>,
 ) -> Result<(StatusCode, Json<Value>), FieldError> {

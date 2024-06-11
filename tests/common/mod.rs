@@ -3,7 +3,7 @@ use axum::{
     body::Body,
     http::{self, Request, StatusCode},
 };
-use hyper::body::to_bytes;
+use http_body_util::BodyExt;
 use minijinja::Environment;
 use serde_json::{json, Value};
 use sqlx::AnyPool;
@@ -70,7 +70,7 @@ pub async fn get(url: &str) -> (StatusCode, Option<Value>) {
         .unwrap();
     let response = app.oneshot(request).await.unwrap();
     let status_code = response.status();
-    let body = to_bytes(response.into_body()).await.unwrap();
+    let body = response.into_body().collect().await.unwrap().to_bytes();
     let body = serde_json::from_slice(&body).unwrap_or(None);
     (status_code, body)
 }
@@ -90,7 +90,7 @@ pub async fn post(url: &str, data: String) -> (StatusCode, Option<Value>) {
         .unwrap();
     let response = app.oneshot(request).await.unwrap();
     let status_code = response.status();
-    let body = to_bytes(response.into_body()).await.unwrap();
+    let body = response.into_body().collect().await.unwrap().to_bytes();
     let body = serde_json::from_slice(&body).unwrap_or(None);
     (status_code, body)
 }
@@ -107,7 +107,7 @@ pub async fn admin_get(url: &str) -> (StatusCode, Option<Value>) {
         .body(Body::from(login_data))
         .unwrap();
     let response = app.oneshot(request).await.unwrap();
-    let body = to_bytes(response.into_body()).await.unwrap();
+    let body = response.into_body().collect().await.unwrap().to_bytes();
     let body: Value = serde_json::from_slice(&body).unwrap();
     let token = body.get("access_token").unwrap().as_str().unwrap();
 
@@ -122,7 +122,7 @@ pub async fn admin_get(url: &str) -> (StatusCode, Option<Value>) {
         .unwrap();
     let response = app.oneshot(request).await.unwrap();
     let status_code = response.status();
-    let body = to_bytes(response.into_body()).await.unwrap();
+    let body = response.into_body().collect().await.unwrap().to_bytes();
     let body = serde_json::from_slice(&body).unwrap_or(None);
     (status_code, body)
 }
@@ -139,7 +139,7 @@ pub async fn admin_delete(url: &str) -> (StatusCode, Option<Value>) {
         .body(Body::from(login_data))
         .unwrap();
     let response = app.oneshot(request).await.unwrap();
-    let body = to_bytes(response.into_body()).await.unwrap();
+    let body = response.into_body().collect().await.unwrap().to_bytes();
     let body: Value = serde_json::from_slice(&body).unwrap();
     let token = body.get("access_token").unwrap().as_str().unwrap();
 
@@ -154,7 +154,7 @@ pub async fn admin_delete(url: &str) -> (StatusCode, Option<Value>) {
         .unwrap();
     let response = app.oneshot(request).await.unwrap();
     let status_code = response.status();
-    let body = to_bytes(response.into_body()).await.unwrap();
+    let body = response.into_body().collect().await.unwrap().to_bytes();
     let body = serde_json::from_slice(&body).unwrap_or(None);
     (status_code, body)
 }
@@ -171,7 +171,7 @@ pub async fn admin_post(url: &str, data: String) -> (StatusCode, Option<Value>) 
         .body(Body::from(login_data))
         .unwrap();
     let response = app.oneshot(request).await.unwrap();
-    let body = to_bytes(response.into_body()).await.unwrap();
+    let body = response.into_body().collect().await.unwrap().to_bytes();
     let body: Value = serde_json::from_slice(&body).unwrap();
     let token = body.get("access_token").unwrap().as_str().unwrap();
 
@@ -186,7 +186,7 @@ pub async fn admin_post(url: &str, data: String) -> (StatusCode, Option<Value>) 
         .unwrap();
     let response = app.oneshot(request).await.unwrap();
     let status_code = response.status();
-    let body = to_bytes(response.into_body()).await.unwrap();
+    let body = response.into_body().collect().await.unwrap().to_bytes();
     let body = serde_json::from_slice(&body).unwrap_or(None);
     (status_code, body)
 }
@@ -203,7 +203,7 @@ pub async fn admin_patch(url: &str, data: String) -> (StatusCode, Option<Value>)
         .body(Body::from(login_data))
         .unwrap();
     let response = app.oneshot(request).await.unwrap();
-    let body = to_bytes(response.into_body()).await.unwrap();
+    let body = response.into_body().collect().await.unwrap().to_bytes();
     let body: Value = serde_json::from_slice(&body).unwrap();
     let token = body.get("access_token").unwrap().as_str().unwrap();
 
@@ -218,7 +218,7 @@ pub async fn admin_patch(url: &str, data: String) -> (StatusCode, Option<Value>)
         .unwrap();
     let response = app.oneshot(request).await.unwrap();
     let status_code = response.status();
-    let body = to_bytes(response.into_body()).await.unwrap();
+    let body = response.into_body().collect().await.unwrap().to_bytes();
     let body = serde_json::from_slice(&body).unwrap_or(None);
     (status_code, body)
 }
@@ -235,7 +235,7 @@ pub async fn admin_post_file(url: &str, data: Vec<u8>) -> (StatusCode, Option<Va
         .body(Body::from(login_data))
         .unwrap();
     let response = app.oneshot(request).await.unwrap();
-    let body = to_bytes(response.into_body()).await.unwrap();
+    let body = response.into_body().collect().await.unwrap().to_bytes();
     let body: Value = serde_json::from_slice(&body).unwrap();
     let token = body.get("access_token").unwrap().as_str().unwrap();
 
@@ -253,7 +253,7 @@ pub async fn admin_post_file(url: &str, data: Vec<u8>) -> (StatusCode, Option<Va
         .unwrap();
     let response = app.oneshot(request).await.unwrap();
     let status_code = response.status();
-    let body = to_bytes(response.into_body()).await.unwrap();
+    let body = response.into_body().collect().await.unwrap().to_bytes();
     let body = serde_json::from_slice(&body).unwrap_or(None);
     (status_code, body)
 }
@@ -270,7 +270,7 @@ pub async fn admin_patch_file(url: &str, data: Vec<u8>) -> (StatusCode, Option<V
         .body(Body::from(login_data))
         .unwrap();
     let response = app.oneshot(request).await.unwrap();
-    let body = to_bytes(response.into_body()).await.unwrap();
+    let body = response.into_body().collect().await.unwrap().to_bytes();
     let body: Value = serde_json::from_slice(&body).unwrap();
     let token = body.get("access_token").unwrap().as_str().unwrap();
 
@@ -288,7 +288,7 @@ pub async fn admin_patch_file(url: &str, data: Vec<u8>) -> (StatusCode, Option<V
         .unwrap();
     let response = app.oneshot(request).await.unwrap();
     let status_code = response.status();
-    let body = to_bytes(response.into_body()).await.unwrap();
+    let body = response.into_body().collect().await.unwrap().to_bytes();
     let body = serde_json::from_slice(&body).unwrap_or(None);
     (status_code, body)
 }

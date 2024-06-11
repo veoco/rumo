@@ -1,9 +1,10 @@
-use getopts::Options;
 use std::env;
+
+use getopts::Options;
 use tracing::{info, Level};
 use tracing_subscriber::FmtSubscriber;
-use std::net::SocketAddr;
 use tokio::signal;
+use tokio::net::TcpListener;
 
 use rumo::{app, init};
 
@@ -72,10 +73,16 @@ async fn main() {
             tracing_subscriber::fmt::init();
             let addr = env::var("LISTEN_ADDRESS").unwrap_or(String::from("127.0.0.1:3000"));
             info!("Listening on http://{}", addr);
+            let listener = match TcpListener::bind(addr).await{
+                Ok(l) => l,
+                Err(e) => {
+                    info!("Failed to bind address: {}", e);
+                    return;
+                }
+            };
 
             let app = app(None).await;
-            let _ = axum::Server::bind(&addr.parse().unwrap())
-                .serve(app.into_make_service_with_connect_info::<SocketAddr>())
+            let _ = axum::serve(listener, app)
                 .with_graceful_shutdown(shutdown_signal())
                 .await;
         }

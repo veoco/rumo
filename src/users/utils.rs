@@ -1,8 +1,7 @@
-use axum::{
-    extract::TypedHeader,
+use axum::{http::request::Parts, RequestPartsExt};
+use axum_extra::{
     headers::{authorization::Bearer, Authorization},
-    http::request::Parts,
-    RequestPartsExt,
+    TypedHeader,
 };
 use hmac::{Hmac, Mac};
 use jwt::VerifyWithKey;

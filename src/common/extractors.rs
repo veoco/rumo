@@ -1,5 +1,6 @@
 use axum::{
     async_trait,
+    body::Body,
     extract::{rejection::JsonRejection, FromRef, FromRequest, FromRequestParts, Query},
     http::{request::Parts, Request},
     Json,
@@ -17,16 +18,15 @@ use crate::AppState;
 pub struct ValidatedJson<T>(pub T);
 
 #[async_trait]
-impl<T, S, B> FromRequest<S, B> for ValidatedJson<T>
+impl<S, T> FromRequest<S> for ValidatedJson<T>
 where
     T: DeserializeOwned + Validate,
     S: Send + Sync,
-    Json<T>: FromRequest<S, B, Rejection = JsonRejection>,
-    B: Send + 'static,
+    Json<T>: FromRequest<S, Rejection = JsonRejection>,
 {
     type Rejection = ValidateRequestError;
 
-    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request<Body>, state: &S) -> Result<Self, Self::Rejection> {
         let Json(value) = Json::<T>::from_request(req, state).await?;
         value.validate()?;
         Ok(ValidatedJson(value))
