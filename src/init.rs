@@ -313,11 +313,18 @@ pub async fn init_table(state: &AppState) {
             "#
         }
     };
-    let _ = state
-        .conn
-        .execute(Statement::from_string(db_backend, sql))
-        .await
-        .expect("database already exists");
+    let stmts = sql.split(";");
+    for stmt in stmts {
+        let stmt = stmt.trim();
+        if stmt.is_empty() {
+            continue;
+        }
+        let _ = state
+            .conn
+            .execute(Statement::from_string(db_backend, format!("{};", stmt)))
+            .await
+            .expect("database already exists");
+    }
 }
 
 pub async fn init_admin(state: &AppState, user_register: UserRegister) {
