@@ -5,14 +5,14 @@ use axum_client_ip::InsecureClientIp;
 use axum_extra::{headers::UserAgent, TypedHeader};
 use md5::{Digest, Md5};
 use serde_json::{json, Value};
-use sqlx::any::AnyKind;
 use std::sync::Arc;
 
 use super::db;
-use super::models::{Comment, CommentCreate, CommentModify, CommentsQuery};
+use super::forms::{CommentCreate, CommentModify, CommentsQuery};
 use crate::common::db as common_db;
 use crate::common::errors::FieldError;
 use crate::common::extractors::{PMEditor, PMVisitor, ValidatedJson, ValidatedQuery};
+use crate::entity::comment;
 use crate::AppState;
 
 pub async fn create_page_comment(
@@ -24,18 +24,18 @@ pub async fn create_page_comment(
     ValidatedJson(comment_create): ValidatedJson<CommentCreate>,
 ) -> Result<(StatusCode, Json<Value>), FieldError> {
     let page = match common_db::get_content_by_slug(&state, &slug).await {
-        Some(p) => {
-            if p.allowComment == "0" {
+        Ok(Some(p)) => {
+            if p.allow_comment == "0" {
                 return Err(FieldError::InvalidParams("slug".to_string()));
             }
             p
         }
-        None => return Err(FieldError::InvalidParams("slug".to_string())),
+        _ => return Err(FieldError::InvalidParams("slug".to_string())),
     };
 
     let mut parent = 0;
     if let Some(coid) = comment_create.parent {
-        if let Some(comment) = db::get_comment_by_coid(&state, coid).await {
+        if let Ok(Some(comment)) = db::get_comment_by_coid(&state, coid).await {
             if comment.status == "approved" {
                 parent = coid;
             }
@@ -61,7 +61,7 @@ pub async fn create_page_comment(
             url = comment_create.url;
         }
         _ => {
-            author = user.screenName.unwrap_or("".to_string());
+            author = user.screen_name.unwrap_or("".to_string());
             author_id = user.uid;
             mail = user.mail.unwrap_or("".to_string());
             url = user.url;
@@ -76,7 +76,7 @@ pub async fn create_page_comment(
         page.cid,
         &author,
         author_id,
-        page.authorId,
+        page.author_id,
         &mail,
         url,
         &ip,
@@ -99,18 +99,18 @@ pub async fn create_post_comment(
     ValidatedJson(comment_create): ValidatedJson<CommentCreate>,
 ) -> Result<(StatusCode, Json<Value>), FieldError> {
     let post = match common_db::get_content_by_slug(&state, &slug).await {
-        Some(p) => {
-            if p.allowComment == "0" {
+        Ok(Some(p)) => {
+            if p.allow_comment == "0" {
                 return Err(FieldError::InvalidParams("slug".to_string()));
             }
             p
         }
-        None => return Err(FieldError::InvalidParams("slug".to_string())),
+        _ => return Err(FieldError::InvalidParams("slug".to_string())),
     };
 
     let mut parent = 0;
     if let Some(coid) = comment_create.parent {
-        if let Some(comment) = db::get_comment_by_coid(&state, coid).await {
+        if let Ok(Some(comment)) = db::get_comment_by_coid(&state, coid).await {
             if comment.status == "approved" {
                 parent = coid;
             }
@@ -136,7 +136,7 @@ pub async fn create_post_comment(
             url = comment_create.url;
         }
         _ => {
-            author = user.screenName.unwrap_or("".to_string());
+            author = user.screen_name.unwrap_or("".to_string());
             author_id = user.uid;
             mail = user.mail.unwrap_or("".to_string());
             url = user.url;
@@ -151,7 +151,7 @@ pub async fn create_post_comment(
         post.cid,
         &author,
         author_id,
-        post.authorId,
+        post.author_id,
         &mail,
         url,
         &ip,
@@ -176,14 +176,7 @@ pub async fn list_comments(
     let page_size = q.page_size.unwrap_or(10);
     let order_by = q.order_by.unwrap_or("-coid".to_string());
 
-    let offset = (page - 1) * page_size;
-    let order_by = match order_by.as_str() {
-        "coid" => "coid",
-        "-coid" => "coid DESC",
-        f => return Err(FieldError::InvalidParams(f.to_string())),
-    };
-
-    let comments = db::get_comments_by_list_query(&state, page_size, offset, order_by).await?;
+    let comments = db::get_comments_by_list_query(&state, page_size, page, &order_by).await?;
     Ok(Json(json!({
         "page": page,
         "page_size": page_size,
@@ -201,59 +194,40 @@ pub async fn list_page_comments_by_slug(
 ) -> Result<Json<Value>, FieldError> {
     let private =
         q.private.unwrap_or(false) && (user.group == "editor" || user.group == "administrator");
-    let private_sql = if private {
-        String::from("")
-    } else {
-        match state.pool.any_kind() {
-            AnyKind::MySql => format!(r#" AND `status` = 'approved'"#),
-            _ => format!(r#" AND "status" = 'approved'"#),
-        }
-    };
 
     let target_page = match common_db::get_content_by_slug(&state, &slug).await {
-        Some(p) => p,
-        None => return Err(FieldError::InvalidParams("slug".to_string())),
+        Ok(Some(p)) => p,
+        _ => return Err(FieldError::InvalidParams("slug".to_string())),
     };
 
     let all_count =
-        db::get_content_comments_count_by_cid_with_private(&state, target_page.cid, &private_sql)
-            .await;
+        db::get_content_comments_count_by_cid_with_private(&state, target_page.cid, private).await;
 
     let page = q.page.unwrap_or(1);
     let page_size = q.page_size.unwrap_or(10);
     let order_by = q.order_by.unwrap_or("-coid".to_string());
 
-    let offset = (page - 1) * page_size;
-    let order_by = match order_by.as_str() {
-        "coid" => "coid",
-        "-coid" => "coid DESC",
-        f => return Err(FieldError::InvalidParams(f.to_string())),
-    };
-
     let comments = db::get_comments_by_cid_and_list_query_with_private(
         &state,
         target_page.cid,
-        &private_sql,
+        private,
         page_size,
-        offset,
-        order_by,
+        page,
+        &order_by,
     )
     .await?;
 
     let mut hasher = Md5::new();
     let mut hashed_comments = vec![];
-    for comment in comments {
-        let mail = match comment.mail {
+    for cm in comments {
+        let mail = match cm.mail {
             Some(m) => {
                 hasher.update(m.as_bytes());
                 Some(format!("{:x}", hasher.finalize_reset()))
             }
             None => None,
         };
-        hashed_comments.push(Comment {
-            mail: mail,
-            ..comment
-        })
+        hashed_comments.push(comment::Model { mail: mail, ..cm })
     }
     return Ok(Json(json!({
         "page": page,
@@ -272,42 +246,26 @@ pub async fn list_post_comments_by_slug(
 ) -> Result<Json<Value>, FieldError> {
     let private =
         q.private.unwrap_or(false) && (user.group == "editor" || user.group == "administrator");
-    let private_sql = if private {
-        String::from("")
-    } else {
-        match state.pool.any_kind() {
-            AnyKind::MySql => format!(r#" AND `status` = 'approved'"#),
-            _ => format!(r#" AND "status" = 'approved'"#),
-        }
-    };
 
     let target_post = match common_db::get_content_by_slug(&state, &slug).await {
-        Some(p) => p,
-        None => return Err(FieldError::InvalidParams("slug".to_string())),
+        Ok(Some(p)) => p,
+        _ => return Err(FieldError::InvalidParams("slug".to_string())),
     };
 
     let all_count =
-        db::get_content_comments_count_by_cid_with_private(&state, target_post.cid, &private_sql)
-            .await;
+        db::get_content_comments_count_by_cid_with_private(&state, target_post.cid, private).await;
 
     let page = q.page.unwrap_or(1);
     let page_size = q.page_size.unwrap_or(10);
     let order_by = q.order_by.unwrap_or("-coid".to_string());
 
-    let offset = (page - 1) * page_size;
-    let order_by = match order_by.as_str() {
-        "coid" => "coid",
-        "-coid" => "coid DESC",
-        f => return Err(FieldError::InvalidParams(f.to_string())),
-    };
-
     let comments = db::get_comments_by_cid_and_list_query_with_private(
         &state,
         target_post.cid,
-        &private_sql,
+        private,
         page_size,
-        offset,
-        order_by,
+        page,
+        &order_by,
     )
     .await?;
 
@@ -321,7 +279,7 @@ pub async fn list_post_comments_by_slug(
             }
             None => None,
         };
-        hashed_comments.push(Comment {
+        hashed_comments.push(comment::Model {
             mail: mail,
             ..comment
         })
@@ -338,24 +296,24 @@ pub async fn list_post_comments_by_slug(
 pub async fn get_comment_by_coid(
     State(state): State<Arc<AppState>>,
     PMEditor(_): PMEditor,
-    Path(coid): Path<i32>,
+    Path(coid): Path<u32>,
 ) -> Result<Json<Value>, FieldError> {
     match db::get_comment_by_coid(&state, coid).await {
-        Some(comment) => Ok(Json(json!(comment))),
-        None => Err(FieldError::NotFound("coid".to_string())),
+        Ok(Some(comment)) => Ok(Json(json!(comment))),
+        _ => Err(FieldError::NotFound("coid".to_string())),
     }
 }
 
 pub async fn modify_comment_by_coid(
     State(state): State<Arc<AppState>>,
     PMEditor(_): PMEditor,
-    Path(coid): Path<i32>,
+    Path(coid): Path<u32>,
     ValidatedJson(comment_modify): ValidatedJson<CommentModify>,
 ) -> Result<Json<Value>, FieldError> {
-    let comment = db::get_comment_by_coid(&state, coid).await;
-    if comment.is_none() {
-        return Err(FieldError::InvalidParams("coid".to_string()));
-    }
+    match db::get_comment_by_coid(&state, coid).await {
+        Ok(Some(comment)) => Some(comment),
+        _ => return Err(FieldError::NotFound("coid".to_string())),
+    };
 
     let status = match comment_modify.status.as_str() {
         "approved" => "approved",
@@ -371,13 +329,12 @@ pub async fn modify_comment_by_coid(
 pub async fn delete_comment_by_coid(
     State(state): State<Arc<AppState>>,
     PMEditor(_): PMEditor,
-    Path(coid): Path<i32>,
+    Path(coid): Path<u32>,
 ) -> Result<Json<Value>, FieldError> {
-    let comment = db::get_comment_by_coid(&state, coid).await;
-    if comment.is_none() {
-        return Err(FieldError::InvalidParams("coid".to_string()));
-    }
-    let comment = comment.unwrap();
+    let comment = match db::get_comment_by_coid(&state, coid).await {
+        Ok(Some(comment)) => comment,
+        _ => return Err(FieldError::NotFound("coid".to_string())),
+    };
     let cid = comment.cid;
     let _ = db::update_content_count_decrease_by_cid(&state, cid).await?;
 

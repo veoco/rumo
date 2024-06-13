@@ -1,9 +1,10 @@
-use axum::Router;
-use minijinja::Environment;
-use sqlx::AnyPool;
 use std::env;
 use std::fs;
 use std::sync::Arc;
+
+use axum::Router;
+use minijinja::Environment;
+use sea_orm::{Database, DatabaseConnection};
 use tower_http::trace::TraceLayer;
 use tracing::info;
 
@@ -14,6 +15,7 @@ mod attachments;
 mod categories;
 mod comments;
 mod common;
+mod entity;
 mod init;
 mod pages;
 mod posts;
@@ -26,7 +28,7 @@ use comments::comments_routers;
 use pages::pages_routers;
 use posts::posts_routers;
 use tags::tags_routers;
-use users::{models::UserRegister, users_routers};
+use users::{forms::UserRegister, users_routers};
 
 lazy_static! {
     pub static ref INDEX_TPL: String = {
@@ -55,29 +57,21 @@ lazy_static! {
 
 #[derive(Clone)]
 pub struct AppState {
-    pub pool: AnyPool,
+    pub conn: DatabaseConnection,
     pub secret_key: String,
     pub access_token_expire_secondes: u64,
     pub upload_root: String,
     pub read_only: bool,
     pub preload_index: bool,
     pub jinja_env: Environment<'static>,
-
-    pub comments_table: String,
-    pub contents_table: String,
-    pub fields_table: String,
-    pub metas_table: String,
-    pub options_table: String,
-    pub relationships_table: String,
-    pub users_table: String,
 }
 
 async fn get_state(app_state: Option<AppState>) -> AppState {
     let state = match app_state {
         Some(s) => s,
         None => {
-            let pool =
-                AnyPool::connect(&env::var("DATABASE_URL").expect("DATABASE_URL is required"))
+            let conn =
+                Database::connect(&env::var("DATABASE_URL").expect("DATABASE_URL is required"))
                     .await
                     .expect("Database connect failed");
             let secret_key = env::var("SECRET_KEY").expect("SECRET_KEY is required");
@@ -113,31 +107,14 @@ async fn get_state(app_state: Option<AppState>) -> AppState {
                 _ => false,
             };
 
-            let table_prefix = env::var("TABLE_PREFIX").unwrap_or("typecho_".to_string());
-            let comments_table = format!("{}comments", table_prefix);
-            let contents_table = format!("{}contents", table_prefix);
-            let fields_table = format!("{}fields", table_prefix);
-            let metas_table = format!("{}metas", table_prefix);
-            let options_table = format!("{}options", table_prefix);
-            let relationships_table = format!("{}relationships", table_prefix);
-            let users_table = format!("{}users", table_prefix);
-
             let s = AppState {
-                pool,
+                conn,
                 secret_key,
                 access_token_expire_secondes,
                 upload_root,
                 read_only,
                 preload_index,
                 jinja_env,
-
-                comments_table,
-                contents_table,
-                fields_table,
-                metas_table,
-                options_table,
-                relationships_table,
-                users_table,
             };
             s
         }

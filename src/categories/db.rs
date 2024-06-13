@@ -1,107 +1,60 @@
-use sqlx::any::AnyKind;
+use sea_orm::*;
 
 use super::forms::CategoryCreate;
 use crate::common::db as common_db;
 use crate::common::errors::FieldError;
+use crate::entity::meta;
 use crate::AppState;
 
 pub async fn create_category_by_category_create(
     state: &AppState,
     category_create: &CategoryCreate,
-) -> Result<u64, FieldError> {
+) -> Result<meta::ActiveModel, FieldError> {
     let category_parent = match category_create.parent {
         Some(mid) => match common_db::get_meta_by_mid(&state, mid).await {
-            Some(_) => mid,
-            None => return Err(FieldError::InvalidParams("parent".to_string())),
+            Ok(Some(_)) => mid,
+            _ => return Err(FieldError::InvalidParams("parent".to_string())),
         },
         _ => 0,
     };
 
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            INSERT INTO {metas_table} ("type", "name", "slug", "description", "parent")
-            VALUES ('category', $1, $2, $3, $4)
-            "#,
-            metas_table = &state.metas_table
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            INSERT INTO {metas_table} (`type`, `name`, `slug`, `description`, `parent`)
-            VALUES ('category', ?, ?, ?, ?)
-            "#,
-            metas_table = &state.metas_table
-        ),
-        _ => format!(
-            r#"
-            INSERT INTO {metas_table} ("type", "name", "slug", "description", "parent")
-            VALUES ('category', ?, ?, ?, ?)
-            "#,
-            metas_table = &state.metas_table
-        ),
-    };
-    match sqlx::query(&sql)
-        .bind(&category_create.name)
-        .bind(&category_create.slug)
-        .bind(&category_create.description)
-        .bind(&category_parent)
-        .execute(&state.pool)
-        .await
-    {
-        Ok(r) => Ok(r.rows_affected()),
-        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
+    meta::ActiveModel {
+        r#type: Set("category".to_string()),
+        name: Set(Some(category_create.name.clone())),
+        slug: Set(Some(category_create.slug.clone())),
+        description: Set(category_create.description.clone()),
+        parent: Set(category_parent),
+        ..Default::default()
     }
+    .save(&state.conn)
+    .await
+    .map_err(|_| FieldError::DatabaseFailed("create category failed".to_string()))
 }
 
 pub async fn modify_category_by_mid_and_category_modify(
     state: &AppState,
-    mid: i32,
+    mid: u32,
     category_modify: &CategoryCreate,
-) -> Result<u64, FieldError> {
+) -> Result<meta::Model, FieldError> {
     let category_parent = match category_modify.parent {
         Some(mid) => match common_db::get_meta_by_mid(&state, mid).await {
-            Some(_) => mid,
-            None => return Err(FieldError::InvalidParams("parent".to_string())),
+            Ok(Some(_)) => mid,
+            _ => return Err(FieldError::InvalidParams("parent".to_string())),
         },
         _ => 0,
     };
 
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            UPDATE {metas_table}
-            SET "name" = $1, "slug" = $2, "description" = $3, "parent" = $4
-            WHERE "mid" = $5
-            "#,
-            metas_table = &state.metas_table
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            UPDATE {metas_table}
-            SET `name` = ?, `slug` = ?, `description` = ?, `parent` = ?
-            WHERE `mid` = ?
-            "#,
-            metas_table = &state.metas_table
-        ),
-        _ => format!(
-            r#"
-            UPDATE {metas_table}
-            SET "name" = ?, "slug" = ?, "description" = ?, "parent" = ?
-            WHERE "mid" = ?
-            "#,
-            metas_table = &state.metas_table
-        ),
+    let exist_category = match common_db::get_meta_by_mid(&state, mid).await {
+        Ok(Some(category)) => category,
+        _ => return Err(FieldError::InvalidParams("mid".to_string())),
     };
-    match sqlx::query(&sql)
-        .bind(&category_modify.name)
-        .bind(&category_modify.slug)
-        .bind(&category_modify.description)
-        .bind(&category_parent)
-        .bind(mid)
-        .execute(&state.pool)
+
+    let mut c = meta::ActiveModel::from(exist_category);
+    c.name = Set(Some(category_modify.name.clone()));
+    c.slug = Set(Some(category_modify.slug.clone()));
+    c.description = Set(category_modify.description.clone());
+    c.parent = Set(category_parent);
+    c.update(&state.conn)
         .await
-    {
-        Ok(r) => Ok(r.rows_affected()),
-        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
-    }
+        .map_err(|_| FieldError::DatabaseFailed("modify category failed".to_string()))
 }

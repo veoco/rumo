@@ -10,7 +10,7 @@ use std::sync::Arc;
 use validator::Validate;
 
 use super::errors::{AuthError, ValidateRequestError};
-use crate::users::models::User;
+use crate::entity::user::Model as User;
 use crate::users::utils::get_user;
 use crate::AppState;
 
@@ -75,16 +75,15 @@ where
             password: None,
             mail: None,
             url: None,
-            screenName: None,
+            screen_name: None,
             created: 0,
             activated: 0,
             logged: 0,
             group: String::from("visitor"),
-            authCode: None,
+            auth_code: None,
         };
         let user = get_user(parts, state).await.unwrap_or(visitor);
-        let group = user.group.as_str();
-        match group {
+        match user.group.as_str() {
             "visitor" | "subscriber" | "contributor" | "editor" | "administrator" => {
                 return Ok(PMVisitor(user))
             }
@@ -109,8 +108,7 @@ where
     ) -> Result<Self, Self::Rejection> {
         let state = AppState::from_ref(state);
         let user = get_user(parts, state).await?;
-        let group = user.group.as_str();
-        match group {
+        match user.group.as_str() {
             "subscriber" | "contributor" | "editor" | "administrator" => {
                 return Ok(PMSubscriber(user))
             }
@@ -135,8 +133,7 @@ where
     ) -> Result<Self, Self::Rejection> {
         let state = AppState::from_ref(state);
         let user = get_user(parts, state).await?;
-        let group = user.group.as_str();
-        match group {
+        match user.group.as_str() {
             "contributor" | "editor" | "administrator" => return Ok(PMContributor(user)),
             _ => return Err(AuthError::PermissionDeny),
         }
@@ -159,8 +156,7 @@ where
     ) -> Result<Self, Self::Rejection> {
         let state = AppState::from_ref(state);
         let user = get_user(parts, state).await?;
-        let group = user.group.as_str();
-        match group {
+        match user.group.as_str() {
             "editor" | "administrator" => return Ok(PMEditor(user)),
             _ => return Err(AuthError::PermissionDeny),
         }
@@ -183,8 +179,7 @@ where
     ) -> Result<Self, Self::Rejection> {
         let state = AppState::from_ref(state);
         let user = get_user(parts, state).await?;
-        let group = user.group.as_str();
-        match group {
+        match user.group.as_str() {
             "administrator" => return Ok(PMAdministrator(user)),
             _ => return Err(AuthError::PermissionDeny),
         }

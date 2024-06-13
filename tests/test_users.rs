@@ -110,7 +110,8 @@ async fn create_then_delete_user_success() {
 #[tokio::test]
 async fn create_then_list_user_options_success() {
     let data = json!({"name": "list_option","value": "option_value"}).to_string();
-    let (status_code, _) = admin_post("/api/users/1/options/", data).await;
+    let (status_code, body) = admin_post("/api/users/1/options/", data).await;
+    println!("{:?}", body);
     assert_eq!(status_code, StatusCode::CREATED);
 
     let (status_code, body) = admin_get("/api/users/1/options/").await;

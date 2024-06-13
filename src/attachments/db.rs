@@ -1,241 +1,111 @@
-use sqlx::any::AnyKind;
+use sea_orm::*;
 
+use crate::common::db as common_db;
 use crate::common::errors::FieldError;
-use crate::common::models::Content;
+use crate::entity::{content, content::Entity as Content};
 use crate::AppState;
 
 pub async fn create_attachment_with_params(
     state: &AppState,
     name: &str,
-    now: i32,
+    now: u32,
     text: &str,
-    uid: i32,
-) -> Result<u64, FieldError> {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            INSERT INTO {contents_table} ("type", "title", "slug", "created", "modified", "text", "authorId")
-            VALUES ('attachment', $1, $2, $3, $4, $5, $6)
-            "#,
-            contents_table = &state.contents_table,
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            INSERT INTO {contents_table} (`type`, `title`, `slug`, `created`, `modified`, `text`, `authorId`)
-            VALUES ('attachment', ?, ?, ?, ?, ?, ?)
-            "#,
-            contents_table = &state.contents_table,
-        ),
-        _ => format!(
-            r#"
-            INSERT INTO {contents_table} ("type", "title", "slug", "created", "modified", "text", "authorId")
-            VALUES ('attachment', ?, ?, ?, ?, ?, ?)
-            "#,
-            contents_table = &state.contents_table,
-        ),
-    };
-    match sqlx::query(&sql)
-        .bind(name)
-        .bind(name)
-        .bind(now)
-        .bind(now)
-        .bind(text)
-        .bind(uid)
-        .execute(&state.pool)
-        .await
-    {
-        Ok(r) => Ok(r.rows_affected()),
-        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
+    uid: u32,
+) -> Result<content::ActiveModel, FieldError> {
+    content::ActiveModel {
+        r#type: Set("attachment".to_string()),
+        title: Set(Some(name.to_owned())),
+        slug: Set(Some(name.to_owned())),
+        created: Set(now),
+        modified: Set(now),
+        text: Set(Some(text.to_owned())),
+        author_id: Set(uid),
+        ..Default::default()
     }
+    .save(&state.conn)
+    .await
+    .map_err(|_| FieldError::DatabaseFailed("create attachment failed".to_string()))
 }
 
 pub async fn modify_attachment_by_cid_with_params(
     state: &AppState,
-    cid: i32,
+    cid: u32,
     name: &str,
-    now: i32,
+    now: u32,
     text: &str,
-) -> Result<u64, FieldError> {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            UPDATE {contents_table}
-            SET "title" = $1,
-                "slug" = $2,
-                "modified" = $3,
-                "text" = $4
-            WHERE "cid" = $5
-            "#,
-            contents_table = &state.contents_table,
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            UPDATE {contents_table}
-            SET `title` = ?,
-                `slug` = ?,
-                `modified` = ?,
-                `text` = ?
-            WHERE `cid` = ?
-            "#,
-            contents_table = &state.contents_table,
-        ),
-        _ => format!(
-            r#"
-            UPDATE {contents_table}
-            SET "title" = ?,
-                "slug" = ?,
-                "modified" = ?,
-                "text" = ?
-            WHERE "cid" = ?
-            "#,
-            contents_table = &state.contents_table,
-        ),
-    };
-    match sqlx::query(&sql)
-        .bind(name)
-        .bind(name)
-        .bind(now)
-        .bind(text)
-        .bind(cid)
-        .execute(&state.pool)
-        .await
-    {
-        Ok(r) => Ok(r.rows_affected()),
-        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
+) -> Result<content::Model, FieldError> {
+    let exist_attachment = common_db::get_content_by_cid(state, cid).await?;
+
+    if exist_attachment.is_none() {
+        return Err(FieldError::InvalidParams("cid".to_string()));
     }
+
+    let exist_attachment = exist_attachment.unwrap();
+
+    let mut c = content::ActiveModel::from(exist_attachment);
+    c.title = Set(Some(name.to_owned()));
+    c.slug = Set(Some(name.to_owned()));
+    c.modified = Set(now);
+    c.text = Set(Some(text.to_owned()));
+    c.update(&state.conn)
+        .await
+        .map_err(|_| FieldError::DatabaseFailed("modify attachment failed".to_string()))
 }
 
 pub async fn get_attachments_by_list_query(
     state: &AppState,
-    private_sql: &str,
-    page_size: i32,
-    offset: i32,
+    private: bool,
+    page_size: u64,
+    page: u64,
     order_by: &str,
-) -> Result<Vec<Content>, FieldError> {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            SELECT *
-            FROM {contents_table}
-            WHERE "type" = 'attachment'{}
-            ORDER BY {}
-            LIMIT $1 OFFSET $2"#,
-            private_sql,
-            order_by,
-            contents_table = &state.contents_table,
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            SELECT *
-            FROM {contents_table}
-            WHERE `type` = 'attachment'{}
-            ORDER BY {}
-            LIMIT ? OFFSET ?"#,
-            private_sql,
-            order_by,
-            contents_table = &state.contents_table,
-        ),
-        _ => format!(
-            r#"
-            SELECT *
-            FROM {contents_table}
-            WHERE "type" = 'attachment'{}
-            ORDER BY {}
-            LIMIT ? OFFSET ?"#,
-            private_sql,
-            order_by,
-            contents_table = &state.contents_table,
-        ),
+) -> Result<Vec<content::Model>, FieldError> {
+    let stmt = Content::find().filter(content::Column::Type.eq("attachment"));
+    let stmt = if private {
+        stmt
+    } else {
+        stmt.filter(content::Column::Status.eq("publish"))
     };
-    match sqlx::query_as::<_, Content>(&sql)
-        .bind(page_size)
-        .bind(offset)
-        .fetch_all(&state.pool)
+    let stmt = match order_by {
+        "-cid" => stmt.order_by_desc(content::Column::Cid),
+        "cid" => stmt.order_by_asc(content::Column::Cid),
+        "-slug" => stmt.order_by_desc(content::Column::Slug),
+        "slug" => stmt.order_by_asc(content::Column::Slug),
+        _ => stmt.order_by_desc(content::Column::Cid),
+    };
+
+    let paginator = stmt.paginate(&state.conn, page_size);
+
+    let contents = paginator
+        .fetch_page(page - 1)
         .await
-    {
-        Ok(attachements) => Ok(attachements),
-        Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
-    }
+        .map_err(|_| FieldError::DatabaseFailed("fetch content failed".to_string()))?;
+    Ok(contents)
 }
 
 pub async fn get_attachments_by_parent(
     state: &AppState,
-    parent: i32,
-) -> Result<Vec<Content>, FieldError> {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            SELECT *
-            FROM {contents_table}
-            WHERE "type" = 'attachment' AND "parent" = $1
-            "#,
-            contents_table = &state.contents_table,
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            SELECT *
-            FROM {contents_table}
-            WHERE `type` = 'attachment' AND `parent` = ?
-            "#,
-            contents_table = &state.contents_table,
-        ),
-        _ => format!(
-            r#"
-            SELECT *
-            FROM {contents_table}
-            WHERE "type" = 'attachment' AND "parent" = ?
-            "#,
-            contents_table = &state.contents_table,
-        ),
-    };
-    match sqlx::query_as::<_, Content>(&sql)
-        .bind(parent)
-        .fetch_all(&state.pool)
+    parent: u32,
+) -> Result<Vec<content::Model>, FieldError> {
+    Content::find()
+        .filter(content::Column::Parent.eq(parent))
+        .all(&state.conn)
         .await
-    {
-        Ok(attachements) => Ok(attachements),
-        Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
-    }
+        .map_err(|_| FieldError::DatabaseFailed("fetch content failed".to_string()))
 }
 
 pub async fn modify_attachment_parent_by_cid(
     state: &AppState,
-    cid: i32,
-    parent: i32,
-) -> Result<u64, FieldError> {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            UPDATE {contents_table}
-            SET "parent" = $1
-            WHERE "cid" = $2
-            "#,
-            contents_table = &state.contents_table,
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            UPDATE {contents_table}
-            SET `parent` = ?
-            WHERE `cid` = ?
-            "#,
-            contents_table = &state.contents_table,
-        ),
-        _ => format!(
-            r#"
-            UPDATE {contents_table}
-            SET "parent" = ?
-            WHERE "cid" = ?
-            "#,
-            contents_table = &state.contents_table,
-        ),
-    };
-    match sqlx::query(&sql)
-        .bind(parent)
-        .bind(cid)
-        .execute(&state.pool)
-        .await
-    {
-        Ok(r) => Ok(r.rows_affected()),
-        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
+    cid: u32,
+    parent: u32,
+) -> Result<content::Model, FieldError> {
+    let exist_attachment = common_db::get_content_by_cid(state, cid).await?;
+    if exist_attachment.is_none() {
+        return Err(FieldError::InvalidParams("cid".to_string()));
     }
+    let exist_attachment = exist_attachment.unwrap();
+    let mut c = content::ActiveModel::from(exist_attachment);
+    c.parent = Set(parent);
+    c.update(&state.conn)
+        .await
+        .map_err(|_| FieldError::DatabaseFailed("modify attachment failed".to_string()))
 }

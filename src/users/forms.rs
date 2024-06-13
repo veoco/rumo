@@ -1,34 +1,11 @@
 #![allow(non_snake_case)]
 use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
 use validator::Validate;
 
 #[derive(Serialize, Deserialize)]
 pub struct TokenData {
     pub sub: String,
     pub exp: u64,
-}
-
-#[derive(Serialize, Deserialize, FromRow)]
-pub struct User {
-    pub uid: i32,
-    pub name: Option<String>,
-    pub password: Option<String>,
-    pub mail: Option<String>,
-    pub url: Option<String>,
-    pub screenName: Option<String>,
-    pub created: i32,
-    pub activated: i32,
-    pub logged: i32,
-    pub group: String,
-    pub authCode: Option<String>,
-}
-
-#[derive(Serialize, Deserialize, FromRow)]
-pub struct UserOption {
-    pub name: String,
-    pub user: i32,
-    pub value: String,
 }
 
 #[derive(Serialize, Deserialize, Validate)]

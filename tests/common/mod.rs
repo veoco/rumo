@@ -1,3 +1,5 @@
+use std::env;
+
 use axum::Router;
 use axum::{
     body::Body,
@@ -5,15 +7,14 @@ use axum::{
 };
 use http_body_util::BodyExt;
 use minijinja::Environment;
+use sea_orm::Database;
 use serde_json::{json, Value};
-use sqlx::AnyPool;
-use std::env;
 use tower::ServiceExt;
 
 use rumo::{app, AppState, INDEX_TPL};
 
 async fn setup_state() -> AppState {
-    let pool = AnyPool::connect(&env::var("DATABASE_URL").unwrap())
+    let conn = Database::connect(&env::var("DATABASE_URL").unwrap())
         .await
         .unwrap();
 
@@ -25,31 +26,14 @@ async fn setup_state() -> AppState {
     let upload_root = ".".to_string();
     let read_only = false;
 
-    let table_prefix = env::var("TABLE_PREFIX").unwrap_or("typecho_".to_string());
-    let comments_table = format!("{}comments", table_prefix);
-    let contents_table = format!("{}contents", table_prefix);
-    let fields_table = format!("{}fields", table_prefix);
-    let metas_table = format!("{}metas", table_prefix);
-    let options_table = format!("{}options", table_prefix);
-    let relationships_table = format!("{}relationships", table_prefix);
-    let users_table = format!("{}users", table_prefix);
-
     AppState {
-        pool,
+        conn,
         secret_key,
         access_token_expire_secondes,
         upload_root,
         read_only,
         preload_index,
         jinja_env,
-
-        comments_table,
-        contents_table,
-        fields_table,
-        metas_table,
-        options_table,
-        relationships_table,
-        users_table,
     }
 }
 

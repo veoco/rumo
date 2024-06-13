@@ -1,8 +1,9 @@
+use std::sync::Arc;
+
 use axum::{
     routing::{delete, get, patch, post},
     Router,
 };
-use std::sync::Arc;
 
 use super::views;
 use crate::AppState;

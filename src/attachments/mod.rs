@@ -1,6 +1,7 @@
 mod db;
 mod de;
 mod errors;
+mod forms;
 pub mod models;
 mod ser;
 mod urls;

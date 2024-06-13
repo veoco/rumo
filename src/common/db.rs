@@ -1,1009 +1,433 @@
-use sqlx::any::AnyKind;
+use sea_orm::*;
 
 use super::forms::FieldCreate;
 use super::utils::get_field_params;
 use crate::common::errors::FieldError;
-use crate::common::models::{Content, ContentWithMetasUsersFields, Field, Meta};
-use crate::users::db as user_db;
+use crate::common::models::ContentWithMetasUsersFields;
+use crate::entity::{
+    content, content::Entity as Content, field, field::Entity as ContentField, meta,
+    meta::Entity as Meta, relationship, relationship::Entity as Relationship, user,
+};
 use crate::AppState;
 
-pub async fn get_content_by_cid(state: &AppState, cid: i32) -> Option<Content> {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            SELECT *
-            FROM {contents_table}
-            WHERE "cid" = $1
-            "#,
-            contents_table = &state.contents_table,
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            SELECT *
-            FROM {contents_table}
-            WHERE `cid` = ?
-            "#,
-            contents_table = &state.contents_table,
-        ),
-        _ => format!(
-            r#"
-            SELECT *
-            FROM {contents_table}
-            WHERE "cid" = ?
-            "#,
-            contents_table = &state.contents_table,
-        ),
-    };
-    match sqlx::query_as::<_, Content>(&sql)
-        .bind(cid)
-        .fetch_one(&state.pool)
+pub async fn get_content_by_cid(
+    state: &AppState,
+    cid: u32,
+) -> Result<Option<content::Model>, FieldError> {
+    Content::find()
+        .filter(content::Column::Cid.eq(cid))
+        .one(&state.conn)
         .await
-    {
-        Ok(content) => Some(content),
-        Err(_) => None,
-    }
+        .map_err(|_| FieldError::InvalidParams("cid".to_string()))
 }
 
-pub async fn get_content_by_slug(state: &AppState, slug: &str) -> Option<Content> {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            SELECT *
-            FROM {contents_table}
-            WHERE "slug" = $1
-            "#,
-            contents_table = &state.contents_table,
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            SELECT *
-            FROM {contents_table}
-            WHERE `slug` = ?
-            "#,
-            contents_table = &state.contents_table,
-        ),
-        _ => format!(
-            r#"
-            SELECT *
-            FROM {contents_table}
-            WHERE "slug" = ?
-            "#,
-            contents_table = &state.contents_table,
-        ),
-    };
-    if let Ok(content) = sqlx::query_as::<_, Content>(&sql)
-        .bind(slug)
-        .fetch_one(&state.pool)
+pub async fn get_content_by_slug(
+    state: &AppState,
+    slug: &str,
+) -> Result<Option<content::Model>, FieldError> {
+    Content::find()
+        .filter(content::Column::Slug.eq(slug))
+        .one(&state.conn)
         .await
-    {
-        Some(content)
-    } else {
-        None
-    }
+        .map_err(|_| FieldError::InvalidParams("slug".to_string()))
 }
 
 pub async fn get_contents_count_with_private(
     state: &AppState,
-    private_sql: &str,
+    private: bool,
+    own: bool,
+    author: &user::Model,
     content_type: &str,
-) -> i64 {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            SELECT COUNT(*)
-            FROM {contents_table}
-            WHERE "type" = '{content_type}'{private_sql}
-            "#,
-            contents_table = &state.contents_table,
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            SELECT COUNT(*)
-            FROM {contents_table}
-            WHERE `type` = '{content_type}'{private_sql}
-            "#,
-            contents_table = &state.contents_table,
-        ),
-        _ => format!(
-            r#"
-            SELECT COUNT(*)
-            FROM {contents_table}
-            WHERE "type" = '{content_type}'{private_sql}
-            "#,
-            contents_table = &state.contents_table,
-        ),
+) -> u64 {
+    let stmt = Content::find().filter(content::Column::Type.eq(content_type));
+    let stmt = if own {
+        stmt.filter(content::Column::AuthorId.eq(author.uid))
+    } else {
+        stmt
     };
-    match sqlx::query_scalar::<_, i64>(&sql)
-        .fetch_one(&state.pool)
-        .await
-    {
-        Ok(r) => r,
-        Err(_)=> 0,
-    }
-}
-
-pub async fn get_content_with_metas_user_from_content(
-    state: &AppState,
-    content: Content,
-) -> Result<ContentWithMetasUsersFields, FieldError> {
-    let user = user_db::get_user_by_uid(state, content.authorId).await;
-    if user.is_none() {
-        return Err(FieldError::DatabaseFailed("Invalid user".to_string()));
-    }
-    let user = user.unwrap();
-
-    let fields = get_fields_by_cid(state, content.cid).await;
-    let metas = get_metas_by_cid(state, content.cid).await;
-
-    let mut categories = vec![];
-    let mut tags = vec![];
-    for m in metas {
-        if m.r#type == "tag" {
-            tags.push(m);
-        } else {
-            categories.push(m);
-        }
-    }
-
-    let mut content_with = ContentWithMetasUsersFields::from(content);
-    content_with.fields = fields;
-    content_with.categories = categories;
-    content_with.tags = tags;
-    content_with.screenName = user.screenName;
-    content_with.group = user.group;
-    Ok(content_with)
+    let stmt = if private {
+        stmt
+    } else {
+        stmt.filter(content::Column::Status.eq("publish"))
+    };
+    stmt.count(&state.conn).await.unwrap_or(0)
 }
 
 pub async fn get_contents_with_metas_user_and_fields_by_mid_list_query_and_private(
     state: &AppState,
-    mid: i32,
-    private_sql: &str,
-    page_size: i32,
-    offset: i32,
+    mid: u32,
+    private: bool,
+    author: &user::Model,
+    page_size: u64,
+    page: u64,
     order_by: &str,
     post: bool,
 ) -> Result<Vec<ContentWithMetasUsersFields>, FieldError> {
     let content_type = if post { "post" } else { "page" };
 
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            SELECT {contents_table}.*
-            FROM {contents_table}
-            JOIN {relationships_table} ON {contents_table}.cid = {relationships_table}.cid
-            WHERE "type" = '{content_type}' AND "mid" = $1{private_sql}
-            GROUP BY {contents_table}.cid
-            ORDER BY {contents_table}.{order_by}
-            LIMIT $2 OFFSET $3"#,
-            contents_table = &state.contents_table,
-            relationships_table = &state.relationships_table,
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            SELECT {contents_table}.*
-            FROM {contents_table}
-            JOIN {relationships_table} ON {contents_table}.cid = {relationships_table}.cid
-            WHERE `type` = '{content_type}' AND `mid` = ?{private_sql}
-            GROUP BY {contents_table}.cid
-            ORDER BY {contents_table}.{order_by}
-            LIMIT ? OFFSET ?"#,
-            contents_table = &state.contents_table,
-            relationships_table = &state.relationships_table,
-        ),
-        _ => format!(
-            r#"
-            SELECT {contents_table}.*
-            FROM {contents_table}
-            JOIN {relationships_table} ON {contents_table}.cid = {relationships_table}.cid
-            WHERE "type" = '{content_type}' AND "mid" = ?{private_sql}
-            GROUP BY {contents_table}.cid
-            ORDER BY {contents_table}.{order_by}
-            LIMIT ? OFFSET ?"#,
-            contents_table = &state.contents_table,
-            relationships_table = &state.relationships_table,
-        ),
+    let stmt = Content::find().left_join(Meta).filter(
+        meta::Column::Mid
+            .eq(mid)
+            .and(content::Column::Type.eq(content_type)),
+    );
+
+    let stmt = if private {
+        stmt
+    } else {
+        stmt.filter(content::Column::Status.eq("publish"))
     };
-    match sqlx::query_as::<_, Content>(&sql)
-        .bind(mid)
-        .bind(page_size)
-        .bind(offset)
-        .fetch_all(&state.pool)
+
+    let stmt = match order_by {
+        "-cid" => stmt.order_by_desc(content::Column::Cid),
+        "cid" => stmt.order_by_asc(content::Column::Cid),
+        "-slug" => stmt.order_by_desc(content::Column::Slug),
+        "slug" => stmt.order_by_asc(content::Column::Slug),
+        _ => stmt.order_by_desc(content::Column::Cid),
+    };
+
+    let paginator = stmt.paginate(&state.conn, page_size);
+
+    let contents = paginator
+        .fetch_page(page - 1)
         .await
+        .map_err(|_| FieldError::DatabaseFailed("fetch contents failed".to_string()))?;
+
+    let metas = contents
+        .load_many_to_many(meta::Entity, relationship::Entity, &state.conn)
+        .await
+        .map_err(|_| FieldError::DatabaseFailed("fetch metas failed".to_string()))?;
+
+    let fields = contents
+        .load_many(ContentField, &state.conn)
+        .await
+        .map_err(|_| FieldError::DatabaseFailed("fetch fields failed".to_string()))?;
+
+    let mut res = vec![];
+    for ((content, meta_list), field_list) in contents
+        .into_iter()
+        .zip(metas.into_iter())
+        .zip(fields.into_iter())
     {
-        Ok(contents) => {
-            let mut res = vec![];
-            for c in contents {
-                let content_with = get_content_with_metas_user_from_content(state, c).await?;
-                res.push(content_with);
+        let mut c = ContentWithMetasUsersFields::from(content);
+        c.screen_name = author.screen_name.clone();
+        c.group = author.group.clone();
+
+        let mut tags = vec![];
+        let mut categories = vec![];
+        for m in meta_list {
+            if m.r#type == "tag" {
+                tags.push(m);
+            } else {
+                categories.push(m);
             }
-            Ok(res)
         }
-        Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
+        c.tags = tags;
+        c.categories = categories;
+        c.fields = field_list;
+        res.push(c);
     }
+    Ok(res)
 }
 
-pub async fn delete_content_by_cid(state: &AppState, cid: i32) -> Result<u64, FieldError> {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            DELETE FROM {contents_table}
-            WHERE "cid" = $1
-            "#,
-            contents_table = &state.contents_table,
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            DELETE FROM {contents_table}
-            WHERE `cid` = ?
-            "#,
-            contents_table = &state.contents_table,
-        ),
-        _ => format!(
-            r#"
-            DELETE FROM {contents_table}
-            WHERE "cid" = ?
-            "#,
-            contents_table = &state.contents_table,
-        ),
-    };
-    match sqlx::query(&sql).bind(cid).execute(&state.pool).await {
-        Ok(r) => Ok(r.rows_affected()),
-        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
-    }
+pub async fn delete_content_by_cid(state: &AppState, cid: u32) -> Result<DeleteResult, FieldError> {
+    let c: content::ActiveModel = get_content_by_cid(state, cid)
+        .await?
+        .ok_or(FieldError::InvalidParams("cid".to_string()))
+        .map(Into::into)?;
+
+    c.delete(&state.conn)
+        .await
+        .map_err(|_| FieldError::DatabaseFailed("delete content failed".to_string()))
 }
 
 pub async fn check_relationship_by_cid_and_mid(
     state: &AppState,
-    cid: i32,
-    mid: i32,
+    cid: u32,
+    mid: u32,
 ) -> Result<bool, FieldError> {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            SELECT EXISTS (
-                SELECT 1
-                FROM {relationships_table}
-                WHERE "cid" = $1 AND "mid" = $2
-            )
-            "#,
-            relationships_table = &state.relationships_table,
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            SELECT EXISTS (
-                SELECT 1
-                FROM {relationships_table}
-                WHERE `cid` = ? AND `mid` = ?
-            )
-            "#,
-            relationships_table = &state.relationships_table,
-        ),
-        _ => format!(
-            r#"
-            SELECT EXISTS (
-                SELECT 1
-                FROM {relationships_table}
-                WHERE "cid" = ? AND "mid" = ?
-            )
-            "#,
-            relationships_table = &state.relationships_table,
-        ),
-    };
-    match sqlx::query_scalar::<_, bool>(&sql)
-        .bind(cid)
-        .bind(mid)
-        .fetch_one(&state.pool)
+    Relationship::find()
+        .filter(
+            relationship::Column::Cid
+                .eq(cid)
+                .and(relationship::Column::Mid.eq(mid)),
+        )
+        .count(&state.conn)
         .await
-    {
-        Ok(b) => Ok(b),
-        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
-    }
+        .map(|r| r > 0)
+        .map_err(|_| FieldError::DatabaseFailed("check relationship failed".to_string()))
 }
 
 pub async fn create_relationship_by_cid_and_mid(
     state: &AppState,
-    cid: i32,
-    mid: i32,
-) -> Result<u64, FieldError> {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"INSERT INTO {relationships_table} ("cid", "mid") VALUES ($1, $2)"#,
-            relationships_table = &state.relationships_table,
-        ),
-        AnyKind::MySql => format!(
-            r#"INSERT INTO {relationships_table} (`cid`, `mid`) VALUES (?, ?)"#,
-            relationships_table = &state.relationships_table,
-        ),
-        _ => format!(
-            r#"INSERT INTO {relationships_table} ("cid", "mid") VALUES (?, ?)"#,
-            relationships_table = &state.relationships_table,
-        ),
-    };
-    match sqlx::query(&sql)
-        .bind(cid)
-        .bind(mid)
-        .execute(&state.pool)
-        .await
-    {
-        Ok(r) => Ok(r.rows_affected()),
-        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
+    cid: u32,
+    mid: u32,
+) -> Result<relationship::Model, FieldError> {
+    relationship::ActiveModel {
+        cid: Set(cid),
+        mid: Set(mid),
+        ..Default::default()
     }
+    .insert(&state.conn)
+    .await
+    .map_err(|_| FieldError::DatabaseFailed("create relationship failed".to_string()))
 }
 
 pub async fn delete_relationship_by_cid_and_mid(
     state: &AppState,
-    cid: i32,
-    mid: i32,
-) -> Result<u64, FieldError> {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            DELETE FROM {relationships_table}
-            WHERE "cid" = $1 AND "mid" = $2"#,
-            relationships_table = &state.relationships_table,
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            DELETE FROM {relationships_table}
-            WHERE `cid` = ? AND `mid` = ?"#,
-            relationships_table = &state.relationships_table,
-        ),
-        _ => format!(
-            r#"
-            DELETE FROM {relationships_table}
-            WHERE "cid" = ? AND "mid" = ?"#,
-            relationships_table = &state.relationships_table,
-        ),
-    };
-    match sqlx::query(&sql)
-        .bind(cid)
-        .bind(mid)
-        .execute(&state.pool)
+    cid: u32,
+    mid: u32,
+) -> Result<DeleteResult, FieldError> {
+    let r: relationship::ActiveModel = Relationship::find()
+        .filter(
+            relationship::Column::Cid
+                .eq(cid)
+                .and(relationship::Column::Mid.eq(mid)),
+        )
+        .one(&state.conn)
         .await
-    {
-        Ok(r) => Ok(r.rows_affected()),
-        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
-    }
+        .map_err(|_| FieldError::DatabaseFailed("delete relationship failed".to_string()))?
+        .ok_or(FieldError::InvalidParams(
+            "relationship not found".to_string(),
+        ))
+        .map(Into::into)?;
+
+    r.delete(&state.conn)
+        .await
+        .map_err(|_| FieldError::DatabaseFailed("delete relationship failed".to_string()))
 }
 
-pub async fn delete_relationships_by_mid(state: &AppState, mid: i32) -> Result<u64, FieldError> {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            DELETE FROM {relationships_table}
-            WHERE "mid" = $1
-            "#,
-            relationships_table = &state.relationships_table
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            DELETE FROM {relationships_table}
-            WHERE `mid` = ?
-            "#,
-            relationships_table = &state.relationships_table
-        ),
-        _ => format!(
-            r#"
-            DELETE FROM {relationships_table}
-            WHERE "mid" = ?
-            "#,
-            relationships_table = &state.relationships_table
-        ),
-    };
-    match sqlx::query(&sql).bind(mid).execute(&state.pool).await {
-        Ok(r) => Ok(r.rows_affected()),
-        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
-    }
+pub async fn delete_relationships_by_mid(
+    state: &AppState,
+    mid: u32,
+) -> Result<DeleteResult, FieldError> {
+    Relationship::delete_many()
+        .filter(relationship::Column::Mid.eq(mid))
+        .exec(&state.conn)
+        .await
+        .map_err(|_| FieldError::DatabaseFailed("delete relationships failed".to_string()))
 }
 
-pub async fn get_field_by_cid_and_name(state: &AppState, cid: i32, name: &str) -> Option<Field> {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            SELECT *
-            FROM {fields_table}
-            WHERE "cid" = $1 AND "name" = $2
-            "#,
-            fields_table = &state.fields_table,
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            SELECT *
-            FROM {fields_table}
-            WHERE `cid` = ? AND `name` = ?
-            "#,
-            fields_table = &state.fields_table,
-        ),
-        _ => format!(
-            r#"
-            SELECT *
-            FROM {fields_table}
-            WHERE "cid" = ? AND "name" = ?
-            "#,
-            fields_table = &state.fields_table,
-        ),
-    };
-    if let Ok(field) = sqlx::query_as::<_, Field>(&sql)
-        .bind(cid)
-        .bind(name)
-        .fetch_one(&state.pool)
+pub async fn get_field_by_cid_and_name(
+    state: &AppState,
+    cid: u32,
+    name: &str,
+) -> Result<Option<field::Model>, FieldError> {
+    ContentField::find()
+        .filter(field::Column::Cid.eq(cid).and(field::Column::Name.eq(name)))
+        .one(&state.conn)
         .await
-    {
-        Some(field)
-    } else {
-        None
-    }
-}
-
-pub async fn get_fields_by_cid(state: &AppState, cid: i32) -> Vec<Field> {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            SELECT *
-            FROM {fields_table}
-            WHERE "cid" = $1
-            "#,
-            fields_table = &state.fields_table,
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            SELECT *
-            FROM {fields_table}
-            WHERE `cid` = ?
-            "#,
-            fields_table = &state.fields_table,
-        ),
-        _ => format!(
-            r#"
-            SELECT *
-            FROM {fields_table}
-            WHERE "cid" = ?
-            "#,
-            fields_table = &state.fields_table,
-        ),
-    };
-    match sqlx::query_as::<_, Field>(&sql)
-        .bind(cid)
-        .fetch_all(&state.pool)
-        .await
-    {
-        Ok(fields) => fields,
-        Err(_) => {
-            vec![]
-        }
-    }
+        .map_err(|_| FieldError::DatabaseFailed("fetch field failed".to_string()))
 }
 
 pub async fn create_field_by_cid_with_field_create(
     state: &AppState,
-    cid: i32,
+    cid: u32,
     field_create: &FieldCreate,
-) -> Result<u64, FieldError> {
+) -> Result<field::Model, FieldError> {
     let (field_type, str_value, int_value, float_value) = get_field_params(&field_create)?;
 
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            INSERT INTO {fields_table} ("cid", "name", "type", "str_value", "int_value", "float_value")
-            VALUES ($1, $2, $3, $4, $5, $6)
-            "#,
-            fields_table = &state.fields_table,
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            INSERT INTO {fields_table} (`cid`, `name`, `type`, `str_value`, `int_value`, `float_value`)
-            VALUES (?, ?, ?, ?, ?, ?)
-            "#,
-            fields_table = &state.fields_table,
-        ),
-        _ => format!(
-            r#"
-            INSERT INTO {fields_table} ("cid", "name", "type", "str_value", "int_value", "float_value")
-            VALUES (?, ?, ?, ?, ?, ?)
-            "#,
-            fields_table = &state.fields_table,
-        ),
-    };
-    match sqlx::query(&sql)
-        .bind(cid)
-        .bind(&field_create.name)
-        .bind(&field_type)
-        .bind(str_value)
-        .bind(int_value)
-        .bind(float_value)
-        .execute(&state.pool)
-        .await
-    {
-        Ok(r) => Ok(r.rows_affected()),
-        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
+    field::ActiveModel {
+        cid: Set(cid),
+        name: Set(field_create.name.to_owned()),
+        r#type: Set(field_type),
+        str_value: Set(str_value),
+        int_value: Set(int_value),
+        float_value: Set(float_value),
+        ..Default::default()
     }
+    .insert(&state.conn)
+    .await
+    .map_err(|_| FieldError::DatabaseFailed("create field failed".to_string()))
 }
 
 pub async fn modify_field_by_cid_and_name_with_field_create(
     state: &AppState,
-    cid: i32,
+    cid: u32,
     name: &str,
     field_create: &FieldCreate,
-) -> Result<u64, FieldError> {
+) -> Result<field::Model, FieldError> {
     let (field_type, str_value, int_value, float_value) = get_field_params(&field_create)?;
 
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            UPDATE {fields_table}
-            SET "name" = $1,
-                "type" = $2,
-                "str_value" = $3,
-                "int_value" = $4,
-                "float_value" = $5
-            WHERE "cid" = $6 and "name" = $7
-            "#,
-            fields_table = &state.fields_table,
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            UPDATE {fields_table}
-            SET `name` = ?,
-                `type` = ?,
-                `str_value` = ?,
-                `int_value` = ?,
-                `float_value` = ?
-            WHERE `cid` = ? and `name` = ?
-            "#,
-            fields_table = &state.fields_table,
-        ),
-        _ => format!(
-            r#"
-            UPDATE {fields_table}
-            SET "name" = ?,
-                "type" = ?,
-                "str_value" = ?,
-                "int_value" = ?,
-                "float_value" = ?
-            WHERE "cid" = ? and "name" = ?
-            "#,
-            fields_table = &state.fields_table,
-        ),
-    };
-    match sqlx::query(&sql)
-        .bind(&field_create.name)
-        .bind(&field_type)
-        .bind(str_value)
-        .bind(int_value)
-        .bind(float_value)
-        .bind(cid)
-        .bind(name)
-        .execute(&state.pool)
-        .await
-    {
-        Ok(r) => Ok(r.rows_affected()),
-        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
+    let exist_field = get_field_by_cid_and_name(state, cid as u32, name).await?;
+    if exist_field.is_none() {
+        return Err(FieldError::InvalidParams("name".to_owned()));
     }
+    let exist_field = exist_field.unwrap();
+
+    let mut f = field::ActiveModel::from(exist_field);
+    f.r#type = Set(field_type);
+    f.str_value = Set(str_value);
+    f.int_value = Set(int_value);
+    f.float_value = Set(float_value);
+    f.update(&state.conn)
+        .await
+        .map_err(|_| FieldError::DatabaseFailed("modify field failed".to_string()))
 }
 
 pub async fn delete_field_by_cid_and_name(
     state: &AppState,
-    cid: i32,
+    cid: u32,
     name: &str,
-) -> Result<u64, FieldError> {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            DELETE FROM {fields_table}
-            WHERE "cid" = $1 AND "name" = $2
-            "#,
-            fields_table = &state.fields_table,
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            DELETE FROM {fields_table}
-            WHERE `cid` = ? AND `name` = ?
-            "#,
-            fields_table = &state.fields_table,
-        ),
-        _ => format!(
-            r#"
-            DELETE FROM {fields_table}
-            WHERE "cid" = ? AND "name" = ?
-            "#,
-            fields_table = &state.fields_table,
-        ),
-    };
-    match sqlx::query(&sql)
-        .bind(cid)
-        .bind(name)
-        .execute(&state.pool)
+) -> Result<DeleteResult, FieldError> {
+    let f = get_field_by_cid_and_name(state, cid, name).await?;
+
+    if f.is_none() {
+        return Err(FieldError::InvalidParams("name".to_owned()));
+    }
+    let f = f.unwrap();
+
+    f.delete(&state.conn)
         .await
-    {
-        Ok(r) => Ok(r.rows_affected()),
-        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
-    }
+        .map_err(|_| FieldError::DatabaseFailed(format!("delete field {} failed", name)))
 }
 
-pub async fn delete_fields_by_cid(state: &AppState, cid: i32) -> Result<u64, FieldError> {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            DELETE FROM {fields_table}
-            WHERE "cid" = $1
-            "#,
-            fields_table = &state.fields_table,
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            DELETE FROM {fields_table}
-            WHERE `cid` = ?
-            "#,
-            fields_table = &state.fields_table,
-        ),
-        _ => format!(
-            r#"
-            DELETE FROM {fields_table}
-            WHERE "cid" = ?
-            "#,
-            fields_table = &state.fields_table,
-        ),
-    };
-    match sqlx::query(&sql).bind(cid).execute(&state.pool).await {
-        Ok(r) => Ok(r.rows_affected()),
-        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
-    }
-}
-
-pub async fn get_meta_by_mid(state: &AppState, mid: i32) -> Option<Meta> {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            SELECT *
-            FROM {metas_table}
-            WHERE "mid" = $1
-            "#,
-            metas_table = &state.metas_table,
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            SELECT *
-            FROM {metas_table}
-            WHERE `mid` = ?
-            "#,
-            metas_table = &state.metas_table,
-        ),
-        _ => format!(
-            r#"
-            SELECT *
-            FROM {metas_table}
-            WHERE "mid" = ?
-            "#,
-            metas_table = &state.metas_table,
-        ),
-    };
-    if let Ok(meta) = sqlx::query_as::<_, Meta>(&sql)
-        .bind(mid)
-        .fetch_one(&state.pool)
+pub async fn delete_fields_by_cid(state: &AppState, cid: u32) -> Result<DeleteResult, FieldError> {
+    ContentField::delete_many()
+        .filter(field::Column::Cid.eq(cid))
+        .exec(&state.conn)
         .await
-    {
-        Some(meta)
-    } else {
-        None
-    }
+        .map_err(|_| FieldError::DatabaseFailed("delete fields failed".to_string()))
 }
 
-pub async fn get_meta_by_slug(state: &AppState, slug: &str, tag: bool) -> Option<Meta> {
+pub async fn get_meta_by_mid(
+    state: &AppState,
+    mid: u32,
+) -> Result<Option<meta::Model>, FieldError> {
+    Meta::find()
+        .filter(meta::Column::Mid.eq(mid))
+        .one(&state.conn)
+        .await
+        .map_err(|_| FieldError::DatabaseFailed("fetch meta failed".to_string()))
+}
+
+pub async fn get_meta_by_slug(
+    state: &AppState,
+    slug: &str,
+    tag: bool,
+) -> Result<Option<meta::Model>, FieldError> {
     let meta_type = if tag { "tag" } else { "category" };
 
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            SELECT *
-            FROM {metas_table}
-            WHERE "type" = '{meta_type}' AND "slug" = $1
-            "#,
-            metas_table = &state.metas_table,
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            SELECT *
-            FROM {metas_table}
-            WHERE `type` = '{meta_type}' AND `slug` = ?
-            "#,
-            metas_table = &state.metas_table,
-        ),
-        _ => format!(
-            r#"
-            SELECT *
-            FROM {metas_table}
-            WHERE "type" = '{meta_type}' AND "slug" = ?
-            "#,
-            metas_table = &state.metas_table,
-        ),
-    };
-    match sqlx::query_as::<_, Meta>(&sql)
-        .bind(slug)
-        .fetch_one(&state.pool)
+    Meta::find()
+        .filter(
+            meta::Column::Slug
+                .eq(slug)
+                .and(meta::Column::Type.eq(meta_type)),
+        )
+        .one(&state.conn)
         .await
-    {
-        Ok(meta) => Some(meta),
-        Err(_) => None,
-    }
-}
-
-pub async fn get_metas_by_cid(state: &AppState, cid: i32) -> Vec<Meta> {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            SELECT {metas_table}.*
-            FROM {metas_table}
-            JOIN {relationships_table} ON {metas_table}.mid = {relationships_table}.mid
-            WHERE "cid" = $1
-            GROUP BY {metas_table}.mid
-            "#,
-            metas_table = &state.metas_table,
-            relationships_table = &state.relationships_table,
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            SELECT {metas_table}.*
-            FROM {metas_table}
-            JOIN {relationships_table} ON {metas_table}.mid = {relationships_table}.mid
-            WHERE `cid` = ?
-            GROUP BY {metas_table}.mid
-            "#,
-            metas_table = &state.metas_table,
-            relationships_table = &state.relationships_table,
-        ),
-        _ => format!(
-            r#"
-            SELECT {metas_table}.*
-            FROM {metas_table}
-            JOIN {relationships_table} ON {metas_table}.mid = {relationships_table}.mid
-            WHERE "cid" = ?
-            GROUP BY {metas_table}.mid
-            "#,
-            metas_table = &state.metas_table,
-            relationships_table = &state.relationships_table,
-        ),
-    };
-    match sqlx::query_as::<_, Meta>(&sql)
-        .bind(cid)
-        .fetch_all(&state.pool)
-        .await
-    {
-        Ok(metas) => metas,
-        Err(_) => vec![],
-    }
+        .map_err(|_| FieldError::DatabaseFailed("fetch meta failed".to_string()))
 }
 
 pub async fn get_metas_by_list_query(
     state: &AppState,
-    page_size: i32,
-    offset: i32,
+    page_size: u64,
+    page: u64,
     order_by: &str,
     tag: bool,
-) -> Result<Vec<Meta>, FieldError> {
+) -> Result<Vec<meta::Model>, FieldError> {
     let meta_type = if tag { "tag" } else { "category" };
 
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            SELECT *
-            FROM {metas_table}
-            WHERE "type" = '{meta_type}'
-            ORDER BY {order_by}
-            LIMIT $1 OFFSET $2
-            "#,
-            metas_table = &state.metas_table,
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            SELECT *
-            FROM {metas_table}
-            WHERE `type` = '{meta_type}'
-            ORDER BY {order_by}
-            LIMIT ? OFFSET ?
-            "#,
-            metas_table = &state.metas_table,
-        ),
-        _ => format!(
-            r#"
-            SELECT *
-            FROM {metas_table}
-            WHERE "type" = '{meta_type}'
-            ORDER BY {order_by}
-            LIMIT ? OFFSET ?
-            "#,
-            metas_table = &state.metas_table,
-        ),
+    let stmt = Meta::find().filter(meta::Column::Type.eq(meta_type));
+
+    let stmt = match order_by {
+        "-mid" => stmt.order_by_desc(meta::Column::Mid),
+        "mid" => stmt.order_by_asc(meta::Column::Mid),
+        "-slug" => stmt.order_by_desc(meta::Column::Slug),
+        "slug" => stmt.order_by_asc(meta::Column::Slug),
+        _ => stmt.order_by_desc(meta::Column::Mid),
     };
-    match sqlx::query_as::<_, Meta>(&sql)
-        .bind(page_size)
-        .bind(offset)
-        .fetch_all(&state.pool)
+    let paginator = stmt.paginate(&state.conn, page_size);
+
+    paginator
+        .fetch_page(page - 1)
         .await
-    {
-        Ok(metas) => Ok(metas),
-        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
-    }
+        .map_err(|_| FieldError::DatabaseFailed("fetch metas failed".to_string()))
 }
 
-pub async fn get_metas_count(state: &AppState, tag: bool) -> i64 {
+pub async fn get_metas_count(state: &AppState, tag: bool) -> u64 {
     let meta_type = if tag { "tag" } else { "category" };
 
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            SELECT COUNT(*)
-            FROM {metas_table}
-            WHERE "type" = '{meta_type}'
-            "#,
-            metas_table = &state.metas_table,
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            SELECT COUNT(*)
-            FROM {metas_table}
-            WHERE `type` = '{meta_type}'
-            "#,
-            metas_table = &state.metas_table,
-        ),
-        _ => format!(
-            r#"
-            SELECT COUNT(*)
-            FROM {metas_table}
-            WHERE "type" = '{meta_type}'
-            "#,
-            metas_table = &state.metas_table,
-        ),
-    };
-    let all_count = sqlx::query_scalar::<_, i64>(&sql)
-        .fetch_one(&state.pool)
+    Meta::find()
+        .filter(meta::Column::Type.eq(meta_type))
+        .count(&state.conn)
         .await
-        .unwrap_or(0);
-    all_count
+        .unwrap_or(0)
 }
 
 pub async fn get_meta_posts_count_by_mid_with_private(
     state: &AppState,
-    mid: i32,
-    private_sql: &str,
-) -> i64 {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            SELECT COUNT(*)
-            FROM {contents_table}
-            JOIN {relationships_table} ON {contents_table}.cid = {relationships_table}.cid
-            WHERE "type" = 'post' AND "mid" = $1{private_sql}
-            "#,
-            contents_table = &state.contents_table,
-            relationships_table = &state.relationships_table
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            SELECT COUNT(*)
-            FROM {contents_table}
-            JOIN {relationships_table} ON {contents_table}.cid = {relationships_table}.cid
-            WHERE `type` = 'post' AND `mid` = ?{private_sql}
-            "#,
-            contents_table = &state.contents_table,
-            relationships_table = &state.relationships_table
-        ),
-        _ => format!(
-            r#"
-            SELECT COUNT(*)
-            FROM {contents_table}
-            JOIN {relationships_table} ON {contents_table}.cid = {relationships_table}.cid
-            WHERE "type" = 'post' AND "mid" = ?{private_sql}
-            "#,
-            contents_table = &state.contents_table,
-            relationships_table = &state.relationships_table
-        ),
-    };
-    let all_count = sqlx::query_scalar::<_, i64>(&sql)
-        .bind(mid)
-        .fetch_one(&state.pool)
-        .await
-        .unwrap_or(0);
-    all_count
+    mid: u32,
+    private: bool,
+) -> u64 {
+    let stmt = Content::find()
+        .left_join(Meta)
+        .filter(meta::Column::Mid.eq(mid));
+
+    if private {
+        stmt.count(&state.conn).await.unwrap_or(0)
+    } else {
+        stmt.filter(content::Column::Status.eq("publish"))
+            .count(&state.conn)
+            .await
+            .unwrap_or(0)
+    }
 }
 
 pub async fn update_meta_by_mid_for_increase_count(
     state: &AppState,
-    mid: i32,
-) -> Result<u64, FieldError> {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            UPDATE {metas_table}
-            SET "count" = "count" + 1
-            WHERE "mid" = $1
-            "#,
-            metas_table = &state.metas_table,
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            UPDATE {metas_table}
-            SET `count` = `count` + 1
-            WHERE `mid` = ?
-            "#,
-            metas_table = &state.metas_table,
-        ),
-        _ => format!(
-            r#"
-            UPDATE {metas_table}
-            SET "count" = "count" + 1
-            WHERE "mid" = ?
-            "#,
-            metas_table = &state.metas_table,
-        ),
-    };
-    match sqlx::query(&sql).bind(mid).execute(&state.pool).await {
-        Ok(r) => Ok(r.rows_affected()),
-        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
+    mid: u32,
+) -> Result<meta::Model, FieldError> {
+    let exist_meta = Meta::find()
+        .filter(meta::Column::Mid.eq(mid))
+        .one(&state.conn)
+        .await
+        .map_err(|_| FieldError::InvalidParams("mid".to_owned()))?;
+    if exist_meta.is_none() {
+        return Err(FieldError::InvalidParams("mid".to_owned()));
     }
+    let exist_meta = exist_meta.unwrap();
+    let count = exist_meta.count;
+
+    let mut m = meta::ActiveModel::from(exist_meta);
+    m.count = Set(count + 1);
+    m.update(&state.conn)
+        .await
+        .map_err(|_| FieldError::DatabaseFailed("update meta count failed".to_string()))
 }
 
 pub async fn update_meta_by_mid_for_decrease_count(
     state: &AppState,
-    mid: i32,
-) -> Result<u64, FieldError> {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            UPDATE {metas_table}
-            SET "count" = "count" - 1
-            WHERE "mid" = $1
-            "#,
-            metas_table = &state.metas_table,
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            UPDATE {metas_table}
-            SET `count` = `count` - 1
-            WHERE `mid` = ?
-            "#,
-            metas_table = &state.metas_table,
-        ),
-        _ => format!(
-            r#"
-            UPDATE {metas_table}
-            SET "count" = "count" - 1
-            WHERE "mid" = ?
-            "#,
-            metas_table = &state.metas_table,
-        ),
-    };
-    match sqlx::query(&sql).bind(mid).execute(&state.pool).await {
-        Ok(r) => Ok(r.rows_affected()),
-        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
+    mid: u32,
+) -> Result<meta::Model, FieldError> {
+    let exist_meta = Meta::find()
+        .filter(meta::Column::Mid.eq(mid))
+        .one(&state.conn)
+        .await
+        .map_err(|_| FieldError::InvalidParams("mid".to_owned()))?;
+    if exist_meta.is_none() {
+        return Err(FieldError::InvalidParams("mid".to_owned()));
     }
+    let exist_meta = exist_meta.unwrap();
+    let count = exist_meta.count;
+
+    let mut m = meta::ActiveModel::from(exist_meta);
+    m.count = Set(count - 1);
+    m.update(&state.conn)
+        .await
+        .map_err(|_| FieldError::DatabaseFailed("update meta count failed".to_string()))
 }
 
-pub async fn delete_meta_by_mid(state: &AppState, mid: i32) -> Result<u64, FieldError> {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            DELETE FROM {metas_table}
-            WHERE "mid" = $1
-            "#,
-            metas_table = &state.metas_table
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            DELETE FROM {metas_table}
-            WHERE `mid` = ?
-            "#,
-            metas_table = &state.metas_table
-        ),
-        _ => format!(
-            r#"
-            DELETE FROM {metas_table}
-            WHERE "mid" = ?
-            "#,
-            metas_table = &state.metas_table
-        ),
-    };
-    match sqlx::query(&sql).bind(mid).execute(&state.pool).await {
-        Ok(r) => Ok(r.rows_affected()),
-        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
+pub async fn delete_meta_by_mid(state: &AppState, mid: u32) -> Result<DeleteResult, FieldError> {
+    let m = Meta::find()
+        .filter(meta::Column::Mid.eq(mid))
+        .one(&state.conn)
+        .await
+        .map_err(|_| FieldError::DatabaseFailed("delete meta failed".to_string()))?;
+    if m.is_none() {
+        return Err(FieldError::InvalidParams("mid".to_owned()));
     }
+    let m = m.unwrap();
+    m.delete(&state.conn)
+        .await
+        .map_err(|_| FieldError::DatabaseFailed("delete meta failed".to_string()))
 }

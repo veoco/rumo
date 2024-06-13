@@ -1,546 +1,231 @@
-use sqlx::any::AnyKind;
 use std::time::SystemTime;
 
-use super::models::{OptionCreate, OptionModify, User, UserModify, UserOption, UserRegister};
+use sea_orm::*;
+
+use super::forms::{OptionCreate, OptionModify, UserModify, UserRegister};
 use super::utils::hash;
 use crate::common::errors::FieldError;
+use crate::entity::{option, option::Entity as UserOption, user, user::Entity as User};
 use crate::AppState;
 
-pub async fn get_user_by_mail(state: &AppState, mail: &str) -> Option<User> {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            SELECT *
-            FROM {users_table}
-            WHERE "mail" = $1
-            "#,
-            users_table = &state.users_table
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            SELECT *
-            FROM {users_table}
-            WHERE `mail` = ?
-            "#,
-            users_table = &state.users_table
-        ),
-        _ => format!(
-            r#"
-            SELECT *
-            FROM {users_table}
-            WHERE "mail" = ?
-            "#,
-            users_table = &state.users_table
-        ),
-    };
-    if let Ok(user) = sqlx::query_as::<_, User>(&sql)
-        .bind(mail)
-        .fetch_one(&state.pool)
+pub async fn get_user_by_mail(
+    state: &AppState,
+    mail: &str,
+) -> Result<Option<user::Model>, FieldError> {
+    User::find()
+        .filter(user::Column::Mail.eq(mail))
+        .one(&state.conn)
         .await
-    {
-        Some(user)
-    } else {
-        None
-    }
+        .map_err(|_| FieldError::InvalidParams("mail".to_string()))
 }
 
-pub async fn get_user_by_uid(state: &AppState, uid: i32) -> Option<User> {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            SELECT *
-            FROM {users_table}
-            WHERE "uid" = $1
-            "#,
-            users_table = &state.users_table
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            SELECT *
-            FROM {users_table}
-            WHERE `uid` = ?
-            "#,
-            users_table = &state.users_table
-        ),
-        _ => format!(
-            r#"
-            SELECT *
-            FROM {users_table}
-            WHERE "uid" = ?
-            "#,
-            users_table = &state.users_table
-        ),
-    };
-    if let Ok(user) = sqlx::query_as::<_, User>(&sql)
-        .bind(uid)
-        .fetch_one(&state.pool)
+pub async fn get_user_by_uid(
+    state: &AppState,
+    uid: u32,
+) -> Result<Option<user::Model>, FieldError> {
+    User::find()
+        .filter(user::Column::Uid.eq(uid))
+        .one(&state.conn)
         .await
-    {
-        Some(user)
-    } else {
-        None
-    }
+        .map_err(|_| FieldError::InvalidParams("uid".to_string()))
 }
 
-pub async fn delete_user_by_uid(state: &AppState, uid: i32) -> Result<u64, FieldError> {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            DELETE FROM {users_table}
-            WHERE "uid" = $1
-            "#,
-            users_table = &state.users_table
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            DELETE FROM {users_table}
-            WHERE `uid` = ?
-            "#,
-            users_table = &state.users_table
-        ),
-        _ => format!(
-            r#"
-            DELETE FROM {users_table}
-            WHERE "uid" = ?
-            "#,
-            users_table = &state.users_table
-        ),
-    };
-    match sqlx::query(&sql).bind(uid).execute(&state.pool).await {
-        Ok(r) => Ok(r.rows_affected()),
-        Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
+pub async fn delete_user_by_uid(state: &AppState, uid: u32) -> Result<DeleteResult, FieldError> {
+    let u = get_user_by_uid(state, uid).await?;
+
+    if u.is_none() {
+        return Err(FieldError::InvalidParams("uid".to_string()));
     }
+
+    let u = u.unwrap();
+
+    u.delete(&state.conn)
+        .await
+        .map_err(|_| FieldError::DatabaseFailed("delete user failed".to_string()))
 }
 
-pub async fn update_user_by_uid_for_activity(state: &AppState, uid: i32, now: i32) {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            UPDATE {users_table}
-            SET "activated" = $1, "logged" = $2
-            WHERE "uid" = $3
-            "#,
-            users_table = &state.users_table
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            UPDATE {users_table}
-            SET `activated` = ?, `logged` = ?
-            WHERE `uid` = ?
-            "#,
-            users_table = &state.users_table
-        ),
-        _ => format!(
-            r#"
-            UPDATE {users_table}
-            SET "activated" = ?, "logged" = ?
-            WHERE "uid" = ?
-            "#,
-            users_table = &state.users_table
-        ),
-    };
-    let _ = sqlx::query(&sql)
-        .bind(now)
-        .bind(now)
-        .bind(uid)
-        .execute(&state.pool)
-        .await;
+pub async fn update_user_by_uid_for_activity(
+    state: &AppState,
+    uid: u32,
+    now: u32,
+) -> Result<user::Model, FieldError> {
+    let mut u: user::ActiveModel = get_user_by_uid(state, uid)
+        .await?
+        .ok_or(FieldError::InvalidParams("uid".to_string()))
+        .map(Into::into)?;
+
+    u.activated = Set(now);
+    u.logged = Set(now);
+    u.update(&state.conn)
+        .await
+        .map_err(|_| FieldError::DatabaseFailed("update user failed".to_string()))
 }
 
 pub async fn update_user_by_uid_with_user_modify_for_data_without_password(
     state: &AppState,
-    uid: i32,
+    uid: u32,
     user_modify: &UserModify,
-) -> Result<u64, FieldError> {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            UPDATE {users_table}
-            SET "name" = $1, "mail" = $2, "url" = $3, "screenName" = $4, "group" = $5
-            WHERE "uid" = $6
-            "#,
-            users_table = &state.users_table
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            UPDATE {users_table}
-            SET `name` = ?, `mail` = ?, `url` = ?, `screenName` = ?, `group` = ?
-            WHERE `uid` = ?
-            "#,
-            users_table = &state.users_table
-        ),
-        _ => format!(
-            r#"
-            UPDATE {users_table}
-            SET "name" = ?, "mail" = ?, "url" = ?, "screenName" = ?, "group" = ?
-            WHERE "uid" = ?
-            "#,
-            users_table = &state.users_table
-        ),
-    };
-    match sqlx::query(&sql)
-        .bind(&user_modify.name)
-        .bind(&user_modify.mail)
-        .bind(&user_modify.url)
-        .bind(&user_modify.screenName)
-        .bind(&user_modify.group)
-        .bind(uid)
-        .execute(&state.pool)
+) -> Result<user::Model, FieldError> {
+    let mut u: user::ActiveModel = get_user_by_uid(state, uid)
+        .await?
+        .ok_or(FieldError::InvalidParams("uid".to_string()))
+        .map(Into::into)?;
+
+    u.name = Set(Some(user_modify.name.to_owned()));
+    u.mail = Set(Some(user_modify.mail.to_owned()));
+    u.url = Set(Some(user_modify.url.to_owned()));
+    u.screen_name = Set(Some(user_modify.screenName.to_owned()));
+    u.group = Set(user_modify.group.to_owned());
+    u.update(&state.conn)
         .await
-    {
-        Ok(r) => Ok(r.rows_affected()),
-        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
-    }
+        .map_err(|_| FieldError::DatabaseFailed("update user failed".to_string()))
 }
 
 pub async fn update_user_by_uid_for_password(
     state: &AppState,
-    uid: i32,
+    uid: u32,
     hashed_password: &str,
-) -> Result<u64, FieldError> {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            UPDATE {users_table}
-            SET "password" = $1
-            WHERE "uid" = $2
-            "#,
-            users_table = &state.users_table
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            UPDATE {users_table}
-            SET `password` = ?
-            WHERE `uid` = ?
-            "#,
-            users_table = &state.users_table
-        ),
-        _ => format!(
-            r#"
-            UPDATE {users_table}
-            SET "password" = ?
-            WHERE "uid" = ?
-            "#,
-            users_table = &state.users_table
-        ),
-    };
-    match sqlx::query(&sql)
-        .bind(hashed_password)
-        .bind(uid)
-        .execute(&state.pool)
+) -> Result<user::Model, FieldError> {
+    let mut u: user::ActiveModel = get_user_by_uid(state, uid)
+        .await?
+        .ok_or(FieldError::InvalidParams("uid".to_string()))
+        .map(Into::into)?;
+
+    u.password = Set(Some(hashed_password.to_owned()));
+    u.update(&state.conn)
         .await
-    {
-        Ok(r) => Ok(r.rows_affected()),
-        Err(e) => Err(FieldError::DatabaseFailed(e.to_string())),
-    }
+        .map_err(|_| FieldError::DatabaseFailed("update user failed".to_string()))
 }
 
 pub async fn create_user_with_user_register(
     state: &AppState,
     user_register: &UserRegister,
-) -> Result<u64, FieldError> {
+) -> Result<user::ActiveModel, FieldError> {
     let now = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap()
-        .as_secs() as i32;
+        .as_secs() as u32;
     let hashed_password = hash(&user_register.password);
 
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            INSERT INTO {users_table} ("name", "mail", "url", "screenName", "password", "created", "group")
-            VALUES ($1, $2, $3, $4, $5, $6, 'subscriber')
-            "#,
-            users_table = &state.users_table
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            INSERT INTO {users_table} (`name`, `mail`, `url`, `screenName`, `password`, `created`, `group`)
-            VALUES (?, ?, ?, ?, ?, ?, 'subscriber')
-            "#,
-            users_table = &state.users_table
-        ),
-        _ => format!(
-            r#"
-            INSERT INTO {users_table} ("name", "mail", "url", "screenName", "password", "created", "group")
-            VALUES (?, ?, ?, ?, ?, ?, 'subscriber')
-            "#,
-            users_table = &state.users_table
-        ),
-    };
-    if let Ok(r) = sqlx::query(&sql)
-        .bind(&user_register.name)
-        .bind(&user_register.mail)
-        .bind(&user_register.url)
-        .bind(&user_register.name)
-        .bind(hashed_password)
-        .bind(now)
-        .execute(&state.pool)
-        .await
-    {
-        Ok(r.rows_affected())
-    } else {
-        Err(FieldError::AlreadyExist("name or mail".to_owned()))
+    user::ActiveModel {
+        name: Set(Some(user_register.name.to_owned())),
+        mail: Set(Some(user_register.mail.to_owned())),
+        url: Set(Some(user_register.url.to_owned())),
+        screen_name: Set(Some(user_register.name.to_owned())),
+        password: Set(Some(hashed_password.to_owned())),
+        created: Set(now),
+        group: Set("subscriber".to_owned()),
+        ..Default::default()
     }
+    .save(&state.conn)
+    .await
+    .map_err(|_| FieldError::DatabaseFailed("create user failed".to_string()))
 }
 
-pub async fn get_users_count(state: &AppState) -> i64 {
-    let sql = match state.pool.any_kind() {
-        _ => format!(
-            r#"
-            SELECT COUNT(*)
-            FROM {users_table};
-            "#,
-            users_table = &state.users_table
-        ),
-    };
-    let all_count = sqlx::query_scalar::<_, i64>(&sql)
-        .fetch_one(&state.pool)
-        .await
-        .unwrap_or(0);
-    all_count
+pub async fn get_users_count(state: &AppState) -> u64 {
+    User::find().count(&state.conn).await.unwrap_or(0)
 }
 
 pub async fn get_users_by_list_query(
     state: &AppState,
-    page_size: i32,
-    offset: i32,
-    order_by: &str,
-) -> Result<Vec<User>, FieldError> {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            SELECT *
-            FROM {users_table}
-            ORDER BY {}
-            LIMIT $1 OFFSET $2"#,
-            order_by,
-            users_table = &state.users_table
-        ),
-        _ => format!(
-            r#"
-            SELECT *
-            FROM {users_table}
-            ORDER BY {}
-            LIMIT ? OFFSET ?"#,
-            order_by,
-            users_table = &state.users_table
-        ),
+    page_size: u64,
+    page: u64,
+    order_by: String,
+) -> Result<(Vec<user::Model>, u64), FieldError> {
+    let stmt = User::find();
+    let stmt = match order_by.as_str() {
+        "-uid" => stmt.order_by_desc(user::Column::Uid),
+        "uid" => stmt.order_by_asc(user::Column::Uid),
+        "-name" => stmt.order_by_desc(user::Column::Name),
+        "name" => stmt.order_by_asc(user::Column::Name),
+        "-mail" => stmt.order_by_desc(user::Column::Mail),
+        "mail" => stmt.order_by_asc(user::Column::Mail),
+        _ => stmt.order_by_asc(user::Column::Uid),
     };
+    let paginator = stmt.paginate(&state.conn, page_size);
+    let num_pages = paginator.num_pages().await.unwrap_or(0);
 
-    match sqlx::query_as::<_, User>(&sql)
-        .bind(page_size)
-        .bind(offset)
-        .fetch_all(&state.pool)
+    paginator
+        .fetch_page(page - 1)
         .await
-    {
-        Ok(users) => Ok(users),
-        Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
-    }
+        .map(|p| (p, num_pages))
+        .map_err(|_| FieldError::DatabaseFailed("fetch user failed".to_string()))
 }
 
-pub async fn get_options_by_uid(state: &AppState, uid: i32) -> Result<Vec<UserOption>, FieldError> {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            SELECT *
-            FROM {options_table}
-            WHERE "user" = $1
-            "#,
-            options_table = &state.options_table
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            SELECT *
-            FROM {options_table}
-            WHERE `user` = ?
-            "#,
-            options_table = &state.options_table
-        ),
-        _ => format!(
-            r#"
-            SELECT *
-            FROM {options_table}
-            WHERE "user" = ?
-            "#,
-            options_table = &state.options_table
-        ),
-    };
-
-    match sqlx::query_as::<_, UserOption>(&sql)
-        .bind(uid)
-        .fetch_all(&state.pool)
+pub async fn get_options_by_uid(
+    state: &AppState,
+    uid: u32,
+) -> Result<Vec<option::Model>, FieldError> {
+    UserOption::find()
+        .filter(option::Column::User.eq(uid))
+        .all(&state.conn)
         .await
-    {
-        Ok(user_options) => Ok(user_options),
-        Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
-    }
+        .map_err(|_| FieldError::DatabaseFailed("fetch option failed".to_string()))
 }
 
 pub async fn get_option_by_uid_and_name(
     state: &AppState,
-    uid: i32,
+    uid: u32,
     name: &str,
-) -> Result<UserOption, FieldError> {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            SELECT *
-            FROM {options_table}
-            WHERE "user" = $1 AND "name" = $2
-            "#,
-            options_table = &state.options_table
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            SELECT *
-            FROM {options_table}
-            WHERE `user` = ? AND `name` = ?
-            "#,
-            options_table = &state.options_table
-        ),
-        _ => format!(
-            r#"
-            SELECT *
-            FROM {options_table}
-            WHERE "user" = ? AND "name" = ?
-            "#,
-            options_table = &state.options_table
-        ),
-    };
-
-    match sqlx::query_as::<_, UserOption>(&sql)
-        .bind(uid)
-        .bind(name)
-        .fetch_one(&state.pool)
+) -> Result<Option<option::Model>, FieldError> {
+    UserOption::find()
+        .filter(option::Column::User.eq(uid))
+        .filter(option::Column::Name.eq(name))
+        .one(&state.conn)
         .await
-    {
-        Ok(user_option) => Ok(user_option),
-        Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
-    }
+        .map_err(|_| FieldError::DatabaseFailed("fetch option failed".to_string()))
 }
 
 pub async fn create_option_by_uid_with_option_create(
     state: &AppState,
-    uid: i32,
+    uid: u32,
     option_create: &OptionCreate,
-) -> Result<u64, FieldError> {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            INSERT INTO {options_table} ("name", "user" , "value")
-            VALUES ($1, $2, $3)
-            "#,
-            options_table = &state.options_table
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            INSERT INTO {options_table} (`name`, `user` , `value`)
-            VALUES (?, ?, ?)
-            "#,
-            options_table = &state.options_table
-        ),
-        _ => format!(
-            r#"
-            INSERT INTO {options_table} ("name", "user" , "value")
-            VALUES (?, ?, ?)
-            "#,
-            options_table = &state.options_table
-        ),
+) -> Result<InsertResult<option::ActiveModel>, FieldError> {
+    let opt = option::Model {
+        name: option_create.name.to_owned(),
+        user: uid,
+        value: Some(option_create.value.to_owned()),
     };
 
-    match sqlx::query(&sql)
-        .bind(&option_create.name)
-        .bind(uid)
-        .bind(&option_create.value)
-        .execute(&state.pool)
-        .await
-    {
-        Ok(r) => Ok(r.rows_affected()),
-        Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
-    }
+    UserOption::insert(opt.into_active_model()).exec(&state.conn)
+    .await
+    .map_err(|_| FieldError::DatabaseFailed("create option failed".to_string()))
 }
 
 pub async fn modify_option_by_uid_and_name_with_option_modify(
     state: &AppState,
-    uid: i32,
+    uid: u32,
     name: &str,
     option_modify: &OptionModify,
-) -> Result<u64, FieldError> {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            UPDATE {options_table}
-            SET "value" = $1
-            WHERE "name" = $2 AND "user" = $3
-            "#,
-            options_table = &state.options_table
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            UPDATE {options_table}
-            SET `value` = ?
-            WHERE `name` = ? AND `user` = ?
-            "#,
-            options_table = &state.options_table
-        ),
-        _ => format!(
-            r#"
-            UPDATE {options_table}
-            SET "value" = ?
-            WHERE "name" = ? AND "user" = ?
-            "#,
-            options_table = &state.options_table
-        ),
-    };
+) -> Result<option::Model, FieldError> {
+    let user_option = get_option_by_uid_and_name(state, uid, name).await?;
 
-    match sqlx::query(&sql)
-        .bind(&option_modify.value)
-        .bind(name)
-        .bind(uid)
-        .execute(&state.pool)
-        .await
-    {
-        Ok(r) => Ok(r.rows_affected()),
-        Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
+    if user_option.is_none() {
+        return Err(FieldError::InvalidParams("uid or name".to_string()));
     }
+    let user_option = user_option.unwrap();
+
+    let mut o = option::ActiveModel::from(user_option.clone());
+    o.value = Set(Some(option_modify.value.to_owned()));
+    o.update(&state.conn)
+        .await
+        .map_err(|_| FieldError::DatabaseFailed("update option failed".to_string()))
 }
 
 pub async fn delete_option_by_uid_and_name(
     state: &AppState,
-    uid: i32,
+    uid: u32,
     name: &str,
-) -> Result<u64, FieldError> {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            DELETE FROM {options_table}
-            WHERE "user" = $1 AND "name" = $2
-            "#,
-            options_table = &state.options_table
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            DELETE FROM {options_table}
-            WHERE `user` = ? AND `name` = ?
-            "#,
-            options_table = &state.options_table
-        ),
-        _ => format!(
-            r#"
-            DELETE FROM {options_table}
-            WHERE "user" = ? AND "name" = ?
-            "#,
-            options_table = &state.options_table
-        ),
-    };
-    match sqlx::query(&sql)
-        .bind(uid)
-        .bind(name)
-        .execute(&state.pool)
-        .await
-    {
-        Ok(r) => Ok(r.rows_affected()),
-        Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
+) -> Result<DeleteResult, FieldError> {
+    let user_option = get_option_by_uid_and_name(state, uid, name).await?;
+
+    if user_option.is_none() {
+        return Err(FieldError::InvalidParams("uid or name".to_string()));
     }
+    let user_option = user_option.unwrap();
+
+    user_option
+        .delete(&state.conn)
+        .await
+        .map_err(|_| FieldError::DatabaseFailed("delete option failed".to_string()))
 }

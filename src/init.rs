@@ -1,13 +1,15 @@
-use sqlx::any::AnyKind;
-use sqlx::Executor;
 use std::time::SystemTime;
 
-use super::users::{models::UserRegister, utils::hash};
+use sea_orm::*;
+
+use super::entity::{option, option::Entity as Option, user};
+use super::users::{forms::UserRegister, utils::hash};
 use super::AppState;
 
 pub async fn init_table(state: &AppState) {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => {
+    let db_backend = state.conn.get_database_backend();
+    let sql = match db_backend {
+        DatabaseBackend::Postgres => {
             r#"
             CREATE SEQUENCE "typecho_comments_seq";
             CREATE TABLE "typecho_comments" (
@@ -112,15 +114,15 @@ pub async fn init_table(state: &AppState) {
             );
             "#
         }
-        AnyKind::MySql => {
+        DatabaseBackend::MySql => {
             r#"
             CREATE TABLE `typecho_comments` (
-                `coid` int(10) NOT NULL auto_increment,
-                `cid` int(10) default '0',
-                `created` int(10) default '0',
+                `coid` int(10) unsigned NOT NULL auto_increment,
+                `cid` int(10) unsigned default '0',
+                `created` int(10) unsigned default '0',
                 `author` varchar(150) default NULL,
-                `authorId` int(10) default '0',
-                `ownerId` int(10) default '0',
+                `authorId` int(10) unsigned default '0',
+                `ownerId` int(10) unsigned default '0',
                 `mail` varchar(150) default NULL,
                 `url` varchar(255) default NULL,
                 `ip` varchar(64) default NULL,
@@ -128,37 +130,37 @@ pub async fn init_table(state: &AppState) {
                 `text` text,
                 `type` varchar(16) default 'comment',
                 `status` varchar(16) default 'approved',
-                `parent` int(10) default '0',
+                `parent` int(10) unsigned default '0',
                 PRIMARY KEY  (`coid`),
                 KEY `cid` (`cid`),
                 KEY `created` (`created`)
             ) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4;
           
             CREATE TABLE `typecho_contents` (
-                `cid` int(10) NOT NULL auto_increment,
+                `cid` int(10) unsigned NOT NULL auto_increment,
                 `title` varchar(150) default NULL,
                 `slug` varchar(150) default NULL,
-                `created` int(10) default '0',
-                `modified` int(10) default '0',
+                `created` int(10) unsigned default '0',
+                `modified` int(10) unsigned default '0',
                 `text` longtext,
-                `order` int(10) default '0',
-                `authorId` int(10) default '0',
+                `order` int(10) unsigned default '0',
+                `authorId` int(10) unsigned default '0',
                 `template` varchar(32) default NULL,
                 `type` varchar(16) default 'post',
                 `status` varchar(16) default 'publish',
                 `password` varchar(32) default NULL,
-                `commentsNum` int(10) default '0',
+                `commentsNum` int(10) unsigned default '0',
                 `allowComment` char(1) default '0',
                 `allowPing` char(1) default '0',
                 `allowFeed` char(1) default '0',
-                `parent` int(10) default '0',
+                `parent` int(10) unsigned default '0',
                 PRIMARY KEY  (`cid`),
                 UNIQUE KEY `slug` (`slug`),
                 KEY `created` (`created`)
             ) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4;
           
             CREATE TABLE `typecho_fields` (
-                `cid` int(10) NOT NULL,
+                `cid` int(10) unsigned NOT NULL,
                 `name` varchar(150) NOT NULL,
                 `type` varchar(8) default 'str',
                 `str_value` text,
@@ -170,41 +172,41 @@ pub async fn init_table(state: &AppState) {
             ) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4;
           
             CREATE TABLE `typecho_metas` (
-                `mid` int(10) NOT NULL auto_increment,
+                `mid` int(10) unsigned NOT NULL auto_increment,
                 `name` varchar(150) default NULL,
                 `slug` varchar(150) default NULL,
                 `type` varchar(32) NOT NULL,
                 `description` varchar(150) default NULL,
-                `count` int(10) default '0',
-                `order` int(10) default '0',
-                `parent` int(10) default '0',
+                `count` int(10) unsigned default '0',
+                `order` int(10) unsigned default '0',
+                `parent` int(10) unsigned default '0',
                 PRIMARY KEY  (`mid`),
                 KEY `slug` (`slug`)
             ) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4;
           
             CREATE TABLE `typecho_options` (
                 `name` varchar(32) NOT NULL,
-                `user` int(10) NOT NULL default '0',
+                `user` int(10) unsigned NOT NULL default '0',
                 `value` text,
                 PRIMARY KEY  (`name`,`user`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
           
             CREATE TABLE `typecho_relationships` (
-                `cid` int(10) NOT NULL,
-                `mid` int(10) NOT NULL,
+                `cid` int(10) unsigned NOT NULL,
+                `mid` int(10) unsigned NOT NULL,
                 PRIMARY KEY  (`cid`,`mid`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
           
             CREATE TABLE `typecho_users` (
-                `uid` int(10) NOT NULL auto_increment,
+                `uid` int(10) unsigned NOT NULL auto_increment,
                 `name` varchar(32) default NULL,
                 `password` varchar(64) default NULL,
                 `mail` varchar(150) default NULL,
                 `url` varchar(150) default NULL,
                 `screenName` varchar(32) default NULL,
-                `created` int(10) default '0',
-                `activated` int(10) default '0',
-                `logged` int(10) default '0',
+                `created` int(10) unsigned default '0',
+                `activated` int(10) unsigned default '0',
+                `logged` int(10) unsigned default '0',
                 `group` varchar(16) default 'visitor',
                 `authCode` varchar(64) default NULL,
                 PRIMARY KEY  (`uid`),
@@ -213,7 +215,7 @@ pub async fn init_table(state: &AppState) {
             ) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4;
             "#
         }
-        AnyKind::Sqlite => {
+        DatabaseBackend::Sqlite => {
             r#"
             CREATE TABLE typecho_comments (
                 "coid" INTEGER NOT NULL PRIMARY KEY,
@@ -311,51 +313,33 @@ pub async fn init_table(state: &AppState) {
             "#
         }
     };
-    let mut conn = state.pool.acquire().await.expect("open database failed");
-    let _ = conn.execute(sql).await.expect("database already exists");
+    let _ = state
+        .conn
+        .execute(Statement::from_string(db_backend, sql))
+        .await
+        .expect("database already exists");
 }
 
 pub async fn init_admin(state: &AppState, user_register: UserRegister) {
     let now = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap()
-        .as_secs() as i32;
+        .as_secs() as u32;
     let hashed_password = hash(&user_register.password);
 
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            INSERT INTO {users_table} ("name", "mail", "url", "screenName", "password", "created", "group")
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
-            "#,
-            users_table = &state.users_table,
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            INSERT INTO {users_table} (`name`, `mail`, `url`, `screenName`, `password`, `created`, `group`)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            "#,
-            users_table = &state.users_table,
-        ),
-        _ => format!(
-            r#"
-            INSERT INTO {users_table} ("name", "mail", "url", "screenName", "password", "created", "group")
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            "#,
-            users_table = &state.users_table,
-        ),
-    };
-    sqlx::query(&sql)
-        .bind(&user_register.name)
-        .bind(user_register.mail)
-        .bind(user_register.url)
-        .bind(&user_register.name)
-        .bind(hashed_password)
-        .bind(now)
-        .bind("administrator")
-        .execute(&state.pool)
-        .await
-        .expect("user already exists");
+    user::ActiveModel {
+        name: Set(Some(user_register.name.clone())),
+        mail: Set(Some(user_register.mail)),
+        url: Set(Some(user_register.url)),
+        screen_name: Set(Some(user_register.name)),
+        password: Set(Some(hashed_password)),
+        created: Set(now),
+        group: Set("administrator".to_string()),
+        ..Default::default()
+    }
+    .insert(&state.conn)
+    .await
+    .expect("user already exists");
 }
 
 pub async fn init_options(state: &AppState) {
@@ -429,35 +413,16 @@ pub async fn init_options(state: &AppState) {
         ["installed", "1"],
         ["allowXmlRpc", "2"],
     ];
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            INSERT INTO {options_table} ("user", "name", "value")
-            VALUES ('0', $1, $2)
-            "#,
-            options_table = &state.options_table,
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            INSERT INTO {options_table} (`user`, `name`, `value`)
-            VALUES ('0', ?, ?)
-            "#,
-            options_table = &state.options_table,
-        ),
-        _ => format!(
-            r#"
-            INSERT INTO {options_table} ("user", "name", "value")
-            VALUES ('0', ?, ?)
-            "#,
-            options_table = &state.options_table,
-        ),
-    };
-    for [name, value] in options{
-        sqlx::query(&sql)
-            .bind(name)
-            .bind(value)
-            .execute(&state.pool)
+    for [name, value] in options {
+        let opt = option::Model {
+            name: name.to_string(),
+            user: 1,
+            value: Some(value.to_string()),
+        };
+
+        Option::insert(opt.into_active_model())
+            .exec(&state.conn)
             .await
-            .expect("options already exists");
+            .expect("insert option failed");
     }
 }

@@ -1,74 +1,31 @@
-#![allow(non_snake_case)]
 use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
 
-#[derive(Serialize, Deserialize, FromRow)]
-pub struct Content {
-    pub cid: i32,
-    pub title: Option<String>,
-    pub slug: Option<String>,
-    pub created: i32,
-    pub modified: i32,
-    pub text: String,
-    pub order: i32,
-    pub authorId: i32,
-    pub template: Option<String>,
-    pub r#type: String,
-    pub status: String,
-    pub password: Option<String>,
-    pub commentsNum: i32,
-    pub allowComment: String,
-    pub allowPing: String,
-    pub allowFeed: String,
-    pub parent: i32,
-}
-
-#[derive(Serialize, Deserialize, FromRow)]
-pub struct Meta {
-    pub mid: i32,
-    pub name: Option<String>,
-    pub slug: Option<String>,
-    pub r#type: String,
-    pub description: Option<String>,
-    pub count: i32,
-    pub order: i32,
-    pub parent: i32,
-}
-
-#[derive(Serialize, Deserialize, FromRow)]
-pub struct Field {
-    pub cid: i32,
-    pub name: String,
-    pub r#type: String,
-    pub str_value: Option<String>,
-    pub int_value: i32,
-    pub float_value: f32,
-}
+use crate::entity::{content, field::Model as Field, meta::Model as Meta};
 
 #[derive(Serialize, Deserialize)]
 pub struct ContentWithFields {
-    pub cid: i32,
+    pub cid: u32,
     pub title: Option<String>,
     pub slug: Option<String>,
-    pub created: i32,
-    pub modified: i32,
-    pub text: String,
-    pub order: i32,
-    pub authorId: i32,
+    pub created: u32,
+    pub modified: u32,
+    pub text: Option<String>,
+    pub order: u32,
+    pub author_id: u32,
     pub template: Option<String>,
     pub r#type: String,
     pub status: String,
     pub password: Option<String>,
-    pub commentsNum: i32,
-    pub allowComment: String,
-    pub allowPing: String,
-    pub allowFeed: String,
-    pub parent: i32,
+    pub comments_num: u32,
+    pub allow_comment: String,
+    pub allow_ping: String,
+    pub allow_feed: String,
+    pub parent: u32,
     pub fields: Vec<Field>,
 }
 
-impl From<Content> for ContentWithFields {
-    fn from(content: Content) -> Self {
+impl From<content::Model> for ContentWithFields {
+    fn from(content: content::Model) -> Self {
         Self {
             cid: content.cid,
             title: content.title,
@@ -77,15 +34,15 @@ impl From<Content> for ContentWithFields {
             modified: content.modified,
             text: content.text,
             order: content.order,
-            authorId: content.authorId,
+            author_id: content.author_id,
             template: content.template,
             r#type: content.r#type,
             status: content.status,
             password: content.password,
-            commentsNum: content.commentsNum,
-            allowComment: content.allowComment,
-            allowPing: content.allowPing,
-            allowFeed: content.allowFeed,
+            comments_num: content.comments_num,
+            allow_comment: content.allow_comment,
+            allow_ping: content.allow_ping,
+            allow_feed: content.allow_feed,
             parent: content.parent,
             fields: vec![],
         }
@@ -94,32 +51,33 @@ impl From<Content> for ContentWithFields {
 
 #[derive(Serialize, Deserialize)]
 pub struct ContentWithMetasUsersFields {
-    pub cid: i32,
+    pub cid: u32,
     pub title: Option<String>,
     pub slug: Option<String>,
-    pub created: i32,
-    pub modified: i32,
-    pub text: String,
-    pub order: i32,
-    pub authorId: i32,
+    pub created: u32,
+    pub modified: u32,
+    pub text: Option<String>,
+    pub order: u32,
+    pub author_id: u32,
     pub template: Option<String>,
     pub r#type: String,
     pub status: String,
     pub password: Option<String>,
-    pub commentsNum: i32,
-    pub allowComment: String,
-    pub allowPing: String,
-    pub allowFeed: String,
-    pub parent: i32,
-    pub screenName: Option<String>,
+    pub comments_num: u32,
+    pub allow_comment: String,
+    pub allow_ping: String,
+    pub allow_feed: String,
+    pub parent: u32,
+
+    pub screen_name: Option<String>,
     pub group: String,
     pub categories: Vec<Meta>,
     pub tags: Vec<Meta>,
     pub fields: Vec<Field>,
 }
 
-impl From<Content> for ContentWithMetasUsersFields {
-    fn from(content: Content) -> Self {
+impl From<content::Model> for ContentWithMetasUsersFields {
+    fn from(content: content::Model) -> Self {
         Self {
             cid: content.cid,
             title: content.title,
@@ -128,18 +86,18 @@ impl From<Content> for ContentWithMetasUsersFields {
             modified: content.modified,
             text: content.text,
             order: content.order,
-            authorId: content.authorId,
+            author_id: content.author_id,
             template: content.template,
             r#type: content.r#type,
             status: content.status,
             password: content.password,
-            commentsNum: content.commentsNum,
-            allowComment: content.allowComment,
-            allowPing: content.allowPing,
-            allowFeed: content.allowFeed,
+            comments_num: content.comments_num,
+            allow_comment: content.allow_comment,
+            allow_ping: content.allow_ping,
+            allow_feed: content.allow_feed,
             parent: content.parent,
-            screenName: None,
-            group: String::from(""),
+            screen_name: None,
+            group: "visitor".to_string(),
             categories: vec![],
             tags: vec![],
             fields: vec![],

@@ -1,434 +1,198 @@
-use sqlx::any::AnyKind;
 use std::time::SystemTime;
 
-use super::models::Comment;
+use sea_orm::*;
+
+use crate::common::db as common_db;
 use crate::common::errors::FieldError;
+use crate::entity::{comment, comment::Entity as Comment, content};
 use crate::AppState;
 
-pub async fn get_comment_by_coid(state: &AppState, coid: i32) -> Option<Comment> {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            SELECT *
-            FROM {comments_table}
-            WHERE "type" = 'comment' AND "coid" = $1
-            "#,
-            comments_table = &state.comments_table
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            SELECT *
-            FROM {comments_table}
-            WHERE `type` = 'comment' AND `coid` = ?
-            "#,
-            comments_table = &state.comments_table
-        ),
-        _ => format!(
-            r#"
-            SELECT *
-            FROM {comments_table}
-            WHERE "type" = 'comment' AND "coid" = ?
-            "#,
-            comments_table = &state.comments_table
-        ),
-    };
-    match sqlx::query_as::<_, Comment>(&sql)
-        .bind(coid)
-        .fetch_one(&state.pool)
+pub async fn get_comment_by_coid(
+    state: &AppState,
+    coid: u32,
+) -> Result<Option<comment::Model>, FieldError> {
+    Comment::find()
+        .filter(comment::Column::Coid.eq(coid))
+        .one(&state.conn)
         .await
-    {
-        Ok(comment) => Some(comment),
-        Err(_) => None,
-    }
+        .map_err(|_| FieldError::InvalidParams("coid".to_string()))
 }
 
 pub async fn create_comment_with_params(
     state: &AppState,
-    cid: i32,
+    cid: u32,
     author: &str,
-    author_id: i32,
-    owner_id: i32,
+    author_id: u32,
+    owner_id: u32,
     mail: &str,
     url: Option<String>,
     ip: &str,
     ua: &str,
     text: &str,
     status: &str,
-    parent: i32,
-) -> Result<u64, FieldError> {
+    parent: u32,
+) -> Result<comment::ActiveModel, FieldError> {
     let now = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap()
         .as_secs();
 
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            INSERT INTO {comments_table} ("type", "cid", "created", "author", "authorId", "ownerId", "mail", "url", "ip", "agent", "text", "status", "parent")
-            VALUES ('comment', $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-            "#,
-            comments_table = &state.comments_table
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            INSERT INTO {comments_table} (`type`, `cid`, `created`, `author`, `authorId`, `ownerId`, `mail`, `url`, `ip`, `agent`, `text`, `status`, `parent`)
-            VALUES ('comment', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            "#,
-            comments_table = &state.comments_table
-        ),
-        _ => format!(
-            r#"
-            INSERT INTO {comments_table} ("type", "cid", "created", "author", "authorId", "ownerId", "mail", "url", "ip", "agent", "text", "status", "parent")
-            VALUES ('comment', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            "#,
-            comments_table = &state.comments_table
-        ),
-    };
-    match sqlx::query(&sql)
-        .bind(cid)
-        .bind(now as i32)
-        .bind(author)
-        .bind(author_id)
-        .bind(owner_id)
-        .bind(mail)
-        .bind(url)
-        .bind(ip)
-        .bind(ua)
-        .bind(text)
-        .bind(status)
-        .bind(parent)
-        .execute(&state.pool)
-        .await
-    {
-        Ok(r) => Ok(r.rows_affected()),
-        Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
+    comment::ActiveModel {
+        cid: Set(cid),
+        created: Set(now as u32),
+        author: Set(Some(author.to_owned())),
+        author_id: Set(author_id),
+        owner_id: Set(owner_id),
+        mail: Set(Some(mail.to_owned())),
+        url: Set(url),
+        ip: Set(Some(ip.to_owned())),
+        agent: Set(Some(ua.to_owned())),
+        text: Set(Some(text.to_owned())),
+        status: Set(status.to_owned()),
+        parent: Set(parent),
+        ..Default::default()
     }
+    .save(&state.conn)
+    .await
+    .map_err(|_| FieldError::DatabaseFailed("insert comment failed".to_string()))
 }
 
 pub async fn update_content_count_increase_by_cid(
     state: &AppState,
-    cid: i32,
-) -> Result<u64, FieldError> {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            UPDATE {contents_table}
-            SET "commentsNum" = "commentsNum" + 1
-            WHERE "cid" = $1
-            "#,
-            contents_table = &state.contents_table
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            UPDATE {contents_table}
-            SET `commentsNum` = `commentsNum` + 1
-            WHERE `cid` = ?
-            "#,
-            contents_table = &state.contents_table
-        ),
-        _ => format!(
-            r#"
-            UPDATE {contents_table}
-            SET "commentsNum" = "commentsNum" + 1
-            WHERE "cid" = ?
-            "#,
-            contents_table = &state.contents_table
-        ),
+    cid: u32,
+) -> Result<content::Model, FieldError> {
+    let exist_content = match common_db::get_content_by_cid(state, cid).await? {
+        Some(c) => c,
+        None => return Err(FieldError::InvalidParams("cid".to_string())),
     };
-    match sqlx::query(&sql).bind(cid).execute(&state.pool).await {
-        Ok(r) => Ok(r.rows_affected()),
-        Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
-    }
+
+    let count = exist_content.comments_num;
+    let mut c = content::ActiveModel::from(exist_content);
+    c.comments_num = Set(count + 1);
+    c.update(&state.conn)
+        .await
+        .map_err(|_| FieldError::DatabaseFailed("update content failed".to_string()))
 }
 
 pub async fn update_content_count_decrease_by_cid(
     state: &AppState,
-    cid: i32,
-) -> Result<u64, FieldError> {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            UPDATE {contents_table}
-            SET "commentsNum" = "commentsNum" - 1
-            WHERE "cid" = $1
-            "#,
-            contents_table = &state.contents_table
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            UPDATE {contents_table}
-            SET `commentsNum` = `commentsNum` - 1
-            WHERE `cid` = ?
-            "#,
-            contents_table = &state.contents_table
-        ),
-        _ => format!(
-            r#"
-            UPDATE {contents_table}
-            SET "commentsNum" = "commentsNum" - 1
-            WHERE "cid" = ?
-            "#,
-            contents_table = &state.contents_table
-        ),
+    cid: u32,
+) -> Result<content::Model, FieldError> {
+    let exist_content = match common_db::get_content_by_cid(state, cid).await? {
+        Some(c) => c,
+        None => return Err(FieldError::InvalidParams("cid".to_string())),
     };
-    match sqlx::query(&sql).bind(cid).execute(&state.pool).await {
-        Ok(r) => Ok(r.rows_affected()),
-        Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
-    }
+
+    let count = exist_content.comments_num;
+    let mut c = content::ActiveModel::from(exist_content);
+    c.comments_num = Set(count - 1);
+    c.update(&state.conn)
+        .await
+        .map_err(|_| FieldError::DatabaseFailed("update content failed".to_string()))
 }
 
 pub async fn modify_comment_with_params(
     state: &AppState,
-    coid: i32,
+    coid: u32,
     text: &str,
     status: &str,
-) -> Result<u64, FieldError> {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            UPDATE {comments_table}
-            SET "text" = $1, "status" = $2
-            WHERE "coid" = $3
-            "#,
-            comments_table = &state.comments_table
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            UPDATE {comments_table}
-            SET `text` = ?, `status` = ?
-            WHERE `coid` = ?
-            "#,
-            comments_table = &state.comments_table
-        ),
-        _ => format!(
-            r#"
-            UPDATE {comments_table}
-            SET "text" = ?, "status" = ?
-            WHERE "coid" = ?
-            "#,
-            comments_table = &state.comments_table
-        ),
+) -> Result<comment::Model, FieldError> {
+    let exist_comment = match get_comment_by_coid(state, coid).await? {
+        Some(c) => c,
+        None => return Err(FieldError::InvalidParams("coid".to_string())),
     };
-    match sqlx::query(&sql)
-        .bind(text)
-        .bind(status)
-        .bind(coid)
-        .execute(&state.pool)
+
+    let mut c = comment::ActiveModel::from(exist_comment);
+    c.text = Set(Some(text.to_owned()));
+    c.status = Set(status.to_owned());
+    c.update(&state.conn)
         .await
-    {
-        Ok(r) => Ok(r.rows_affected()),
-        Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
-    }
+        .map_err(|_| FieldError::DatabaseFailed("update comment failed".to_string()))
 }
 
-pub async fn delete_comment_by_coid(state: &AppState, coid: i32) -> Result<u64, FieldError> {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            DELETE FROM {comments_table}
-            WHERE "coid" = $1
-            "#,
-            comments_table = &state.comments_table
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            DELETE FROM {comments_table}
-            WHERE `coid` = ?
-            "#,
-            comments_table = &state.comments_table
-        ),
-        _ => format!(
-            r#"
-            DELETE FROM {comments_table}
-            WHERE "coid" = ?
-            "#,
-            comments_table = &state.comments_table
-        ),
+pub async fn delete_comment_by_coid(
+    state: &AppState,
+    coid: u32,
+) -> Result<DeleteResult, FieldError> {
+    let exist_comment = match get_comment_by_coid(state, coid).await? {
+        Some(c) => c,
+        None => return Err(FieldError::InvalidParams("coid".to_string())),
     };
-    match sqlx::query(&sql).bind(coid).execute(&state.pool).await {
-        Ok(r) => Ok(r.rows_affected()),
-        Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
-    }
+
+    exist_comment
+        .delete(&state.conn)
+        .await
+        .map_err(|_| FieldError::DatabaseFailed("delete comment failed".to_string()))
 }
 
-pub async fn get_comments_count(state: &AppState) -> i64 {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            SELECT COUNT(*)
-            FROM {comments_table}
-            WHERE "type" = 'comment'
-            "#,
-            comments_table = &state.comments_table
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            SELECT COUNT(*)
-            FROM {comments_table}
-            WHERE `type` = 'comment'
-            "#,
-            comments_table = &state.comments_table
-        ),
-        _ => format!(
-            r#"
-            SELECT COUNT(*)
-            FROM {comments_table}
-            WHERE "type" = 'comment'
-            "#,
-            comments_table = &state.comments_table
-        ),
-    };
-    match sqlx::query_scalar::<_, i64>(&sql)
-        .fetch_one(&state.pool)
-        .await
-    {
-        Ok(c) => c,
-        Err(_) => 0
-    }
+pub async fn get_comments_count(state: &AppState) -> u64 {
+    Comment::find().count(&state.conn).await.unwrap_or(0)
 }
 
 pub async fn get_comments_by_list_query(
     state: &AppState,
-    page_size: i32,
-    offset: i32,
+    page_size: u64,
+    page: u64,
     order_by: &str,
-) -> Result<Vec<Comment>, FieldError> {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"            
-            SELECT *
-            FROM {comments_table}
-            WHERE "type" = 'comment'
-            ORDER BY {}
-            LIMIT $1 OFFSET $2"#,
-            order_by,
-            comments_table = &state.comments_table
-        ),
-        AnyKind::MySql => format!(
-            r#"            
-            SELECT *
-            FROM {comments_table}
-            WHERE `type` = 'comment'
-            ORDER BY {}
-            LIMIT ? OFFSET ?"#,
-            order_by,
-            comments_table = &state.comments_table
-        ),
-        _ => format!(
-            r#"            
-            SELECT *
-            FROM {comments_table}
-            WHERE "type" = 'comment'
-            ORDER BY {}
-            LIMIT ? OFFSET ?"#,
-            order_by,
-            comments_table = &state.comments_table
-        ),
+) -> Result<Vec<comment::Model>, FieldError> {
+    let stmt = Comment::find();
+
+    let stmt = match order_by {
+        "-coid" => stmt.order_by_desc(comment::Column::Coid),
+        "coid" => stmt.order_by_asc(comment::Column::Coid),
+        "-created" => stmt.order_by_desc(comment::Column::Created),
+        "created" => stmt.order_by_asc(comment::Column::Created),
+        _ => stmt.order_by_desc(comment::Column::Coid),
     };
-    match sqlx::query_as::<_, Comment>(&sql)
-        .bind(page_size)
-        .bind(offset)
-        .fetch_all(&state.pool)
+    let paginator = stmt.paginate(&state.conn, page_size);
+    paginator
+        .fetch_page(page)
         .await
-    {
-        Ok(comments) => Ok(comments),
-        Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
-    }
+        .map_err(|_| FieldError::DatabaseFailed("get comments by list query failed".to_string()))
 }
 
 pub async fn get_content_comments_count_by_cid_with_private(
     state: &AppState,
-    cid: i32,
-    private_sql: &str,
-) -> i64 {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"
-            SELECT COUNT(*)
-            FROM {comments_table}
-            WHERE "type" = 'comment' AND "cid" = $1{}
-            "#,
-            private_sql,
-            comments_table = &state.comments_table
-        ),
-        AnyKind::MySql => format!(
-            r#"
-            SELECT COUNT(*)
-            FROM {comments_table}
-            WHERE `type` = 'comment' AND `cid` = ?{}
-            "#,
-            private_sql,
-            comments_table = &state.comments_table
-        ),
-        _ => format!(
-            r#"
-            SELECT COUNT(*)
-            FROM {comments_table}
-            WHERE "type" = 'comment' AND "cid" = ?{}
-            "#,
-            private_sql,
-            comments_table = &state.comments_table
-        ),
+    cid: u32,
+    private: bool,
+) -> u64 {
+    let stmt = Comment::find().filter(comment::Column::Cid.eq(cid));
+
+    let stmt = if private {
+        stmt
+    } else {
+        stmt.filter(comment::Column::Status.eq("approved"))
     };
-    let all_count = sqlx::query_scalar::<_, i64>(&sql)
-        .bind(cid)
-        .fetch_one(&state.pool)
-        .await
-        .unwrap_or(0);
-    all_count
+
+    stmt.count(&state.conn).await.unwrap_or(0)
 }
 
 pub async fn get_comments_by_cid_and_list_query_with_private(
     state: &AppState,
-    cid: i32,
-    private_sql: &str,
-    page_size: i32,
-    offset: i32,
+    cid: u32,
+    private: bool,
+    page_size: u64,
+    page: u64,
     order_by: &str,
-) -> Result<Vec<Comment>, FieldError> {
-    let sql = match state.pool.any_kind() {
-        AnyKind::Postgres => format!(
-            r#"            
-            SELECT *
-            FROM {comments_table}
-            WHERE "type" = 'comment' AND "cid" = $1{}
-            ORDER BY {}
-            LIMIT $2 OFFSET $3"#,
-            private_sql,
-            order_by,
-            comments_table = &state.comments_table
-        ),
-        AnyKind::MySql => format!(
-            r#"            
-            SELECT *
-            FROM {comments_table}
-            WHERE `type` = 'comment' AND `cid` = ?{}
-            ORDER BY {}
-            LIMIT ? OFFSET ?"#,
-            private_sql,
-            order_by,
-            comments_table = &state.comments_table
-        ),
-        _ => format!(
-            r#"            
-            SELECT *
-            FROM {comments_table}
-            WHERE "type" = 'comment' AND "cid" = ?{}
-            ORDER BY {}
-            LIMIT ? OFFSET ?"#,
-            private_sql,
-            order_by,
-            comments_table = &state.comments_table
-        ),
+) -> Result<Vec<comment::Model>, FieldError> {
+    let stmt = Comment::find().filter(comment::Column::Cid.eq(cid));
+
+    let stmt = if private {
+        stmt
+    } else {
+        stmt.filter(comment::Column::Status.eq("approved"))
     };
-    match sqlx::query_as::<_, Comment>(&sql)
-        .bind(cid)
-        .bind(page_size)
-        .bind(offset)
-        .fetch_all(&state.pool)
+
+    let stmt = match order_by {
+        "-coid" => stmt.order_by_desc(comment::Column::Coid),
+        "coid" => stmt.order_by_asc(comment::Column::Coid),
+        "-created" => stmt.order_by_desc(comment::Column::Created),
+        "created" => stmt.order_by_asc(comment::Column::Created),
+        _ => stmt.order_by_desc(comment::Column::Coid),
+    };
+    let paginator = stmt.paginate(&state.conn, page_size);
+    paginator
+        .fetch_page(page - 1)
         .await
-    {
-        Ok(comments) => Ok(comments),
-        Err(e) => return Err(FieldError::DatabaseFailed(e.to_string())),
-    }
+        .map_err(|_| FieldError::DatabaseFailed("get comments by list query failed".to_string()))
 }

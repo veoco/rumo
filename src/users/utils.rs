@@ -10,7 +10,8 @@ use rand::Rng;
 use sha2::Sha256;
 
 use super::db::{get_user_by_mail, get_user_by_uid};
-use super::models::{TokenData, User, UserLogin};
+use super::forms::{TokenData, UserLogin};
+use crate::entity::user::Model as User;
 use crate::common::errors::AuthError;
 use crate::AppState;
 
@@ -93,7 +94,7 @@ pub fn hash(password: &str) -> String {
 }
 
 pub async fn authenticate_user(state: &AppState, user_login: &UserLogin) -> Option<User> {
-    if let Some(user) = get_user_by_mail(&state, &user_login.mail).await {
+    if let Ok(Some(user)) = get_user_by_mail(&state, &user_login.mail).await {
         let user_password = user.password.clone().unwrap_or(String::from(""));
         let valid = verify(&user_login.password, &user_password);
         if valid {
@@ -120,9 +121,9 @@ pub async fn get_user(parts: &mut Parts, state: AppState) -> Result<User, AuthEr
 
     let user_id = token_data
         .sub
-        .parse::<i32>()
+        .parse::<u32>()
         .map_err(|_| AuthError::InvalidToken)?;
-    if let Some(user) = get_user_by_uid(&state, user_id).await {
+    if let Ok(Some(user)) = get_user_by_uid(&state, user_id).await {
         return Ok(user);
     }
     Err(AuthError::InvalidToken)

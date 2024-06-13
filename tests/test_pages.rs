@@ -7,6 +7,7 @@ use common::{admin_post, admin_patch, get, admin_delete};
 #[tokio::test]
 async fn create_then_list_pages_success() {
     let (status_code, body) = get("/api/pages/").await;
+    println!("{:?}", body);
     assert_eq!(status_code, StatusCode::OK);
 
     let body = body.unwrap();

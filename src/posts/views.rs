@@ -1,9 +1,9 @@
+use std::sync::Arc;
+
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::Json;
 use serde_json::{json, Value};
-use sqlx::any::AnyKind;
-use std::sync::Arc;
 
 use super::db;
 use super::forms::{PostCreate, PostQuery, PostsQuery};
@@ -18,8 +18,7 @@ pub async fn create_post(
     PMContributor(user): PMContributor,
     ValidatedJson(mut post_create): ValidatedJson<PostCreate>,
 ) -> Result<(StatusCode, Json<Value>), FieldError> {
-    let exist_post = common_db::get_content_by_slug(&state, &post_create.slug).await;
-    if exist_post.is_some() {
+    if let Ok(Some(_)) = common_db::get_content_by_slug(&state, &post_create.slug).await {
         return Err(FieldError::AlreadyExist("slug".to_owned()));
     }
 
@@ -37,15 +36,13 @@ pub async fn modify_post_by_slug(
     Path(slug): Path<String>,
     ValidatedJson(mut post_modify): ValidatedJson<PostCreate>,
 ) -> Result<Json<Value>, FieldError> {
-    let exist_post = common_db::get_content_by_slug(&state, &slug).await;
-    if exist_post.is_none() {
-        return Err(FieldError::NotFound("slug".to_owned()));
-    }
-    let exist_post = exist_post.unwrap();
+    let exist_post = match common_db::get_content_by_slug(&state, &slug).await {
+        Ok(Some(p)) => p,
+        _ => return Err(FieldError::NotFound("slug".to_owned())),
+    };
 
     if slug != post_modify.slug {
-        let target_post = common_db::get_content_by_slug(&state, &post_modify.slug).await;
-        if target_post.is_some() {
+        if let Ok(Some(_)) = common_db::get_content_by_slug(&state, &post_modify.slug).await {
             return Err(FieldError::AlreadyExist("post slug".to_owned()));
         }
     }
@@ -68,42 +65,15 @@ pub async fn list_posts(
         q.private.unwrap_or(false) && (user.group == "editor" || user.group == "administrator");
     let own = q.own.unwrap_or(false) && user.group != "visitor";
 
-    let filter_sql = if private && !own {
-        String::from("")
-    } else if !private && own {
-        match state.pool.any_kind() {
-            AnyKind::MySql => format!(r#" AND `authorId` = {}"#, user.uid),
-            _ => format!(r#" AND "authorId" = {}"#, user.uid),
-        }
-    } else {
-        match state.pool.any_kind() {
-            AnyKind::MySql => format!(r#" AND `status` = 'publish' AND `password` IS NULL"#),
-            _ => format!(r#" AND "status" = 'publish' AND "password" IS NULL"#),
-        }
-    };
-
-    let all_count = common_db::get_contents_count_with_private(&state, &filter_sql, "post").await;
+    let all_count =
+        common_db::get_contents_count_with_private(&state, private, own, &user, "post").await;
 
     let page = q.page.unwrap_or(1);
     let page_size = q.page_size.unwrap_or(10);
     let order_by = q.order_by.unwrap_or("-cid".to_string());
 
-    let offset = (page - 1) * page_size;
-    let order_by = match order_by.as_str() {
-        "cid" => "cid",
-        "-cid" => "cid DESC",
-        "slug" => "slug",
-        "-slug" => "slug DESC",
-        f => return Err(FieldError::InvalidParams(f.to_string())),
-    };
-
     let posts = db::get_contents_with_metas_user_and_fields_by_filter_and_list_query(
-        &state,
-        &filter_sql,
-        page_size,
-        offset,
-        order_by,
-        true,
+        &state, private, own, &user, page_size, page, &order_by, true,
     )
     .await?;
     Ok(Json(json!({
@@ -122,25 +92,11 @@ pub async fn get_post_by_slug(
     ValidatedQuery(q): ValidatedQuery<PostQuery>,
 ) -> Result<Json<Value>, FieldError> {
     let admin = user.group == "editor" || user.group == "administrator";
-    let private =
-        q.private.unwrap_or(false) && (user.group == "editor" || user.group == "administrator");
-    let private_sql = if private {
-        String::from("")
-    } else {
-        match state.pool.any_kind() {
-            AnyKind::MySql => format!(
-                r#" AND (`status` = 'publish' OR `status` = 'password' OR `status` = 'hidden')"#
-            ),
-            _ => format!(
-                r#" AND ("status" = 'publish' OR "status" = 'password' OR "status" = 'hidden')"#
-            ),
-        }
-    };
+    let private = q.private.unwrap_or(false) && admin;
 
-    let post =
-        db::get_content_with_metas_user_fields_by_slug_and_private(&state, &slug, &private_sql)
-            .await
-            .map_err(|_| FieldError::NotFound("slug".to_string()))?;
+    let post = db::get_content_with_metas_user_fields_by_slug_and_private(&state, &slug, private)
+        .await
+        .map_err(|_| FieldError::NotFound("slug".to_string()))?;
 
     let status = &post.status;
     if admin || status == "publish" || status == "hidden" || status == "password" {
@@ -168,7 +124,7 @@ pub async fn delete_post_by_slug(
     PMContributor(user): PMContributor,
     Path(slug): Path<String>,
 ) -> Result<Json<Value>, FieldError> {
-    let post = common_db::get_content_by_slug(&state, &slug).await;
+    let post = common_db::get_content_by_slug(&state, &slug).await?;
 
     if post.is_none() {
         return Err(FieldError::InvalidParams("slug".to_string()));
@@ -176,7 +132,7 @@ pub async fn delete_post_by_slug(
     let post = post.unwrap();
 
     let admin = user.group == "editor" || user.group == "administrator";
-    if post.authorId != user.uid && !admin {
+    if post.author_id != user.uid && !admin {
         return Err(FieldError::PermissionDeny);
     }
 
@@ -192,14 +148,13 @@ pub async fn create_post_field_by_slug(
     Path(slug): Path<String>,
     ValidatedJson(field_create): ValidatedJson<FieldCreate>,
 ) -> Result<(StatusCode, Json<Value>), FieldError> {
-    let exist_post = common_db::get_content_by_slug(&state, &slug).await;
-    if exist_post.is_none() {
-        return Err(FieldError::AlreadyExist("slug".to_owned()));
-    }
-    let exist_post = exist_post.unwrap();
+    let exist_post = match common_db::get_content_by_slug(&state, &slug).await {
+        Ok(Some(p)) => p,
+        _ => return Err(FieldError::NotFound("slug".to_owned())),
+    };
 
     let admin = user.group == "editor" || user.group == "administrator";
-    if exist_post.authorId != user.uid && !admin {
+    if exist_post.author_id != user.uid && !admin {
         return Err(FieldError::PermissionDeny);
     }
 
@@ -212,16 +167,15 @@ pub async fn get_post_field_by_slug_and_name(
     State(state): State<Arc<AppState>>,
     Path((slug, name)): Path<(String, String)>,
 ) -> Result<Json<Value>, FieldError> {
-    let exist_post = common_db::get_content_by_slug(&state, &slug).await;
-    if exist_post.is_none() {
-        return Err(FieldError::NotFound("slug".to_owned()));
-    }
-    let exist_post = exist_post.unwrap();
+    let exist_post = match common_db::get_content_by_slug(&state, &slug).await {
+        Ok(Some(p)) => p,
+        _ => return Err(FieldError::NotFound("slug".to_owned())),
+    };
 
-    let field = common_db::get_field_by_cid_and_name(&state, exist_post.cid, &name).await;
-    if field.is_none() {
-        return Err(FieldError::NotFound("name".to_owned()));
-    }
+    let field = match common_db::get_field_by_cid_and_name(&state, exist_post.cid, &name).await {
+        Ok(Some(f)) => f,
+        _ => return Err(FieldError::NotFound("name".to_owned())),
+    };
     Ok(Json(json!(field)))
 }
 
@@ -231,22 +185,21 @@ pub async fn modify_post_field_by_slug_and_name(
     Path((slug, name)): Path<(String, String)>,
     ValidatedJson(field_modify): ValidatedJson<FieldCreate>,
 ) -> Result<Json<Value>, FieldError> {
-    let exist_post = common_db::get_content_by_slug(&state, &slug).await;
-    if exist_post.is_none() {
-        return Err(FieldError::InvalidParams("slug".to_owned()));
-    }
-    let exist_post = exist_post.unwrap();
+    let exist_post = match common_db::get_content_by_slug(&state, &slug).await {
+        Ok(Some(p)) => p,
+        _ => return Err(FieldError::NotFound("slug".to_owned())),
+    };
 
     let admin = user.group == "editor" || user.group == "administrator";
-    if exist_post.authorId != user.uid && !admin {
+    if exist_post.author_id != user.uid && !admin {
         return Err(FieldError::PermissionDeny);
     }
 
     if name != field_modify.name {
-        let exist_field = common_db::get_field_by_cid_and_name(&state, exist_post.cid, &name).await;
-        if exist_field.is_none() {
-            return Err(FieldError::InvalidParams("name".to_owned()));
-        }
+        match common_db::get_field_by_cid_and_name(&state, exist_post.cid, &name).await {
+            Ok(Some(f)) => f,
+            _ => return Err(FieldError::NotFound("name".to_owned())),
+        };
     }
 
     let _ = common_db::modify_field_by_cid_and_name_with_field_create(
@@ -264,21 +217,20 @@ pub async fn delete_post_field_by_slug_and_name(
     PMContributor(user): PMContributor,
     Path((slug, name)): Path<(String, String)>,
 ) -> Result<Json<Value>, FieldError> {
-    let exist_post = common_db::get_content_by_slug(&state, &slug).await;
-    if exist_post.is_none() {
-        return Err(FieldError::InvalidParams("slug".to_owned()));
-    }
-    let exist_post = exist_post.unwrap();
+    let exist_post = match common_db::get_content_by_slug(&state, &slug).await {
+        Ok(Some(p)) => p,
+        _ => return Err(FieldError::NotFound("slug".to_owned())),
+    };
 
     let admin = user.group == "editor" || user.group == "administrator";
-    if exist_post.authorId != user.uid && !admin {
+    if exist_post.author_id != user.uid && !admin {
         return Err(FieldError::PermissionDeny);
     }
 
-    let field = common_db::get_field_by_cid_and_name(&state, exist_post.cid, &name).await;
-    if field.is_none() {
-        return Err(FieldError::InvalidParams("name".to_owned()));
-    }
+    match common_db::get_field_by_cid_and_name(&state, exist_post.cid, &name).await {
+        Ok(Some(f)) => f,
+        _ => return Err(FieldError::NotFound("name".to_owned())),
+    };
 
     let _ = common_db::delete_field_by_cid_and_name(&state, exist_post.cid, &name).await?;
     Ok(Json(json!({ "msg": "ok" })))
