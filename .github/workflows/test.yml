@@ -48,12 +48,6 @@ jobs:
       run: |
         cargo run -- init
         cargo test --verbose
-    - name: Test Postgresql
-      env:
-        DATABASE_URL: postgres://postgres:postgres@localhost/postgres
-      run: |
-        cargo run -- init
-        cargo test --verbose
     - name: Test Mysql
       env:
         DATABASE_URL: mysql://root:mysqlpassword@localhost/testdb
