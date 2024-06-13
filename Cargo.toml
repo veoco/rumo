@@ -30,7 +30,7 @@ serde = { version = "1.0", features = ["derive"] }
 minijinja = "2.0"
 lazy_static = "1.4"
 
-sqlx = { version = "0.6", features = ["runtime-tokio-rustls", "sqlite", "mysql", "postgres", "any", "json"] }
+sea-orm = { version = "1.0.0-rc.5", features = ["runtime-tokio-rustls", "sqlx-sqlite", "sqlx-mysql", "macros"] }
 
 jwt = "0.16"
 md-5 = "0.10"
